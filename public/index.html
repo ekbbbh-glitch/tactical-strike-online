@@ -631,7 +631,35 @@ function shoot(){
   });
  });
 
- const hit=ray.intersectObjects(targets,false)[0];
+ const botHit = ray.intersectObjects(targets, false)[0];
+const playerRayHit = ray.intersectObjects([...remoteMeshes.values()], true)[0];
+
+if (playerRayHit && (!botHit || playerRayHit.distance < botHit.distance)) {
+  let hitPlayerId = null;
+
+  for (const [id, mesh] of remoteMeshes) {
+    let node = playerRayHit.object;
+
+    while (node && node !== mesh) {
+      node = node.parent;
+    }
+
+    if (node === mesh) {
+      hitPlayerId = id;
+      break;
+    }
+  }
+
+  if (hitPlayerId && online && socket && socket.connected) {
+    socket.emit('playerHit', {
+      targetId: hitPlayerId,
+      damage: specs[weaponName].damage
+    });
+    return;
+  }
+}
+
+const hit = botHit;
 
  if(hit){
   let b=hit.object;
@@ -929,7 +957,15 @@ function updateRemotePlayers(){
       remoteMeshes.delete(id);
     }
   });
+  socket.on('playerDamaged', data => {
+    damagePlayer(Number(data?.damage) || 0);
 
+    msg.textContent = (data?.attacker || 'Bir oyuncu') + ' sana ateş etti!';
+
+    setTimeout(() => {
+      msg.textContent = '';
+    }, 900);
+  });
   socket.on('playersUpdate', list => {
     (list || []).forEach(p => {
       if (p.id !== socket.id) remotePlayers.set(p.id, p);
