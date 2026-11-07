@@ -483,26 +483,39 @@ end.style.display = 'none';
   p.material.opacity=.18;
  }
 }
- function buildMap() {
-  mats.floor.color.setHex(0x66736d);
+ 
 
-  if (selectedMap === 'snow') {
-    mats.floor.color.setHex(0xcbd8df);
+function buildMap() {
+  const groundColors = {
+    desert: 0xb4a078,
+    snow: 0xeaf4fa,
+    factory: 0x555b60,
+    city: 0x777777
+  };
+
+  const ground = mat(groundColors[selectedMap] || 0xb4a078);
+  const wall = mat(0x414b55);
+
+  // Zemin
+  box(scene, 0, -.35, 0, 132, .7, 132, ground);
+
+  // Dış sınırlar
+  for (const x of [-65, 65]) {
+    box(scene, x, 3, 0, 2, 6, 130, wall);
   }
 
-  if (selectedMap === 'factory') {
-    mats.floor.color.setHex(0x555b60);
+  for (const z of [-65, 65]) {
+    box(scene, 0, 3, z, 130, 6, 2, wall);
   }
 
-  if (selectedMap === 'city') {
-    mats.floor.color.setHex(0x777777);
+  if (selectedMap === 'desert') {
+    buildDesertMap();
+    return;
   }
-
-  buildDesertMap();
 
   if (selectedMap === 'snow') {
     const ice = mat(0x9fc9dc);
-    const snow = mat(0xeaf4fa);
+    const snow = mat(0xffffff);
 
     for (const [x,z] of [[-30,-25],[30,-25],[-30,25],[30,25]]) {
       box(scene,x,2,z,12,4,12,ice);
@@ -520,12 +533,11 @@ end.style.display = 'none';
 
     box(scene,-35,5,-25,22,10,18,metal);
     box(scene,35,5,25,22,10,18,metal);
+    box(scene,0,7,0,30,1,8,metal);
 
     for (const [x,z] of [[-12,-20],[12,-20],[-12,20],[12,20]]) {
       box(scene,x,1.5,z,9,3,4,orange);
     }
-
-    box(scene,0,7,0,30,1,8,metal);
   }
 
   if (selectedMap === 'city') {
@@ -536,7 +548,7 @@ end.style.display = 'none';
       box(scene,x,8,z,17,16,15,building);
 
       for (let y=5;y<=12;y+=4) {
-        box(scene,x, y,z-7.6,12,1.5,.15,glass);
+        box(scene,x,y,z-7.6,12,1.5,.15,glass);
       }
     }
 
@@ -546,54 +558,7 @@ end.style.display = 'none';
   }
 }
 
-function makeBlockCharacter(isBot = false) {
- const g = new THREE.Group();
 
- const shirt = isBot ? mats.red : mats.blue;
-
- // Gövde ve zırh
- box(g,0,1.35,0,.9,1.05,.5,shirt);
- box(g,0,1.4,-.28,.72,.65,.08,mats.dark);
- box(g,0,1.65,-.34,.55,.28,.06,mats.trim);
-
- // Kafa ve kask
- box(g,0,2.15,0,.62,.65,.62,mats.skin);
- box(g,0,2.48,0,.72,.22,.72,mats.dark);
- box(g,0,2.36,-.34,.55,.12,.08,mats.trim);
-
- // Gözlük
- box(g,0,2.2,-.325,.48,.13,.04,mats.black);
-
- // Kollar
- box(g,-.57,1.4,0,.27,.85,.3,shirt);
- box(g,.57,1.4,0,.27,.85,.3,shirt);
-
- // Eldivenler
- box(g,-.57,.94,-.02,.28,.2,.3,mats.dark);
- box(g,.57,.94,-.02,.28,.2,.3,mats.dark);
-
- // Bacaklar
- box(g,-.23,.48,0,.34,.9,.38,mats.dark);
- box(g,.23,.48,0,.34,.9,.38,mats.dark);
-
- // Botlar
- box(g,-.23,.06,-.08,.38,.18,.5,mats.black);
- box(g,.23,.06,-.08,.38,.18,.5,mats.black);
-
- // Askerî sırt çantası
- box(g,0,1.45,.32,.62,.75,.25,mats.dark);
-
- // Omuz korumaları
- box(g,-.57,1.78,0,.34,.2,.36,mats.trim);
- box(g,.57,1.78,0,.34,.2,.36,mats.trim);
-
- // Silah
- box(g,.32,1.35,-.48,.16,.16,.9,mats.black);
- box(g,.32,1.2,-.38,.13,.35,.2,mats.dark);
- box(g,.32,1.35,-.95,.08,.08,.45,mats.trim);
-
- return g;
-}
 
 function buildWeapon(){
  if(weaponGroup) camera.remove(weaponGroup);
