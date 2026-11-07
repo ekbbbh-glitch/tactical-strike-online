@@ -15,6 +15,18 @@ const PORT = process.env.PORT || 3000;
 const rooms = new Map();
 const MAX_PLAYERS = 10;
 const BOT_COUNT = 8;
+const SPAWN_POINTS = [
+  { x: -55, z: -55 },
+  { x: 55, z: -55 },
+  { x: -55, z: 55 },
+  { x: 55, z: 55 },
+  { x: -42, z: -52 },
+  { x: 42, z: -52 },
+  { x: -42, z: 52 },
+  { x: 42, z: 52 },
+  { x: -52, z: 0 },
+  { x: 52, z: 0 }
+];
 
 const makeCode = () =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
