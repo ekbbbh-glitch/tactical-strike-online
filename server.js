@@ -175,7 +175,7 @@ io.on('connection', socket => {
     const p = room.players.get(socket.id);
     if (!p) return;
 
-    for (const k of ['x', 'y', 'z', 'ry', 'rx', 'hp']) {
+    for (const k of ['x', 'y', 'z', 'ry', 'rx']) {
       const n = Number(state[k]);
       if (Number.isFinite(n))
         p[k] = Math.max(-1000, Math.min(1000, n));
