@@ -966,6 +966,22 @@ function updateRemotePlayers(){
       msg.textContent = '';
     }, 900);
   });
+  socket.on('playerEliminated', data => {
+  const mesh = remoteMeshes.get(data.playerId);
+
+  if (mesh) {
+    mesh.visible = false;
+  }
+
+  remotePlayers.delete(data.playerId);
+
+  if (data.killerId === socket.id) {
+    kills++;
+    updateHud();
+    msg.textContent = 'RAKİP ETKİSİZ!';
+    setTimeout(() => msg.textContent = '', 1000);
+  }
+});
   socket.on('playersUpdate', list => {
     (list || []).forEach(p => {
       if (p.id !== socket.id) remotePlayers.set(p.id, p);
