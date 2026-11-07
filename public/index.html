@@ -891,6 +891,7 @@ function updateRemotePlayers(){
 
         online = true;
         roomCode = res.code;
+       mySpawn = res.spawn || { x: -8, z: 37 };
         menu.style.display = 'none';
         hud.style.display = 'none';
         end.style.display = 'none';
