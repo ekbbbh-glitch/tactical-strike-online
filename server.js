@@ -71,12 +71,14 @@ function join(sock, room, name, cb) {
   sock.join(room.code);
   sock.data.roomCode = room.code;
 
-  const p = {
-    id: sock.id,
-    name: cleanName(name),
-    x: -8,
-    y: 0,
-    z: 37,
+const spawn = SPAWN_POINTS[room.players.size % SPAWN_POINTS.length];
+
+const p = {
+  id: sock.id,
+  name: cleanName(name),
+  x: spawn.x,
+  y: 0,
+  z: spawn.z,
     ry: 0,
     rx: 0,
     hp: 100,
