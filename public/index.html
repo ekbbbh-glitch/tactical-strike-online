@@ -76,6 +76,24 @@ select{background:#e8edf0;min-width:190px}
  </div>
 </div>
 
+ 
+<div id="lobby" style="display:none;position:fixed;inset:0;z-index:7;background:#101d29;align-items:center;justify-content:center;text-align:center;padding:20px;">
+ <div style="width:100%;max-width:550px;background:#172b3a;border:1px solid #688394;padding:30px;">
+  <h1 style="font-size:32px;color:#ffc45c;">EMIRCRITICAL</h1>
+  <h2>OYUNCULAR BEKLENİYOR...</h2>
+  <p>Oda kodu: <strong id="lobbyCode">------</strong></p>
+  <h3>OYUNCU LİSTESİ</h3>
+  <div id="lobbyPlayers">Oyuncular yükleniyor...</div>
+  <hr>
+  <h3>BOTLAR</h3>
+  <button id="botsYes">BOTLAR VAR</button>
+  <button id="botsNo">BOTLAR YOK</button>
+  <p id="botStatus">Botlar: VAR</p>
+  <button id="launchGame" style="background:#35b875;color:white;">OYUNU BAŞLAT</button>
+  <p id="lobbyStatus">Oyuncuların katılması bekleniyor.</p>
+ </div>
+</div>
+
 <div id="hud">
  <div id="top">TACTICAL STRIKE&nbsp; // &nbsp;<span id="round">BOT MATCH</span></div>
   <div id="players">OYUNCULAR: 1/10</div>
@@ -101,6 +119,57 @@ select{background:#e8edf0;min-width:190px}
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
 const menu=document.getElementById('menu');
+ const lobby = document.getElementById('lobby');
+const lobbyPlayers = document.getElementById('lobbyPlayers');
+const lobbyCode = document.getElementById('lobbyCode');
+const lobbyStatus = document.getElementById('lobbyStatus');
+
+let isRoomHost = false;
+let currentBotsEnabled = true;
+ function updateLobby(data) {
+  lobbyCode.textContent = data.code;
+  lobbyPlayers.innerHTML = '';
+
+  (data.players || []).forEach(player => {
+    const item = document.createElement('div');
+    item.textContent =
+      player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+    item.style.padding = '8px';
+    lobbyPlayers.appendChild(item);
+  });
+
+  isRoomHost = data.hostId === socket.id;
+  currentBotsEnabled = data.botsEnabled;
+
+  document.getElementById('botStatus').textContent =
+    'Botlar: ' + (currentBotsEnabled ? 'VAR' : 'YOK');
+
+  document.getElementById('botsYes').disabled = !isRoomHost;
+  document.getElementById('botsNo').disabled = !isRoomHost;
+  document.getElementById('launchGame').disabled = !isRoomHost;
+}
+ function updateLobby(data) {
+  lobbyCode.textContent = data.code;
+  lobbyPlayers.innerHTML = '';
+
+  (data.players || []).forEach(player => {
+    const item = document.createElement('div');
+    item.textContent =
+      player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+    item.style.padding = '8px';
+    lobbyPlayers.appendChild(item);
+  });
+
+  isRoomHost = data.hostId === socket.id;
+  currentBotsEnabled = data.botsEnabled;
+
+  document.getElementById('botStatus').textContent =
+    'Botlar: ' + (currentBotsEnabled ? 'VAR' : 'YOK');
+
+  document.getElementById('botsYes').disabled = !isRoomHost;
+  document.getElementById('botsNo').disabled = !isRoomHost;
+  document.getElementById('launchGame').disabled = !isRoomHost;
+}
 const hud=document.getElementById('hud');
 const end=document.getElementById('end');
 const ammoEl=document.getElementById('ammo');
@@ -420,7 +489,7 @@ function spawnBot(x,z){
  bots.push(bot);
 }
 
-function startGame(){
+ function startGame(options = {}){
  if(!renderer)init();
 
  menu.style.display='none';
@@ -708,7 +777,9 @@ function update(dt){
  updateRemotePlayers();
 
  if(!online&&bots.filter(b=>b.userData.alive).length===0){
-  for(let i=0;i<8;i++){
+  if (!online || options.bots !== false) {
+  for (let i = 0; i < 8; i++) spawnBot();
+}
    spawnBot(
     (Math.random()-.5)*104,
     (Math.random()-.5)*104
@@ -782,41 +853,7 @@ function setOnlineStatus(text){
  const el=document.getElementById('onlineStatus');
  if(el)el.textContent=text;
 }
-function connectRoom(action){
- const url=document.getElementById('serverUrl').value.trim().replace(/\/$/,'');
- const name=(document.getElementById('playerName').value.trim()||'Oyuncu').slice(0,16);
- const code=document.getElementById('roomCode').value.trim().toUpperCase();
- if(!url){setOnlineStatus('Sunucu adresini gir.');return;}
- if(action==='join'&&!code){setOnlineStatus('Katılmak için oda kodunu gir.');return;}
- if(socket){socket.disconnect();socket=null;}
- playerName=name;
- setOnlineStatus('Sunucuya bağlanılıyor...');
- socket=io(url,{transports:['websocket','polling'],timeout:10000});
- socket.on('connect',()=>{
-  setOnlineStatus('Bağlandı. Oda hazırlanıyor...');
-  socket.emit(action==='create'?'createRoom':'joinRoom',{code,name},(res)=>{
-   if(!res||!res.ok){setOnlineStatus(res?.error||'Odaya girilemedi.');return;}
-   online=true;roomCode=res.code;
-   document.getElementById('roomCode').value=roomCode;
-   remotePlayers.clear();
-   (res.players||[]).forEach(p=>{if(p.id!==socket.id)remotePlayers.set(p.id,p);});
-   setOnlineStatus(`Oda hazır: ${roomCode} • ${res.players.length}/10 oyuncu. Arkadaşlarına kodu ve sunucu adresini gönder.`);
-   startGame();
-   (res.bots||[]).forEach((state,i)=>{const b=bots[i];if(b){b.userData.hp=state.hp;b.userData.dead=state.dead;b.userData.alive=!state.dead;b.visible=!state.dead;}});
-  });
- });
- socket.on('connect_error',()=>setOnlineStatus('Sunucuya bağlanılamadı. Sunucunun açık ve adresin doğru olduğundan emin ol.'));
- socket.on('playerJoined',p=>{remotePlayers.set(p.id,p);updatePlayerCount();setOnlineStatus(`${p.name||'Oyuncu'} odaya katıldı.`);});
- socket.on('playerLeft',id=>{remotePlayers.delete(id);const m=remoteMeshes.get(id);if(m){scene.remove(m);remoteMeshes.delete(id);}updatePlayerCount();});
- socket.on('playersUpdate',list=>{(list||[]).forEach(p=>{if(p.id!==socket.id)remotePlayers.set(p.id,p);});updatePlayerCount();});
- socket.on('botUpdate',data=>{
-  const b=bots[data.botId];if(!b)return;
-  b.userData.hp=data.hp;
-  if(data.dead&&!b.userData.dead){b.userData.dead=true;b.userData.alive=false;b.visible=false;kills++;msg.textContent='HEDEF ETKİSİZ';setTimeout(()=>msg.textContent='',700);updateHud();}
- });
- socket.on('roomMessage',t=>setOnlineStatus(t));
- socket.on('disconnect',()=>{online=false;setOnlineStatus('Sunucu bağlantısı kesildi. Tekrar bağlanmayı dene.');});
-}
+
 function updatePlayerCount(){
  const el=document.getElementById('players');if(el)el.textContent=`OYUNCULAR: ${Math.min(10,remotePlayers.size+1)}/10`;
 }
@@ -831,6 +868,121 @@ function updateRemotePlayers(){
  updatePlayerCount();
 }
 
+ function connectRoom(action) {
+  const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+  const name = (document.getElementById('playerName').value.trim() || 'Oyuncu').slice(0, 16);
+  const code = document.getElementById('roomCode').value.trim().toUpperCase();
+
+  if (!url) {
+    setOnlineStatus('Sunucu adresini gir.');
+    return;
+  }
+
+  if (action === 'join' && !code) {
+    setOnlineStatus('Katılmak için oda kodunu gir.');
+    return;
+  }
+
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+
+  playerName = name;
+  setOnlineStatus('Sunucuya bağlanılıyor...');
+
+  socket = io(url, {
+    transports: ['websocket', 'polling'],
+    timeout: 10000
+  });
+
+  socket.on('connect', () => {
+    socket.emit(
+      action === 'create' ? 'createRoom' : 'joinRoom',
+      { code, name },
+      res => {
+        if (!res || !res.ok) {
+          setOnlineStatus(res?.error || 'Odaya girilemedi.');
+          return;
+        }
+
+        online = true;
+        roomCode = res.code;
+        menu.style.display = 'none';
+        hud.style.display = 'none';
+        end.style.display = 'none';
+        lobby.style.display = 'flex';
+
+        updateLobby(res);
+        lobbyStatus.textContent = 'Oyuncuların katılması bekleniyor.';
+      }
+    );
+  });
+
+  socket.on('lobbyUpdate', data => updateLobby(data));
+
+  socket.on('gameStarted', data => {
+    currentBotsEnabled = data.botsEnabled;
+    lobby.style.display = 'none';
+    startGame({ bots: currentBotsEnabled });
+
+    (data.bots || []).forEach((state, i) => {
+      const b = bots[i];
+      if (b) {
+        b.userData.hp = state.hp;
+        b.userData.dead = state.dead;
+        b.userData.alive = !state.dead;
+        b.visible = !state.dead;
+      }
+    });
+  });
+
+  socket.on('connect_error', () => {
+    setOnlineStatus('Sunucuya bağlanılamadı. Sunucunun açık ve adresin doğru olduğundan emin ol.');
+  });
+
+  socket.on('playerJoined', p => remotePlayers.set(p.id, p));
+
+  socket.on('playerLeft', id => {
+    remotePlayers.delete(id);
+    const m = remoteMeshes.get(id);
+    if (m) {
+      scene.remove(m);
+      remoteMeshes.delete(id);
+    }
+  });
+
+  socket.on('playersUpdate', list => {
+    (list || []).forEach(p => {
+      if (p.id !== socket.id) remotePlayers.set(p.id, p);
+    });
+    updatePlayerCount();
+  });
+
+  socket.on('botUpdate', data => {
+    const b = bots[data.botId];
+    if (!b) return;
+    b.userData.hp = data.hp;
+
+    if (data.dead && !b.userData.dead) {
+      b.userData.dead = true;
+      b.userData.alive = false;
+      b.visible = false;
+      kills++;
+      msg.textContent = 'HEDEF ETKİSİZ';
+      setTimeout(() => msg.textContent = '', 700);
+      updateHud();
+    }
+  });
+
+  socket.on('roomMessage', t => setOnlineStatus(t));
+
+  socket.on('disconnect', () => {
+    online = false;
+    lobby.style.display = 'none';
+    setOnlineStatus('Sunucu bağlantısı kesildi. Tekrar bağlanmayı dene.');
+  });
+}
 function resize(){
  if(!camera||!renderer)return;
 
@@ -841,6 +993,23 @@ function resize(){
 
 document.getElementById('start').onclick=()=>{online=false;startGame();};
 document.getElementById('createRoom').onclick=()=>connectRoom('create');
+ document.getElementById('botsYes').onclick = () => {
+  if (isRoomHost && socket) {
+    socket.emit('setBotMode', true);
+  }
+};
+
+document.getElementById('botsNo').onclick = () => {
+  if (isRoomHost && socket) {
+    socket.emit('setBotMode', false);
+  }
+};
+
+document.getElementById('launchGame').onclick = () => {
+  if (isRoomHost && socket) {
+    socket.emit('startMatch');
+  }
+};
 document.getElementById('joinRoom').onclick=()=>connectRoom('join');
 document.getElementById('again').onclick=startGame;
 
