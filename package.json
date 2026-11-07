@@ -1,0 +1,14 @@
+{
+  "name": "tactical-strike-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TACTICAL STRIKE 10-player co-op game server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}

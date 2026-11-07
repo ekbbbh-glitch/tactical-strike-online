@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TACTICAL STRIKE — 3D FPS</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#fff;font-family:Arial,Helvetica,sans-serif}
+canvas{display:block}
+#menu{position:fixed;inset:0;z-index:5;background:linear-gradient(115deg,rgba(8,16,28,.97),rgba(18,38,52,.88)),radial-gradient(circle at 75% 30%,#31556a,transparent 40%);display:flex;align-items:center;padding:6vw}
+.panel{max-width:610px}
+h1{font-size:clamp(42px,7vw,86px);letter-spacing:5px;margin:0 0 8px;color:#f5f7fa;text-shadow:0 5px 30px #000}
+.sub{color:#a9c1cf;letter-spacing:3px;margin-bottom:34px}
+button,select{background:#e7a83e;color:#101820;border:0;padding:14px 22px;font-weight:800;letter-spacing:1px;cursor:pointer;font-size:15px;margin:8px 8px 8px 0}
+button:hover{background:#ffc45c}
+select{background:#e8edf0;min-width:190px}
+.small{color:#c4d2da;line-height:1.6;max-width:560px;font-size:14px}
+.tag{display:inline-block;border:1px solid #617989;padding:7px 10px;margin:5px 5px 15px 0;color:#b9cbd5;font-size:11px;letter-spacing:1px}
+#hud{position:fixed;inset:0;pointer-events:none;display:none;z-index:3;text-shadow:0 2px 4px #000}
+#top{position:absolute;top:18px;left:50%;transform:translateX(-50%);background:#08131ccc;padding:9px 20px;border:1px solid #8299a766;letter-spacing:2px;font-size:13px}
+#health{position:absolute;bottom:25px;left:25px;background:#08131ccc;padding:12px 16px;border-left:4px solid #61c98c;font-weight:bold}
+#ammo{position:absolute;bottom:24px;right:28px;text-align:right;background:#08131ccc;padding:12px 16px;font-size:24px;font-weight:bold}
+#ammo small{display:block;font-size:11px;color:#b8c6ce;letter-spacing:2px;margin-top:4px}
+#hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-size:11px;color:#d5e0e5;letter-spacing:1px}
+#cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px}
+#cross:before,#cross:after{content:"";position:absolute;background:#f5f5f5;box-shadow:0 0 3px #000}
+#cross:before{width:2px;height:18px;left:10px;top:2px}
+#cross:after{height:2px;width:18px;top:10px;left:2px}
+#scope{display:none;position:absolute;inset:0;background:radial-gradient(circle,transparent 0 17%,rgba(0,0,0,.96) 17.5%);border:0}
+#scope:before{content:"";position:absolute;left:50%;top:0;height:100%;width:1px;background:#111}
+#scope:after{content:"";position:absolute;top:50%;left:0;width:100%;height:1px;background:#111}
+#message{position:absolute;top:30%;left:50%;transform:translateX(-50%);font-size:22px;font-weight:bold;letter-spacing:2px;color:#ffc45c}
+#end{display:none;position:fixed;inset:0;z-index:8;background:#07111eee;align-items:center;justify-content:center;text-align:center}
+#end h2{font-size:54px;margin:0 0 10px}
+.online-box{border:1px solid #688394;background:#07131dcc;padding:14px;margin:14px 0;max-width:570px}
+.online-box h3{margin:0 0 10px;color:#ffc45c;letter-spacing:2px;font-size:14px}
+.online-box input{background:#e8edf0;border:0;padding:12px;margin:5px 8px 8px 0;min-width:190px;max-width:100%;font-size:14px}
+.online-actions{display:flex;align-items:center;flex-wrap:wrap}
+#onlineStatus{color:#a9c1cf;font-size:13px;margin-top:5px;min-height:18px}
+#players{position:absolute;top:58px;right:18px;background:#08131ccc;padding:9px 12px;font-size:12px;line-height:1.6;max-width:190px}
+</style>
+</head>
+<body>
+
+<div id="menu">
+ <div class="panel">
+  <div class="tag">SINGLE PLAYER • BOT MATCH • 3D FPS</div>
+  <h1>TACTICAL<br>STRIKE</h1>
+  <div class="sub">ROUND ZERO // TRAINING GROUNDS</div>
+  <p class="small">Üç koridorlu, taktik nişancı tarzında özgün bir haritada botlara karşı savaş. Blok biçimli Roblox-esintili karakterler, üç silah, dürbün, şarjör ve can sistemi.</p>
+  <div class="online-box">
+   <h3>ONLINE CO-OP • 10 OYUNCU</h3>
+   <label for="playerName">Oyuncu adı</label><br>
+   <input id="playerName" maxlength="16" placeholder="Oyuncu adın" value="Oyuncu" />
+   <label for="serverUrl">Sunucu adresi</label><br>
+   <input id="serverUrl" placeholder="https://sunucu-adresin.com" value="http://localhost:3000" />
+   <div class="online-actions">
+    <button id="createRoom">ODA OLUŞTUR</button>
+    <input id="roomCode" maxlength="8" placeholder="ODA KODU" />
+    <button id="joinRoom">ODAYA KATIL</button>
+   </div>
+   <div id="onlineStatus">Önce oda oluştur veya oda koduyla katıl.</div>
+  </div>
+  <p><label for="weapon">Başlangıç silahı</label><br>
+  <select id="weapon">
+   <option>Vandal</option>
+   <option>Şerif</option>
+   <option>AWM</option>
+  </select></p>
+  <button id="start">MAÇA BAŞLA</button>
+  <p class="small"><b>Kontroller:</b> WASD hareket • Fare nişan • Sol tık ateş • Sağ tık dürbün (AWM) • R şarjör • 1 Vandal / 2 Şerif / 3 AWM • ESC menü/fare kilidi</p>
+  <p class="small">Not: Bu, tarayıcıda çalışan özgün bir prototiptir; gerçek Valorant/Riot içeriği veya çevrimiçi çok oyunculu mod içermez.</p>
+ </div>
+</div>
+
+<div id="hud">
+ <div id="top">TACTICAL STRIKE&nbsp; // &nbsp;<span id="round">BOT MATCH</span></div>
+  <div id="players">OYUNCULAR: 1/10</div>
+ <div id="cross"></div>
+ <div id="scope"></div>
+ <div id="health">♥ <span id="hp">100</span> HP</div>
+ <div id="ammo">25 / 75<small>VANDAL</small></div>
+ <div id="hint">WASD • MOUSE • LMB FIRE • R RELOAD</div>
+ <div id="message"></div>
+</div>
+
+<div id="end">
+ <div>
+  <h2>ELENDİN</h2>
+  <p id="endtxt">Botlar seni yakaladı.</p>
+  <button id="again">TEKRAR DENE</button>
+  <button id="back">ANA MENÜ</button>
+ </div>
+</div>
+
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const menu=document.getElementById('menu');
+const hud=document.getElementById('hud');
+const end=document.getElementById('end');
+const ammoEl=document.getElementById('ammo');
+const hpEl=document.getElementById('hp');
+const msg=document.getElementById('message');
+const scopeEl=document.getElementById('scope');
+const cross=document.getElementById('cross');
+
+let scene,camera,renderer,clock,player,weaponGroup;
+let weaponName='Vandal',ammo=25,reserve=75,hp=100;
+let bots=[],keys={},locked=false,scoped=false,reloading=false;
+let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
+
+// ONLINE CO-OP bağlantısı
+let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
+let netSendTimer=0;
+
+const specs={
+ Vandal:{mag:25,reserve:75,damage:34,rate:.105,range:85,auto:true},
+ Şerif:{mag:6,reserve:36,damage:72,rate:.34,range:75,auto:false},
+ AWM:{mag:5,reserve:20,damage:100,rate:1.05,range:150,auto:false}
+};
+
+const mat=(c,rough=.8,metal=0)=>new THREE.MeshStandardMaterial({
+ color:c,roughness:rough,metalness:metal
+});
+
+const mats={
+ wall:mat(0x596b70),
+ dark:mat(0x263b46),
+ floor:mat(0x66736d),
+ trim:mat(0xd49a48),
+ blue:mat(0x2787a4),
+ red:mat(0xb94e42),
+ skin:mat(0xd6a77d),
+ black:mat(0x151b20,.45,.45),
+ gun:mat(0x202a30,.35,.65),
+ glass:new THREE.MeshStandardMaterial({
+  color:0x72b9c8,
+  transparent:true,
+  opacity:.25,
+  metalness:.6,
+  roughness:.15
+ })
+};
+
+function box(parent,x,y,z,sx,sy,sz,material){
+ let m=new THREE.Mesh(
+  new THREE.BoxGeometry(sx,sy,sz),
+  material
+ );
+ m.position.set(x,y,z);
+ m.castShadow=true;
+ m.receiveShadow=true;
+ parent.add(m);
+ return m;
+}
+
+function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
+ let m=new THREE.Mesh(
+  new THREE.CylinderGeometry(r1,r2,len,12),
+  material
+ );
+ m.position.set(x,y,z);
+ m.rotation.z=rotZ;
+ m.castShadow=true;
+ parent.add(m);
+ return m;
+}
+
+function init(){
+ scene=new THREE.Scene();
+ scene.background=new THREE.Color(0x9ab4bd);
+ scene.fog=new THREE.Fog(0x9ab4bd,55,155);
+
+ camera=new THREE.PerspectiveCamera(
+  76,innerWidth/innerHeight,.1,250
+ );
+
+ camera.position.set(0,1.7,16);
+
+ renderer=new THREE.WebGLRenderer({antialias:true});
+ renderer.setSize(innerWidth,innerHeight);
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
+ renderer.shadowMap.enabled=true;
+ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+ document.body.appendChild(renderer.domElement);
+
+ scene.add(new THREE.HemisphereLight(0xd8edff,0x536052,2.0));
+
+ const sun=new THREE.DirectionalLight(0xffedcf,2.4);
+ sun.position.set(-20,35,18);
+ sun.castShadow=true;
+ sun.shadow.mapSize.set(2048,2048);
+ scene.add(sun);
+
+ buildMap();
+
+ player=new THREE.Object3D();
+ player.position.set(0,0,17);
+ scene.add(player);
+ player.add(camera);
+ camera.position.set(0,1.65,0);
+
+ buildWeapon();
+
+ clock=new THREE.Clock();
+ window.addEventListener('resize',resize);
+
+ // GELİŞTİRİLMİŞ KLAVYE KONTROLLERİ
+ const movementCodes={
+  w:'KeyW',
+  a:'KeyA',
+  s:'KeyS',
+  d:'KeyD',
+  arrowup:'KeyW',
+  arrowleft:'KeyA',
+  arrowdown:'KeyS',
+  arrowright:'KeyD',
+  shift:'ShiftLeft'
+ };
+
+ window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  const code=movementCodes[k]||(
+   e.code==='ShiftRight'?'ShiftLeft':e.code
+  );
+
+  if([
+   'KeyW','KeyA','KeyS','KeyD',
+   'ShiftLeft','KeyR','Digit1','Digit2','Digit3'
+  ].includes(code)){
+   e.preventDefault();
+  }
+
+  keys[code]=true;
+  keydown({code:code});
+ },{passive:false});
+
+ window.addEventListener('keyup',e=>{
+  const k=e.key.toLowerCase();
+  const code=movementCodes[k]||(
+   e.code==='ShiftRight'?'ShiftLeft':e.code
+  );
+  keys[code]=false;
+ });
+
+ window.addEventListener('blur',()=>{
+  keys={};
+ });
+
+ document.addEventListener('mousemove',mouseMove);
+ document.addEventListener('mousedown',mouseDown);
+ document.addEventListener('mouseup',mouseUp);
+
+ document.addEventListener('pointerlockchange',()=>{
+  locked=document.pointerLockElement===renderer.domElement;
+ });
+
+ renderer.domElement.addEventListener('click',()=>{
+  if(game&&!locked){
+   renderer.domElement.requestPointerLock();
+  }
+ });
+
+ animate();
+}
+
+function buildMap(){
+ box(scene,0,-.35,0,132,.7,132,mats.floor);
+
+ for(let x=-64;x<=64;x+=128){
+  box(scene,x,3,0,2,6,130,mats.wall);
+ }
+
+ for(let z=-64;z<=64;z+=128){
+  box(scene,0,3,z,130,6,2,mats.wall);
+ }
+
+ const walls=[
+  [-17,2,-12,2,4,35],
+  [17,2,-12,2,4,35],
+  [-17,2,17,2,4,26],
+  [17,2,17,2,4,26],
+  [-29,2,0,18,4,2],
+  [29,2,0,18,4,2],
+  [0,2,-24,2,4,18],
+  [0,2,24,2,4,16],
+  [-8,1.5,-3,9,3,2],
+  [8,1.5,3,9,3,2],
+  [-27,1.5,-20,8,3,2],
+  [27,1.5,20,8,3,2],
+  [-25,1.5,20,2,3,10],
+  [25,1.5,-20,2,3,10]
+ ];
+
+ walls.forEach(a=>box(scene,...a,mats.wall));
+
+ for(const [x,z] of [
+  [-9,12],[9,12],[-27,-8],[27,8],
+  [-7,-25],[8,26],[0,5],[-32,27],[32,-27]
+ ]){
+  box(scene,x,.9,z,3,1.8,3,mats.dark);
+  box(scene,x,.95,z,3.05,.12,3.05,mats.trim);
+ }
+
+ for(const [x,z] of [
+  [-48,-42],[48,-42],[-48,42],[48,42],
+  [-42,0],[42,0],[0,-49],[0,49]
+ ]){
+  box(scene,x,1.1,z,5,2.2,5,mats.dark);
+  box(scene,x,1.22,z,5.05,.12,5.05,mats.trim);
+ }
+
+ for(const [x,z] of [
+  [-54,-22],[54,22],[-22,54],[22,-54]
+ ]){
+  box(scene,x,2.2,z,2,4.4,13,mats.wall);
+ }
+
+ for(const [x,z] of [[-25,-25],[25,25]]){
+  let p=box(scene,x,.02,z,13,.04,13,mat(0xc69a55));
+  p.material.transparent=true;
+  p.material.opacity=.18;
+ }
+
+ for(const [x,z] of [
+  [-35,-35],[35,-35],[-35,35],[35,35]
+ ]){
+  box(scene,x,5,z,1,10,1,mats.dark);
+  box(scene,x,10.2,z,2,.4,2,mats.trim);
+ }
+}
+
+function makeBlockCharacter(isBot=false){
+ const g=new THREE.Group();
+ const shirt=isBot?mats.red:mats.blue;
+
+ box(g,0,1.35,0,.85,.95,.48,shirt);
+ box(g,0,2.12,0,.68,.68,.65,mats.skin);
+ box(g,0,2.28,-.335,.48,.12,.03,mats.black);
+
+ box(g,-.55,1.35,0,.24,.9,.28,mats.skin);
+ box(g,.55,1.35,0,.24,.9,.28,mats.skin);
+
+ box(g,-.22,.48,0,.3,.9,.34,mats.dark);
+ box(g,.22,.48,0,.3,.9,.34,mats.dark);
+
+ box(g,0,1.42,-.255,.58,.55,.06,mats.black);
+
+ return g;
+}
+
+function buildWeapon(){
+ if(weaponGroup)camera.remove(weaponGroup);
+
+ weaponGroup=new THREE.Group();
+ camera.add(weaponGroup);
+
+ if(weaponName==='Vandal'){
+  box(weaponGroup,.38,-.34,-.85,.22,.2,.78,mats.gun);
+  cylinder(weaponGroup,.38,-.31,-1.42,.045,.045,.62,mats.black,Math.PI/2);
+  box(weaponGroup,.38,-.51,-.8,.13,.27,.22,mats.black);
+  box(weaponGroup,.38,-.23,-.55,.18,.09,.35,mats.trim);
+  box(weaponGroup,.38,-.46,-.98,.13,.3,.2,mats.dark);
+
+ }else if(weaponName==='Şerif'){
+  box(weaponGroup,.38,-.34,-.75,.18,.17,.45,mats.gun);
+  cylinder(weaponGroup,.38,-.31,-1.08,.035,.035,.35,mats.black,Math.PI/2);
+  box(weaponGroup,.38,-.52,-.7,.14,.32,.18,mats.dark);
+  cylinder(weaponGroup,.38,-.34,-.8,.12,.12,.1,mats.trim,Math.PI/2);
+
+ }else{
+  box(weaponGroup,.38,-.34,-.88,.2,.18,.95,mats.gun);
+  cylinder(weaponGroup,.38,-.31,-1.65,.04,.04,.95,mats.black,Math.PI/2);
+  box(weaponGroup,.38,-.47,-.55,.14,.28,.42,mats.dark);
+  box(weaponGroup,.38,-.22,-.75,.14,.12,.25,mats.trim);
+
+  cylinder(weaponGroup,.38,-.13,-.91,.09,.09,.42,mats.black,Math.PI/2);
+  cylinder(weaponGroup,.38,-.13,-.7,.13,.13,.07,mats.trim,Math.PI/2);
+ }
+
+ box(weaponGroup,.18,-.48,-.52,.12,.08,.2,mats.skin);
+ weaponGroup.position.set(0,0,0);
+}
+
+function updateAmmo(){
+ ammoEl.innerHTML=`${ammo} / ${reserve}<small>${weaponName.toUpperCase()}${reloading?' • DOLDURULUYOR':''}</small>`;
+}
+
+function setWeapon(n){
+ weaponName=n;
+ ammo=specs[n].mag;
+ reserve=specs[n].reserve;
+ reloading=false;
+ scoped=false;
+ scopeEl.style.display='none';
+ cross.style.display='block';
+ buildWeapon();
+ updateAmmo();
+}
+
+function spawnBot(x,z){
+ const bot=makeBlockCharacter(true);
+ bot.position.set(x,0,z);
+ scene.add(bot);
+
+ bot.userData={
+  id:bots.length,
+  hp:100,
+  fire:1+Math.random()*1.4,
+  walk:Math.random()*6,
+  alive:true
+ };
+
+ bots.push(bot);
+}
+
+function startGame(){
+ if(!renderer)init();
+
+ menu.style.display='none';
+ end.style.display='none';
+ hud.style.display='block';
+
+ game=true;
+ hp=100;
+ kills=0;
+
+ // DÜZELTİLDİ: Oyuncu artık duvarın içinde başlamıyor.
+ player.position.set(-8,0,37);
+
+ player.rotation.set(0,0,0);
+ camera.rotation.set(0,0,0);
+
+ bots.forEach(b=>scene.remove(b));
+ bots=[];
+
+ setWeapon(document.getElementById('weapon').value);
+
+ [
+  [-25,-22],
+  [25,-22],
+  [-29,25],
+  [28,25],
+  [0,-32],
+  [0,1],
+  [-46,8],
+  [46,-8]
+ ].forEach(p=>spawnBot(...p));
+
+ renderer.domElement.requestPointerLock();
+
+ msg.textContent='';
+ updateHud();
+}
+
+function updateHud(){
+ hpEl.textContent=hp;
+ document.getElementById('round').textContent=(online?`CO-OP ${roomCode}`:'BOT MATCH')+` • ${kills} ELİM`;
+ document.getElementById('players').textContent=`OYUNCULAR: ${Math.max(1,remotePlayers.size+1)}/10`;
+ updateAmmo();
+}
+
+function keydown(e){
+ keys[e.code]=true;
+
+ if(!game)return;
+
+ if(e.code==='KeyR')reload();
+
+ if(e.code==='Digit1')setWeapon('Vandal');
+ if(e.code==='Digit2')setWeapon('Şerif');
+ if(e.code==='Digit3')setWeapon('AWM');
+}
+
+let lastMouseDown=false;
+
+function mouseMove(e){
+ if(!game||!locked)return;
+
+ player.rotation.y-=e.movementX*.0022;
+ camera.rotation.x-=e.movementY*.0022;
+
+ camera.rotation.x=Math.max(
+  -1.48,
+  Math.min(1.48,camera.rotation.x)
+ );
+}
+
+function mouseDown(e){
+ if(!game)return;
+
+ if(e.button===0){
+  lastMouseDown=true;
+  shoot();
+ }
+
+ if(e.button===2&&weaponName==='AWM'){
+  scoped=true;
+  scopeEl.style.display='block';
+  cross.style.display='none';
+  camera.fov=27;
+  camera.updateProjectionMatrix();
+ }
+}
+
+function mouseUp(e){
+ if(e.button===0)lastMouseDown=false;
+ if(e.button===2)unScope();
+}
+
+function unScope(){
+ scoped=false;
+ scopeEl.style.display='none';
+ cross.style.display='block';
+
+ if(camera){
+  camera.fov=76;
+  camera.updateProjectionMatrix();
+ }
+}
+
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function reload(){
+ if(reloading||ammo===specs[weaponName].mag||reserve<=0)return;
+
+ reloading=true;
+ updateAmmo();
+
+ setTimeout(()=>{
+  if(!game)return;
+
+  let need=specs[weaponName].mag-ammo;
+  let take=Math.min(need,reserve);
+
+  ammo+=take;
+  reserve-=take;
+  reloading=false;
+  updateAmmo();
+
+ },weaponName==='AWM'?1900:1450);
+}
+
+function shoot(){
+ if(!game||!locked||reloading||shootCd>0)return;
+
+ if(ammo<=0){
+  msg.textContent='ŞARJÖR BOŞ — R İLE DOLDUR';
+  setTimeout(()=>msg.textContent='',900);
+  return;
+ }
+
+ ammo--;
+ shootCd=specs[weaponName].rate;
+ recoil=.09;
+ updateAmmo();
+
+ const ray=new THREE.Raycaster();
+ ray.setFromCamera(new THREE.Vector2(0,0),camera);
+ ray.far=specs[weaponName].range;
+
+ let targets=[];
+
+ bots.filter(b=>b.userData.alive).forEach(b=>{
+  b.traverse(o=>{
+   if(o.isMesh)targets.push(o);
+  });
+ });
+
+ const hit=ray.intersectObjects(targets,false)[0];
+
+ if(hit){
+  let b=hit.object;
+
+  while(b.parent&&!b.userData.alive){
+   b=b.parent;
+  }
+
+  if(b.userData.alive){
+   if(online&&socket&&socket.connected){
+    socket.emit('botHit',{botId:b.userData.id,damage:specs[weaponName].damage});
+   }else{
+    b.userData.hp-=specs[weaponName].damage;
+    if(b.userData.hp<=0){
+     b.userData.alive=false;
+     b.visible=false;
+     kills++;
+     msg.textContent='HEDEF ETKİSİZ';
+     setTimeout(()=>msg.textContent='',700);
+     updateHud();
+    }
+   }
+  }
+ }
+}
+
+function damagePlayer(d){
+ hp=Math.max(0,hp-d);
+ hpEl.textContent=hp;
+
+ if(hp<=0){
+  game=false;
+  document.exitPointerLock?.();
+  end.style.display='flex';
+ }
+}
+
+function updateBots(dt){
+ bots.forEach(b=>{
+  if(!b.userData.alive)return;
+
+  let dx=player.position.x-b.position.x;
+  let dz=player.position.z-b.position.z;
+  let dist=Math.hypot(dx,dz);
+
+  b.userData.walk+=dt*7;
+  b.position.y=Math.abs(Math.sin(b.userData.walk))*.04;
+
+  if(dist>7){
+   b.position.x+=dx/dist*dt*1.55;
+   b.position.z+=dz/dist*dt*1.55;
+   b.rotation.y=Math.atan2(-dx,-dz);
+  }
+
+  b.userData.fire-=dt;
+
+  if(dist<32&&b.userData.fire<=0){
+   b.userData.fire=1.1+Math.random()*1.2;
+
+   if(Math.random()<Math.max(.16,.68-dist*.014)){
+    damagePlayer(5+Math.floor(Math.random()*8));
+   }
+  }
+ });
+}
+
+function update(dt){
+ if(!game)return;
+
+ shootCd=Math.max(0,shootCd-dt);
+
+ if(lastMouseDown&&specs[weaponName].auto)shoot();
+
+ let f=0,s=0;
+
+ if(keys.KeyW)f-=1;
+ if(keys.KeyS)f+=1;
+ if(keys.KeyA)s-=1;
+ if(keys.KeyD)s+=1;
+
+ let len=Math.hypot(f,s)||1;
+
+ f/=len;
+ s/=len;
+
+ const speed=keys.ShiftLeft?8:5.3;
+
+ let sin=Math.sin(player.rotation.y);
+ let cos=Math.cos(player.rotation.y);
+
+ let nx=player.position.x+(s*cos+f*sin)*speed*dt;
+ let nz=player.position.z+(f*cos-s*sin)*speed*dt;
+
+ // DÜZELTİLDİ: X ve Z hareketleri ayrı kontrol edilir.
+ // Böylece duvar boyunca kayarak hareket edebilirsin.
+
+ if(Math.abs(nx)<61&&!collides(nx,player.position.z)){
+  player.position.x=nx;
+ }
+
+ if(Math.abs(nz)<61&&!collides(player.position.x,nz)){
+  player.position.z=nz;
+ }
+
+ if(f||s){
+  moveBob+=dt*10;
+  camera.position.y=1.65+Math.sin(moveBob)*.035;
+ }else{
+  camera.position.y=1.65;
+ }
+
+ recoil=Math.max(0,recoil-dt*.6);
+ weaponGroup.position.y=-recoil;
+ weaponGroup.rotation.x=recoil*.8;
+
+ updateBots(dt);
+ if(online&&socket&&socket.connected){
+  netSendTimer+=dt;
+  if(netSendTimer>=.05){
+   netSendTimer=0;
+   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:weaponName});
+  }
+ }
+ updateRemotePlayers();
+
+ if(!online&&bots.filter(b=>b.userData.alive).length===0){
+  for(let i=0;i<8;i++){
+   spawnBot(
+    (Math.random()-.5)*104,
+    (Math.random()-.5)*104
+   );
+  }
+ }
+}
+
+function collides(x,z){
+ const blocks=[
+  [-17,-12,2,35],
+  [17,-12,2,35],
+  [-17,17,2,26],
+  [17,17,2,26],
+  [-29,0,18,2],
+  [29,0,18,2],
+  [0,-24,2,18],
+  [0,24,2,16],
+  [-8,-3,9,2],
+  [8,3,9,2],
+  [-27,-20,8,2],
+  [27,20,8,2],
+  [-25,20,2,10],
+  [25,-20,2,10]
+ ];
+
+ for(const [bx,bz,w,d] of blocks){
+  if(
+   Math.abs(x-bx)<w/2+.55&&
+   Math.abs(z-bz)<d/2+.55
+  ){
+   return true;
+  }
+ }
+
+ for(const [bx,bz] of [
+  [-9,12],
+  [9,12],
+  [-27,-8],
+  [27,8],
+  [-7,-25],
+  [8,26],
+  [0,5],
+  [-32,27],
+  [32,-27]
+ ]){
+  if(
+   Math.abs(x-bx)<2.1&&
+   Math.abs(z-bz)<2.1
+  ){
+   return true;
+  }
+ }
+
+ return false;
+}
+
+function animate(){
+ requestAnimationFrame(animate);
+
+ let dt=clock?Math.min(clock.getDelta(),.05):0;
+
+ update(dt);
+
+ if(renderer){
+  renderer.render(scene,camera);
+ }
+}
+
+function setOnlineStatus(text){
+ const el=document.getElementById('onlineStatus');
+ if(el)el.textContent=text;
+}
+function connectRoom(action){
+ const url=document.getElementById('serverUrl').value.trim().replace(/\/$/,'');
+ const name=(document.getElementById('playerName').value.trim()||'Oyuncu').slice(0,16);
+ const code=document.getElementById('roomCode').value.trim().toUpperCase();
+ if(!url){setOnlineStatus('Sunucu adresini gir.');return;}
+ if(action==='join'&&!code){setOnlineStatus('Katılmak için oda kodunu gir.');return;}
+ if(socket){socket.disconnect();socket=null;}
+ playerName=name;
+ setOnlineStatus('Sunucuya bağlanılıyor...');
+ socket=io(url,{transports:['websocket','polling'],timeout:10000});
+ socket.on('connect',()=>{
+  setOnlineStatus('Bağlandı. Oda hazırlanıyor...');
+  socket.emit(action==='create'?'createRoom':'joinRoom',{code,name},(res)=>{
+   if(!res||!res.ok){setOnlineStatus(res?.error||'Odaya girilemedi.');return;}
+   online=true;roomCode=res.code;
+   document.getElementById('roomCode').value=roomCode;
+   remotePlayers.clear();
+   (res.players||[]).forEach(p=>{if(p.id!==socket.id)remotePlayers.set(p.id,p);});
+   setOnlineStatus(`Oda hazır: ${roomCode} • ${res.players.length}/10 oyuncu. Arkadaşlarına kodu ve sunucu adresini gönder.`);
+   startGame();
+   (res.bots||[]).forEach((state,i)=>{const b=bots[i];if(b){b.userData.hp=state.hp;b.userData.dead=state.dead;b.userData.alive=!state.dead;b.visible=!state.dead;}});
+  });
+ });
+ socket.on('connect_error',()=>setOnlineStatus('Sunucuya bağlanılamadı. Sunucunun açık ve adresin doğru olduğundan emin ol.'));
+ socket.on('playerJoined',p=>{remotePlayers.set(p.id,p);updatePlayerCount();setOnlineStatus(`${p.name||'Oyuncu'} odaya katıldı.`);});
+ socket.on('playerLeft',id=>{remotePlayers.delete(id);const m=remoteMeshes.get(id);if(m){scene.remove(m);remoteMeshes.delete(id);}updatePlayerCount();});
+ socket.on('playersUpdate',list=>{(list||[]).forEach(p=>{if(p.id!==socket.id)remotePlayers.set(p.id,p);});updatePlayerCount();});
+ socket.on('botUpdate',data=>{
+  const b=bots[data.botId];if(!b)return;
+  b.userData.hp=data.hp;
+  if(data.dead&&!b.userData.dead){b.userData.dead=true;b.userData.alive=false;b.visible=false;kills++;msg.textContent='HEDEF ETKİSİZ';setTimeout(()=>msg.textContent='',700);updateHud();}
+ });
+ socket.on('roomMessage',t=>setOnlineStatus(t));
+ socket.on('disconnect',()=>{online=false;setOnlineStatus('Sunucu bağlantısı kesildi. Tekrar bağlanmayı dene.');});
+}
+function updatePlayerCount(){
+ const el=document.getElementById('players');if(el)el.textContent=`OYUNCULAR: ${Math.min(10,remotePlayers.size+1)}/10`;
+}
+function updateRemotePlayers(){
+ if(!scene)return;
+ for(const [id,p] of remotePlayers){
+  let mesh=remoteMeshes.get(id);
+  if(!mesh){mesh=makeBlockCharacter(false);scene.add(mesh);remoteMeshes.set(id,mesh);}
+  mesh.position.set(Number(p.x)||0,0,Number(p.z)||0);
+  mesh.rotation.y=Number(p.ry)||0;
+ }
+ updatePlayerCount();
+}
+
+function resize(){
+ if(!camera||!renderer)return;
+
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+}
+
+document.getElementById('start').onclick=()=>{online=false;startGame();};
+document.getElementById('createRoom').onclick=()=>connectRoom('create');
+document.getElementById('joinRoom').onclick=()=>connectRoom('join');
+document.getElementById('again').onclick=startGame;
+
+document.getElementById('back').onclick=()=>{
+ game=false;
+ end.style.display='none';
+ hud.style.display='none';
+ menu.style.display='flex';
+ document.exitPointerLock?.();
+};
+
+init();
+
+</script>
+</body>
+</html>
