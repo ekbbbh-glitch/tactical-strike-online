@@ -459,6 +459,13 @@ function startGame(){
  updateHud();
 }
 
+ function returnToMenu(){
+ game=false;
+ document.exitPointerLock();
+ hud.style.display='none';
+ end.style.display='none';
+ menu.style.display='block';
+}
 function updateHud(){
  hpEl.textContent=hp;
  document.getElementById('round').textContent=(online?`CO-OP ${roomCode}`:'BOT MATCH')+` • ${kills} ELİM`;
