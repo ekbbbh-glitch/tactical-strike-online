@@ -64,6 +64,25 @@ select{background:#e8edf0;min-width:190px}
    </div>
    <div id="onlineStatus">Önce oda oluştur veya oda koduyla katıl.</div>
   </div>
+  <p>
+  <label for="gameMode">OYUN MODU</label><br>
+  <select id="gameMode">
+    <option value="deathmatch">Takım Ölüm Maçı</option>
+    <option value="ffa">Herkes Tek</option>
+    <option value="bomb">Bomba İmha</option>
+    <option value="domination">Bölge Hakimiyeti</option>
+  </select>
+</p>
+
+<p>
+  <label for="mapSelect">HARİTA SEÇ</label><br>
+  <select id="mapSelect">
+    <option value="desert">Çöl Kasabası</option>
+    <option value="snow">Karlı Askerî Üs</option>
+    <option value="factory">Fabrika</option>
+    <option value="city">Şehir</option>
+  </select>
+</p>
   <p><label for="weapon">Başlangıç silahı</label><br>
   <select id="weapon">
    <option>Vandal</option>
@@ -159,6 +178,19 @@ const cross=document.getElementById('cross');
 
 let scene,camera,renderer,clock,player,weaponGroup;
 let weaponName='Vandal',ammo=25,reserve=75,hp=100;
+ let selectedGameMode = 'deathmatch';
+let selectedMap = 'desert';
+
+const gameModeSelect = document.getElementById('gameMode');
+const mapSelect = document.getElementById('mapSelect');
+
+gameModeSelect.addEventListener('change', () => {
+  selectedGameMode = gameModeSelect.value;
+});
+
+mapSelect.addEventListener('change', () => {
+  selectedMap = mapSelect.value;
+});
 let bots=[],keys={},locked=false,scoped=false,reloading=false;
 let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
 let jumping=false,jumpVelocity=0,jumpHeight=0;
@@ -334,7 +366,7 @@ end.style.display = 'none';
 }
 
 
-function buildMap() {
+ function buildDesertMap() {
  const concrete = mat(0x626970);
  const road = mat(0x292e35);
  const yellow = mat(0xe5b83e);
@@ -450,6 +482,68 @@ function buildMap() {
   p.material.transparent=true;
   p.material.opacity=.18;
  }
+}
+ function buildMap() {
+  mats.floor.color.setHex(0x66736d);
+
+  if (selectedMap === 'snow') {
+    mats.floor.color.setHex(0xcbd8df);
+  }
+
+  if (selectedMap === 'factory') {
+    mats.floor.color.setHex(0x555b60);
+  }
+
+  if (selectedMap === 'city') {
+    mats.floor.color.setHex(0x777777);
+  }
+
+  buildDesertMap();
+
+  if (selectedMap === 'snow') {
+    const ice = mat(0x9fc9dc);
+    const snow = mat(0xeaf4fa);
+
+    for (const [x,z] of [[-30,-25],[30,-25],[-30,25],[30,25]]) {
+      box(scene,x,2,z,12,4,12,ice);
+      box(scene,x,4.1,z,13,.3,13,snow);
+    }
+
+    for (const [x,z] of [[-10,0],[10,0],[0,-18],[0,18]]) {
+      box(scene,x,1,z,7,2,3,ice);
+    }
+  }
+
+  if (selectedMap === 'factory') {
+    const metal = mat(0x343c43,.4,.7);
+    const orange = mat(0xd47a32);
+
+    box(scene,-35,5,-25,22,10,18,metal);
+    box(scene,35,5,25,22,10,18,metal);
+
+    for (const [x,z] of [[-12,-20],[12,-20],[-12,20],[12,20]]) {
+      box(scene,x,1.5,z,9,3,4,orange);
+    }
+
+    box(scene,0,7,0,30,1,8,metal);
+  }
+
+  if (selectedMap === 'city') {
+    const building = mat(0x777b82);
+    const glass = mat(0x284b65);
+
+    for (const [x,z] of [[-42,-35],[42,-35],[-42,35],[42,35]]) {
+      box(scene,x,8,z,17,16,15,building);
+
+      for (let y=5;y<=12;y+=4) {
+        box(scene,x, y,z-7.6,12,1.5,.15,glass);
+      }
+    }
+
+    for (const [x,z] of [[-12,0],[12,0],[0,-12],[0,12]]) {
+      box(scene,x,1.5,z,6,3,6,building);
+    }
+  }
 }
 
 function makeBlockCharacter(isBot = false) {
