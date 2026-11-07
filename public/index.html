@@ -161,6 +161,7 @@ let scene,camera,renderer,clock,player,weaponGroup;
 let weaponName='Vandal',ammo=25,reserve=75,hp=100;
 let bots=[],keys={},locked=false,scoped=false,reloading=false;
 let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
+let jumping=false,jumpVelocity=0,jumpHeight=0;
 
 // ONLINE CO-OP bağlantısı
 let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
@@ -294,7 +295,7 @@ end.style.display = 'none';
 
   if([
    'KeyW','KeyA','KeyS','KeyD',
-   'ShiftLeft','KeyR','Digit1','Digit2','Digit3'
+   'ShiftLeft','KeyR','Digit1','Digit2','Digit3','Space'
   ].includes(code)){
    e.preventDefault();
   }
@@ -926,7 +927,22 @@ function update(dt){
  if(!game)return;
 
  shootCd=Math.max(0,shootCd-dt);
+// ZIPLAMA
+if (keys.Space && !jumping) {
+  jumping = true;
+  jumpVelocity = 6;
+}
 
+if (jumping) {
+  jumpVelocity -= 18 * dt;
+  jumpHeight += jumpVelocity * dt;
+
+  if (jumpHeight <= 0) {
+    jumpHeight = 0;
+    jumping = false;
+    jumpVelocity = 0;
+  }
+}
  if(lastMouseDown&&specs[weaponName].auto)shoot();
 
  let f=0,s=0;
@@ -961,16 +977,31 @@ function update(dt){
  }
 
  if(f||s){
-  moveBob+=dt*10;
-  camera.position.y=1.65+Math.sin(moveBob)*.035;
- }else{
-  camera.position.y=1.65;
- }
+  const running = keys.ShiftLeft;
+  moveBob += dt * (running ? 16 : 10);
 
+  camera.position.y = 1.65 + jumpHeight +
+    Math.sin(moveBob) * (running ? 0.065 : 0.035);
+
+  weaponGroup.position.x =
+    Math.sin(moveBob * 0.5) * (running ? 0.045 : 0.025);
+
+  weaponGroup.position.y =
+    -recoil + Math.abs(Math.sin(moveBob)) * (running ? 0.045 : 0.02);
+}else{
+  camera.position.y = 1.65 + jumpHeight;
+  weaponGroup.position.x = 0;
+  weaponGroup.position.y = -recoil;
+}
  recoil=Math.max(0,recoil-dt*.6);
  weaponGroup.position.y=-recoil;
  weaponGroup.rotation.x=recoil*.8;
+weaponGroup.rotation.z =
+  (f || s) ? Math.sin(moveBob * 0.5) * 0.025 : 0;
 
+if (keys.ShiftLeft && (f || s)) {
+  weaponGroup.rotation.x += 0.035;
+}
  updateBots(dt);
  if(online&&socket&&socket.connected){
   netSendTimer+=dt;
