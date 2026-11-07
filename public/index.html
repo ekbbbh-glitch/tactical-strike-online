@@ -223,6 +223,7 @@ function init(){
  };
 
  window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   const k=e.key.toLowerCase();
   const code=movementCodes[k]||(
    e.code==='ShiftRight'?'ShiftLeft':e.code
