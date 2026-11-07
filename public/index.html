@@ -466,6 +466,7 @@ function startGame(){
  end.style.display='none';
  menu.style.display='block';
 }
+ document.getElementById('back').addEventListener('click',returnToMenu);
 function updateHud(){
  hpEl.textContent=hp;
  document.getElementById('round').textContent=(online?`CO-OP ${roomCode}`:'BOT MATCH')+` • ${kills} ELİM`;
