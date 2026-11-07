@@ -90,10 +90,11 @@ const p = {
   if (!room.hostId) room.hostId = sock.id;
 
   cb({
-    ok: true,
-    ...lobbyData(room),
-    bots: room.bots
-  });
+  ok: true,
+  ...lobbyData(room),
+  bots: room.bots,
+  spawn: { x: p.x, z: p.z }
+});
 
   sock.to(room.code).emit('playerJoined', p);
   sendLobbyUpdate(room);
