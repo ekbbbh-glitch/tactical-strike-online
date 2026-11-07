@@ -213,6 +213,44 @@ io.on('connection', socket => {
     });
   });
 
+    socket.on('playerHit', data => {
+    const room = rooms.get(socket.data.roomCode);
+    if (!room || !room.started) return;
+
+    const attacker = room.players.get(socket.id);
+    const target = room.players.get(String(data?.targetId || ''));
+
+    if (!attacker || !target || attacker.id === target.id) return;
+    if (target.hp <= 0) return;
+
+    const damage = Math.max(0, Math.min(100, Number(data?.damage) || 0));
+    if (!damage) return;
+
+    const distance = Math.hypot(
+      attacker.x - target.x,
+      attacker.z - target.z
+    );
+
+    if (distance > 150) return;
+
+    target.hp = Math.max(0, target.hp - damage);
+
+    io.to(target.id).emit('playerDamaged', {
+      damage,
+      hp: target.hp,
+      attacker: attacker.name
+    });
+
+    if (target.hp <= 0) {
+      io.to(room.code).emit('playerEliminated', {
+        playerId: target.id,
+        killerId: attacker.id,
+        killerName: attacker.name
+      });
+    }
+
+    io.to(room.code).emit('playersUpdate', roomPlayers(room));
+  });
   socket.on('disconnect', () => {
     const code = socket.data.roomCode;
     if (!code) return;
