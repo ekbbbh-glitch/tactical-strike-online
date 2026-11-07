@@ -165,6 +165,7 @@ let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
 // ONLINE CO-OP bağlantısı
 let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
 let netSendTimer=0;
+ let mySpawn = { x: -8, z: 37 };
 
 const specs={
  Vandal:{mag:25,reserve:75,damage:34,rate:.105,range:85,auto:true},
