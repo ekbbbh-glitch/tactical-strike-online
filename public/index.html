@@ -490,16 +490,18 @@ function spawnBot(x,z){
 
  setWeapon(document.getElementById('weapon').value);
 
- [
-  [-25,-22],
-  [25,-22],
-  [-29,25],
-  [28,25],
-  [0,-32],
-  [0,1],
-  [-46,8],
-  [46,-8]
- ].forEach(p=>spawnBot(...p));
+ if (!online || options.bots !== false) {
+  [
+    [-25,-22],
+    [25,-22],
+    [-29,25],
+    [28,25],
+    [0,-32],
+    [0,1],
+    [-46,8],
+    [46,-8]
+  ].forEach(p => spawnBot(...p));
+}
 
  renderer.domElement.requestPointerLock();
 
@@ -755,16 +757,12 @@ function update(dt){
  }
  updateRemotePlayers();
 
- if(!online&&bots.filter(b=>b.userData.alive).length===0){
-  if (!online || options.bots !== false) {
-  for (let i = 0; i < 8; i++) spawnBot();
+ if (!online && bots.filter(b => b.userData.alive).length === 0) {
+  spawnBot(
+    (Math.random() - 0.5) * 104,
+    (Math.random() - 0.5) * 104
+  );
 }
-   spawnBot(
-    (Math.random()-.5)*104,
-    (Math.random()-.5)*104
-   );
-  }
- }
 }
 
 function collides(x,z){
