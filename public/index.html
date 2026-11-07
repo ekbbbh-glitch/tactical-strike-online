@@ -332,17 +332,37 @@ end.style.display = 'none';
  animate();
 }
 
-function buildMap(){
+
+function buildMap() {
+ const concrete = mat(0x626970);
+ const road = mat(0x292e35);
+ const yellow = mat(0xe5b83e);
+ const windowMat = mat(0x263d50);
+ const sand = mat(0xb4a078);
+ const metal = mat(0x414b55);
+ const green = mat(0x354b35);
+
+ // Zemin
  box(scene,0,-.35,0,132,.7,132,mats.floor);
 
- for(let x=-64;x<=64;x+=128){
-  box(scene,x,3,0,2,6,130,mats.wall);
+ // Askerî üs yolları
+ box(scene,0,.015,0,13,.04,130,road);
+ box(scene,0,.025,0,.18,.05,130,yellow);
+
+ for(let z=-58;z<=58;z+=12){
+  box(scene,-3,.04,z,.22,.06,5,yellow);
+  box(scene,3,.04,z,.22,.06,5,yellow);
  }
 
- for(let z=-64;z<=64;z+=128){
+ // Dış duvarlar
+ for(const x of [-65,65]){
+  box(scene,x,3,0,2,6,130,mats.wall);
+ }
+ for(const z of [-65,65]){
   box(scene,0,3,z,130,6,2,mats.wall);
  }
 
+ // İç savunma duvarları
  const walls=[
   [-17,2,-12,2,4,35],
   [17,2,-12,2,4,35],
@@ -359,94 +379,222 @@ function buildMap(){
   [-25,1.5,20,2,3,10],
   [25,1.5,-20,2,3,10]
  ];
-
  walls.forEach(a=>box(scene,...a,mats.wall));
 
+ // Askerî binalar
+ for(const [x,z] of [[-45,-40],[45,-40],[-45,40],[45,40]]){
+  box(scene,x,3,z,13,6,12,concrete);
+  box(scene,x,6.1,z,14,.5,13,metal);
+
+  for(const wx of [-4,0,4]){
+   box(scene,x+wx,3.8,z-6.08,1.8,1.5,.08,windowMat);
+  }
+
+  box(scene,x,1.5,z-6.2,2.5,3,.15,metal);
+  box(scene,x,6.5,z,1,.5,1,yellow);
+ }
+
+ // Siperler ve kum torbaları
  for(const [x,z] of [
   [-9,12],[9,12],[-27,-8],[27,8],
   [-7,-25],[8,26],[0,5],[-32,27],[32,-27]
  ]){
-  box(scene,x,.9,z,3,1.8,3,mats.dark);
-  box(scene,x,.95,z,3.05,.12,3.05,mats.trim);
+  for(let i=-1;i<=1;i++){
+   box(scene,x+i*1.05,.55,z,1,1.1,1,sand);
+  }
+  box(scene,x,1.15,z,3.2,.12,1.1,mats.trim);
  }
 
+ // Metal sandıklar
  for(const [x,z] of [
   [-48,-42],[48,-42],[-48,42],[48,42],
   [-42,0],[42,0],[0,-49],[0,49]
  ]){
-  box(scene,x,1.1,z,5,2.2,5,mats.dark);
-  box(scene,x,1.22,z,5.05,.12,5.05,mats.trim);
+  box(scene,x,1.1,z,5,2.2,5,metal);
+  box(scene,x,2.25,z,5.1,.15,5.1,mats.trim);
+  box(scene,x,1.1,z-2.55,3,.3,.12,yellow);
  }
 
+ // Bariyerler
  for(const [x,z] of [
   [-54,-22],[54,22],[-22,54],[22,-54]
  ]){
-  box(scene,x,2.2,z,2,4.4,13,mats.wall);
+  box(scene,x,1.1,z,2.5,2.2,13,concrete);
+  for(let i=-1;i<=1;i++){
+   box(scene,x,2.25,z+i*4,2.6,.12,.6,yellow);
+  }
  }
 
- for(const [x,z] of [[-25,-25],[25,25]]){
-  let p=box(scene,x,.02,z,13,.04,13,mat(0xc69a55));
-  p.material.transparent=true;
-  p.material.opacity=.18;
- }
-
+ // Gözetleme kuleleri
  for(const [x,z] of [
   [-35,-35],[35,-35],[-35,35],[35,35]
  ]){
   box(scene,x,5,z,1,10,1,mats.dark);
   box(scene,x,10.2,z,2,.4,2,mats.trim);
+  box(scene,x,10.8,z,3,.5,3,metal);
+ }
+
+ // Aydınlatma direkleri
+ for(const [x,z] of [
+  [-58,0],[58,0],[0,-58],[0,58],
+  [-30,0],[30,0]
+ ]){
+  box(scene,x,4,z,.25,8,.25,mats.dark);
+  box(scene,x,8.1,z,1,.35,1,yellow);
+ }
+
+ // Zemindeki operasyon alanları
+ for(const [x,z] of [[-25,-25],[25,25]]){
+  const p=box(scene,x,.02,z,13,.04,13,mat(0xc69a55));
+  p.material.transparent=true;
+  p.material.opacity=.18;
  }
 }
 
-function makeBlockCharacter(isBot=false){
- const g=new THREE.Group();
- const shirt=isBot?mats.red:mats.blue;
+function makeBlockCharacter(isBot = false) {
+ const g = new THREE.Group();
 
- box(g,0,1.35,0,.85,.95,.48,shirt);
- box(g,0,2.12,0,.68,.68,.65,mats.skin);
- box(g,0,2.28,-.335,.48,.12,.03,mats.black);
+ const shirt = isBot ? mats.red : mats.blue;
 
- box(g,-.55,1.35,0,.24,.9,.28,mats.skin);
- box(g,.55,1.35,0,.24,.9,.28,mats.skin);
+ // Gövde ve zırh
+ box(g,0,1.35,0,.9,1.05,.5,shirt);
+ box(g,0,1.4,-.28,.72,.65,.08,mats.dark);
+ box(g,0,1.65,-.34,.55,.28,.06,mats.trim);
 
- box(g,-.22,.48,0,.3,.9,.34,mats.dark);
- box(g,.22,.48,0,.3,.9,.34,mats.dark);
+ // Kafa ve kask
+ box(g,0,2.15,0,.62,.65,.62,mats.skin);
+ box(g,0,2.48,0,.72,.22,.72,mats.dark);
+ box(g,0,2.36,-.34,.55,.12,.08,mats.trim);
 
- box(g,0,1.42,-.255,.58,.55,.06,mats.black);
+ // Gözlük
+ box(g,0,2.2,-.325,.48,.13,.04,mats.black);
+
+ // Kollar
+ box(g,-.57,1.4,0,.27,.85,.3,shirt);
+ box(g,.57,1.4,0,.27,.85,.3,shirt);
+
+ // Eldivenler
+ box(g,-.57,.94,-.02,.28,.2,.3,mats.dark);
+ box(g,.57,.94,-.02,.28,.2,.3,mats.dark);
+
+ // Bacaklar
+ box(g,-.23,.48,0,.34,.9,.38,mats.dark);
+ box(g,.23,.48,0,.34,.9,.38,mats.dark);
+
+ // Botlar
+ box(g,-.23,.06,-.08,.38,.18,.5,mats.black);
+ box(g,.23,.06,-.08,.38,.18,.5,mats.black);
+
+ // Askerî sırt çantası
+ box(g,0,1.45,.32,.62,.75,.25,mats.dark);
+
+ // Omuz korumaları
+ box(g,-.57,1.78,0,.34,.2,.36,mats.trim);
+ box(g,.57,1.78,0,.34,.2,.36,mats.trim);
+
+ // Silah
+ box(g,.32,1.35,-.48,.16,.16,.9,mats.black);
+ box(g,.32,1.2,-.38,.13,.35,.2,mats.dark);
+ box(g,.32,1.35,-.95,.08,.08,.45,mats.trim);
 
  return g;
 }
 
 function buildWeapon(){
- if(weaponGroup)camera.remove(weaponGroup);
+ if(weaponGroup) camera.remove(weaponGroup);
 
- weaponGroup=new THREE.Group();
+ weaponGroup = new THREE.Group();
  camera.add(weaponGroup);
 
- if(weaponName==='Vandal'){
-  box(weaponGroup,.38,-.34,-.85,.22,.2,.78,mats.gun);
-  cylinder(weaponGroup,.38,-.31,-1.42,.045,.045,.62,mats.black,Math.PI/2);
-  box(weaponGroup,.38,-.51,-.8,.13,.27,.22,mats.black);
-  box(weaponGroup,.38,-.23,-.55,.18,.09,.35,mats.trim);
-  box(weaponGroup,.38,-.46,-.98,.13,.3,.2,mats.dark);
+ const gunMetal = mats.gun;
+ const black = mats.black;
+ const dark = mats.dark;
+ const trim = mats.trim;
 
- }else if(weaponName==='Şerif'){
-  box(weaponGroup,.38,-.34,-.75,.18,.17,.45,mats.gun);
-  cylinder(weaponGroup,.38,-.31,-1.08,.035,.035,.35,mats.black,Math.PI/2);
-  box(weaponGroup,.38,-.52,-.7,.14,.32,.18,mats.dark);
-  cylinder(weaponGroup,.38,-.34,-.8,.12,.12,.1,mats.trim,Math.PI/2);
+ if(weaponName === 'Vandal'){
+
+  // Ana gövde
+  box(weaponGroup,.38,-.34,-.85,.24,.22,.82,gunMetal);
+
+  // Namlu
+  cylinder(weaponGroup,.38,-.31,-1.48,.045,.045,.72,black,Math.PI/2);
+  cylinder(weaponGroup,.38,-.31,-1.85,.065,.065,.12,trim,Math.PI/2);
+
+  // Dipçik
+  box(weaponGroup,.38,-.36,-.32,.18,.2,.45,dark);
+
+  // Şarjör
+  box(weaponGroup,.38,-.56,-.85,.15,.35,.23,black);
+
+  // Kabza
+  box(weaponGroup,.38,-.52,-.58,.16,.32,.2,dark);
+
+  // Üst ray
+  box(weaponGroup,.38,-.21,-.82,.16,.07,.7,trim);
+
+  // Dürbün
+  box(weaponGroup,.38,-.12,-.88,.15,.13,.3,black);
+  cylinder(weaponGroup,.38,-.12,-1.05,.08,.08,.08,trim,Math.PI/2);
+
+  // Namlu altı tutacak
+  box(weaponGroup,.38,-.52,-1.12,.14,.28,.18,dark);
+
+  // Yan detaylar
+  box(weaponGroup,.25,-.31,-.8,.04,.1,.5,trim);
+  box(weaponGroup,.51,-.31,-.8,.04,.1,.5,trim);
+
+ }else if(weaponName === 'Şerif'){
+
+  // Tabanca gövdesi
+  box(weaponGroup,.38,-.34,-.75,.2,.2,.48,gunMetal);
+
+  // Uzun namlu
+  cylinder(weaponGroup,.38,-.31,-1.12,.045,.045,.48,black,Math.PI/2);
+
+  // Kabza
+  box(weaponGroup,.38,-.55,-.68,.17,.36,.2,dark);
+
+  // Tetik koruması
+  box(weaponGroup,.38,-.49,-.87,.2,.05,.18,trim);
+
+  // Üst gez ve arpacık
+  box(weaponGroup,.38,-.21,-.78,.1,.06,.25,black);
+
+  // Sürgü detayları
+  box(weaponGroup,.26,-.34,-.75,.04,.1,.3,trim);
 
  }else{
-  box(weaponGroup,.38,-.34,-.88,.2,.18,.95,mats.gun);
-  cylinder(weaponGroup,.38,-.31,-1.65,.04,.04,.95,mats.black,Math.PI/2);
-  box(weaponGroup,.38,-.47,-.55,.14,.28,.42,mats.dark);
-  box(weaponGroup,.38,-.22,-.75,.14,.12,.25,mats.trim);
 
-  cylinder(weaponGroup,.38,-.13,-.91,.09,.09,.42,mats.black,Math.PI/2);
-  cylinder(weaponGroup,.38,-.13,-.7,.13,.13,.07,mats.trim,Math.PI/2);
+  // Ağır silah gövdesi
+  box(weaponGroup,.38,-.34,-.88,.24,.22,1,gunMetal);
+
+  // Uzun namlu
+  cylinder(weaponGroup,.38,-.31,-1.72,.05,.05,1,black,Math.PI/2);
+  cylinder(weaponGroup,.38,-.31,-2.2,.075,.075,.16,trim,Math.PI/2);
+
+  // Dipçik
+  box(weaponGroup,.38,-.36,-.35,.2,.22,.4,dark);
+
+  // Şarjör
+  box(weaponGroup,.38,-.57,-.9,.17,.38,.25,black);
+
+  // Kabza
+  box(weaponGroup,.38,-.53,-.6,.16,.3,.2,dark);
+
+  // Üst ray
+  box(weaponGroup,.38,-.2,-.9,.16,.08,.8,trim);
+
+  // Dürbün
+  cylinder(weaponGroup,.38,-.1,-.9,.1,.1,.4,black,Math.PI/2);
+
+  // Ön tutacak
+  box(weaponGroup,.38,-.52,-1.15,.15,.3,.2,dark);
  }
 
- box(weaponGroup,.18,-.48,-.52,.12,.08,.2,mats.skin);
+ // El ve tutuş
+ box(weaponGroup,.18,-.48,-.52,.14,.1,.22,mats.skin);
+
+ // Silahın konumu
  weaponGroup.position.set(0,0,0);
 }
 
@@ -630,6 +778,41 @@ function shoot(){
  ammo--;
  shootCd=specs[weaponName].rate;
  recoil=.09;
+ // Ateş efekti
+if (weaponGroup) {
+  weaponGroup.position.z = 0.12;
+
+  setTimeout(() => {
+    if (weaponGroup) {
+      weaponGroup.position.z = 0;
+    }
+  }, 75);
+}
+ // Namlu alevi
+if (weaponGroup) {
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffa500 })
+  );
+
+  flash.scale.set(1, 1, 2);
+
+  if (weaponName === 'Şerif') {
+    flash.position.set(0.38, -0.31, -1.2);
+  } else if (weaponName === 'Vandal') {
+    flash.position.set(0.38, -0.31, -1.9);
+  } else {
+    flash.position.set(0.38, -0.31, -2.2);
+  }
+
+  weaponGroup.add(flash);
+
+  setTimeout(() => {
+    flash.removeFromParent();
+    flash.geometry.dispose();
+    flash.material.dispose();
+  }, 100);
+}
  updateAmmo();
 
  const ray=new THREE.Raycaster();
