@@ -148,28 +148,7 @@ let currentBotsEnabled = true;
   document.getElementById('botsNo').disabled = !isRoomHost;
   document.getElementById('launchGame').disabled = !isRoomHost;
 }
- function updateLobby(data) {
-  lobbyCode.textContent = data.code;
-  lobbyPlayers.innerHTML = '';
-
-  (data.players || []).forEach(player => {
-    const item = document.createElement('div');
-    item.textContent =
-      player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
-    item.style.padding = '8px';
-    lobbyPlayers.appendChild(item);
-  });
-
-  isRoomHost = data.hostId === socket.id;
-  currentBotsEnabled = data.botsEnabled;
-
-  document.getElementById('botStatus').textContent =
-    'Botlar: ' + (currentBotsEnabled ? 'VAR' : 'YOK');
-
-  document.getElementById('botsYes').disabled = !isRoomHost;
-  document.getElementById('botsNo').disabled = !isRoomHost;
-  document.getElementById('launchGame').disabled = !isRoomHost;
-}
+ 
 const hud=document.getElementById('hud');
 const end=document.getElementById('end');
 const ammoEl=document.getElementById('ammo');
