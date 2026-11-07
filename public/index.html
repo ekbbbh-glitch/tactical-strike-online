@@ -480,13 +480,7 @@ function spawnBot(x,z){
  hp=100;
  kills=0;
 
- // DÜZELTİLDİ: Oyuncu artık duvarın içinde başlamıyor.
- if (online && socket && socket.connected) {
-  const myPlayer = [...remotePlayers.values()].find(p => p.id === socket.id);
-  player.position.set(myPlayer?.x ?? -8, 0, myPlayer?.z ?? 37);
-} else {
-  player.position.set(-8, 0, 37);
-}
+ player.position.set(mySpawn.x, 0, mySpawn.z);
 
  player.rotation.set(0,0,0);
  camera.rotation.set(0,0,0);
