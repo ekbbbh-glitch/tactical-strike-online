@@ -275,6 +275,19 @@ function init(){
  window.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   const k=e.key.toLowerCase();
+  if (e.code === 'Digit5' && game) {
+  e.preventDefault();
+  game = false;
+  online = false;
+  if (socket && socket.connected) {
+    socket.disconnect();
+  }
+  document.exitPointerLock?.();
+  menu.style.display = 'block';
+hud.style.display = 'none';
+end.style.display = 'none';
+  return;
+}
   const code=movementCodes[k]||(
    e.code==='ShiftRight'?'ShiftLeft':e.code
   );
