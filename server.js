@@ -198,6 +198,7 @@ function join(sock, room, name, character, cb) {
     ry: 0,
     rx: 0,
     hp: 100,
+    kills: 0,
     weapon: 'Vandal',
     team
   };
@@ -563,6 +564,7 @@ io.on('connection', socket => {
     }
 
     sendLobbyUpdate(room);
+    if(!['bomb','swiftplay','spike'].includes(room.gameMode))publishScore(room);
   });
 
   socket.on('pickBomb', () => {
