@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.5">
+<meta name="app-version" content="2026.11.08.6">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -1280,10 +1280,40 @@ function buildWeapon(){
   box(weaponGroup,.38,-.2,-.82,.13,.06,length*.82,accent);
   if(profile.scope){
     const opticRadius=isSniper?.105:isLMG?.075:isPistol?.045:isShotgun?.055:.065;
-    box(weaponGroup,.38,-.11,-.82,.12,.08,.28,detail);
-    cylinder(weaponGroup,.38,-.105,-.82,.09,.09,isSniper?.42:.25,accent,Math.PI/2);
-    cylinder(weaponGroup,.38,-.105,-.82-(isSniper?.23:.14),opticRadius,opticRadius,.035,mats.glass,Math.PI/2);
-    cylinder(weaponGroup,.38,-.105,-.82+(isSniper?.23:.14),opticRadius*1.18,opticRadius*1.18,.035,detail,Math.PI/2);
+    const opticStyle=({
+      Phantom:'micro',Bulldog:'holo',Guardian:'prism',Operator:'long',Marshal:'compact',
+      Classic:'dot',Ghost:'micro',Frenzy:'open',Spectre:'holo',Stinger:'reflex',
+      Judge:'open',Bucky:'reflex',Ares:'tube',Odin:'tube',M416:'prism',AKM:'open',
+      'SCAR-L':'holo',UMP45:'micro',Vector:'dot',Kar98k:'long',M24:'compact',
+      'DP-28':'tube','S12K':'reflex'
+    })[weaponName]||'tube';
+    if(opticStyle==='long'){
+      box(weaponGroup,.38,-.105,-.82,.15,.1,.5,detail);
+      cylinder(weaponGroup,.38,-.105,-.82,.105,.105,.62,accent,Math.PI/2);
+      cylinder(weaponGroup,.38,-.105,-1.14,opticRadius,opticRadius,.04,mats.glass,Math.PI/2);
+      cylinder(weaponGroup,.38,-.105,-.5,opticRadius*1.2,opticRadius*1.2,.04,detail,Math.PI/2);
+    }else if(opticStyle==='holo'){
+      box(weaponGroup,.38,-.1,-.82,.19,.18,.28,accent);
+      box(weaponGroup,.38,-.1,-.82,.14,.12,.22,mats.glass);
+      box(weaponGroup,.38,-.005,-.82,.2,.025,.3,detail);
+    }else if(opticStyle==='prism'){
+      box(weaponGroup,.38,-.1,-.82,.17,.19,.3,detail);
+      box(weaponGroup,.38,-.1,-.82,.12,.13,.22,mats.glass);
+      box(weaponGroup,.38,-.205,-.82,.12,.035,.24,accent);
+    }else if(opticStyle==='open'){
+      box(weaponGroup,.38,-.1,-.82,.13,.035,.24,accent);
+      box(weaponGroup,.38,-.015,-.82,.025,.16,.24,detail);
+      box(weaponGroup,.38,-.1,-.82,.1,.025,.18,mats.glass);
+    }else if(opticStyle==='dot'||opticStyle==='micro'||opticStyle==='reflex'){
+      box(weaponGroup,.38,-.12,-.82,.12,.045,.18,accent);
+      cylinder(weaponGroup,.38,-.075,-.82,opticRadius,opticRadius,.035,mats.glass,Math.PI/2);
+      if(opticStyle==='reflex')box(weaponGroup,.38,-.015,-.82,.025,.12,.2,detail);
+    }else{
+      box(weaponGroup,.38,-.11,-.82,.12,.08,.28,detail);
+      cylinder(weaponGroup,.38,-.105,-.82,.09,.09,isSniper?.42:.25,accent,Math.PI/2);
+      cylinder(weaponGroup,.38,-.105,-.82-(isSniper?.23:.14),opticRadius,opticRadius,.035,mats.glass,Math.PI/2);
+      cylinder(weaponGroup,.38,-.105,-.82+(isSniper?.23:.14),opticRadius*1.18,opticRadius*1.18,.035,detail,Math.PI/2);
+    }
   }else{
     box(weaponGroup,.38,-.12,-.82,.08,.12,.12,detail);
     box(weaponGroup,.38,-.12,-.82-length*.42,.08,.12,.1,detail);
