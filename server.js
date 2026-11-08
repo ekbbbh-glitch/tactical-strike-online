@@ -17,6 +17,7 @@ const rooms = new Map();
 
 const MAX_PLAYERS = 10;
 const BOT_COUNT = 8;
+
 const TOTAL_ROUNDS = 12;
 const PREP_TIME = 5000;
 const BOMB_TIME = 45000;
@@ -51,52 +52,79 @@ const DEFENSE_SPAWNS = [
   { x: 50, z: 42 }
 ];
 
-const BOMB_SPAWN = { x: -48, z: -48 };
+const BOMB_SPAWN = {
+  x: -48,
+  z: -48
+};
 
 const BOMB_SITES = {
   A: { x: -25, z: 0 },
   B: { x: 25, z: 0 }
 };
 
+const ALLOWED_MODES = [
+  'deathmatch',
+  'ffa',
+  'bomb',
+  'domination'
+];
+
+const ALLOWED_MAPS = [
+  'desert',
+  'snow',
+  'factory',
+  'city'
+];
+
 const makeCode = () =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
 
-function cleanName(v) {
-  return String(v || 'Oyuncu')
+function cleanName(value) {
+  return String(value || 'Oyuncu')
     .replace(/[<>]/g, '')
     .trim()
     .slice(0, 16) || 'Oyuncu';
 }
 
 function roomPlayers(room) {
-  return [...room.players.values()].map(p => ({ ...p }));
+  return [...room.players.values()].map(player => ({
+    ...player
+  }));
+}
+
+function createBombState() {
+  return {
+    planted: false,
+    pickedUp: false,
+    carrierId: null,
+    site: null,
+    endsAt: null,
+    planterId: null,
+    defuserId: null
+  };
 }
 
 function createRoom(code) {
   return {
     code,
+
     players: new Map(),
+
     hostId: null,
     started: false,
+
     botsEnabled: true,
     bots: [],
 
     gameMode: 'deathmatch',
     map: 'desert',
 
-    bomb: {
-      planted: false,
-      pickedUp: false,
-      carrierId: null,
-      site: null,
-      endsAt: null,
-      planterId: null,
-      defuserId: null
-    },
+    bomb: createBombState(),
 
     bombTimer: null,
     defuseTimer: null,
     roundTimer: null,
+
     roundToken: 0,
 
     round: 1,
@@ -133,16 +161,7 @@ function clearRoomTimers(room) {
 
 function resetBomb(room) {
   clearBombTimers(room);
-
-  room.bomb = {
-    planted: false,
-    pickedUp: false,
-    carrierId: null,
-    site: null,
-    endsAt: null,
-    planterId: null,
-    defuserId: null
-  };
+  room.bomb = createBombState();
 }
 
 function lobbyData(room) {
@@ -152,14 +171,35 @@ function lobbyData(room) {
     hostId: room.hostId,
     started: room.started,
     botsEnabled: room.botsEnabled,
-    gameMode: room.gameMode
+    gameMode: room.gameMode,
+    map: room.map
   };
 }
 
 function sendLobbyUpdate(room) {
-  io.to(room.code).emit('lobbyUpdate', lobbyData(room));
+  io.to(room.code).emit(
+    'lobbyUpdate',
+    lobbyData(room)
+  );
 }
 
+function sendGameStarted(room) {
+  io.to(room.code).emit('gameStarted', {
+    botsEnabled:
+      room.gameMode === 'bomb'
+        ? false
+        : room.botsEnabled,
+
+    bots: room.bots,
+    gameMode: room.gameMode,
+    map: room.map,
+    players: roomPlayers(room),
+    bomb: room.bomb,
+    round: room.round
+  });
+}
+
+// OYUNCUYU ODAYA EKLE
 function join(sock, room, name, cb) {
   sock.join(room.code);
   sock.data.roomCode = room.code;
@@ -169,16 +209,17 @@ function join(sock, room, name, cb) {
   ];
 
   const attackCount = [...room.players.values()]
-    .filter(p => p.team === 'attack').length;
+    .filter(player => player.team === 'attack').length;
 
   const defenseCount = [...room.players.values()]
-    .filter(p => p.team === 'defense').length;
+    .filter(player => player.team === 'defense').length;
 
+  // Takımları dengeli dağıt.
   const team = attackCount <= defenseCount
     ? 'attack'
     : 'defense';
 
-  const p = {
+  const player = {
     id: sock.id,
     name: cleanName(name),
 
@@ -191,26 +232,32 @@ function join(sock, room, name, cb) {
 
     hp: 100,
     weapon: 'Vandal',
+
     team
   };
 
-  room.players.set(sock.id, p);
+  room.players.set(sock.id, player);
 
   if (!room.hostId) {
     room.hostId = sock.id;
   }
 
-  cb({
-    ok: true,
-    ...lobbyData(room),
-    bots: room.bots,
-    spawn: {
-      x: p.x,
-      z: p.z
-    }
-  });
+  if (typeof cb === 'function') {
+    cb({
+      ok: true,
+      ...lobbyData(room),
+      bots: room.bots,
+      spawn: {
+        x: player.x,
+        z: player.z
+      }
+    });
+  }
 
-  sock.to(room.code).emit('playerJoined', p);
+  sock.to(room.code).emit(
+    'playerJoined',
+    player
+  );
 
   sendLobbyUpdate(room);
 
@@ -220,12 +267,15 @@ function join(sock, room, name, cb) {
   );
 }
 
-function startBombRound(room) {
-  if (!room.started || room.gameMode !== 'bomb') return;
+// BOMBALI MODDA YENİ TUR HAZIRLA
+function startBombRound(room, sendStartEvent = false) {
+  if (!room.started) return;
+  if (room.gameMode !== 'bomb') return;
 
   room.roundOver = false;
   room.roundActive = false;
 
+  // Eski turlardan kalan zamanlayıcıları geçersiz kıl.
   room.roundToken++;
 
   const currentToken = room.roundToken;
@@ -235,6 +285,7 @@ function startBombRound(room) {
   let attackIndex = 0;
   let defenseIndex = 0;
 
+  // Oyuncuların canlarını ve başlangıç konumlarını yenile.
   for (const player of room.players.values()) {
     player.hp = 100;
     player.y = 0;
@@ -258,6 +309,13 @@ function startBombRound(room) {
     }
   }
 
+  // İlk turda önce gameStarted gönderilir.
+  // Böylece istemci oyun sahnesini kurduktan sonra
+  // roundStarting ve bombReset olaylarını alır.
+  if (sendStartEvent) {
+    sendGameStarted(room);
+  }
+
   io.to(room.code).emit(
     'playersUpdate',
     roomPlayers(room)
@@ -278,9 +336,13 @@ function startBombRound(room) {
 
   if (room.roundTimer) {
     clearTimeout(room.roundTimer);
+    room.roundTimer = null;
   }
 
+  // 5 saniyelik hazırlık süresi.
   room.roundTimer = setTimeout(() => {
+    room.roundTimer = null;
+
     if (!room.started) return;
     if (room.roundOver) return;
     if (room.roundToken !== currentToken) return;
@@ -292,11 +354,16 @@ function startBombRound(room) {
       totalRounds: TOTAL_ROUNDS
     });
 
+    // Hazırlık sırasında oyuncular ayrılmış olabilir.
+    checkTeamElimination(room);
+
   }, PREP_TIME);
 }
 
+// BOMBALI TURU BİTİR
 function finishBombRound(room, winner, reason) {
-  if (!room.started || room.gameMode !== 'bomb') return;
+  if (!room.started) return;
+  if (room.gameMode !== 'bomb') return;
   if (room.roundOver) return;
 
   room.roundOver = true;
@@ -304,7 +371,13 @@ function finishBombRound(room, winner, reason) {
 
   // Eski bomba ve etkisizleştirme zamanlayıcılarını iptal et.
   room.roundToken++;
+
   clearBombTimers(room);
+
+  if (room.roundTimer) {
+    clearTimeout(room.roundTimer);
+    room.roundTimer = null;
+  }
 
   if (winner === 'attack' || winner === 'defense') {
     room.roundWins[winner]++;
@@ -313,67 +386,97 @@ function finishBombRound(room, winner, reason) {
   io.to(room.code).emit('roundOver', {
     winner,
     reason,
+
     round: room.round,
     totalRounds: TOTAL_ROUNDS,
+
     attackWins: room.roundWins.attack,
     defenseWins: room.roundWins.defense
   });
 
+  // 12 tur tamamlandı.
   if (room.round >= TOTAL_ROUNDS) {
     room.started = false;
     room.roundActive = false;
 
-    if (room.roundTimer) {
-      clearTimeout(room.roundTimer);
-      room.roundTimer = null;
-    }
+    clearRoomTimers(room);
+
+    const finalWinner =
+      room.roundWins.attack > room.roundWins.defense
+        ? 'attack'
+        : room.roundWins.defense > room.roundWins.attack
+          ? 'defense'
+          : 'draw';
 
     io.to(room.code).emit('gameEnded', {
       attackWins: room.roundWins.attack,
       defenseWins: room.roundWins.defense,
-
-      winner:
-        room.roundWins.attack > room.roundWins.defense
-          ? 'attack'
-          : room.roundWins.defense > room.roundWins.attack
-            ? 'defense'
-            : 'draw'
+      winner: finalWinner
     });
 
     sendLobbyUpdate(room);
     return;
   }
 
+  // Sonraki tura geç.
   room.roundTimer = setTimeout(() => {
+    room.roundTimer = null;
+
     if (!room.started) return;
+    if (room.gameMode !== 'bomb') return;
 
     room.round++;
+
     startBombRound(room);
 
   }, PREP_TIME);
 }
 
+// TAKIMLARIN HAYATTAKİ OYUNCU SAYILARINI KONTROL ET
 function checkTeamElimination(room) {
-  if (!room.started || room.gameMode !== 'bomb') return;
+  if (!room.started) return;
+  if (room.gameMode !== 'bomb') return;
   if (!room.roundActive || room.roundOver) return;
 
   const aliveAttack = [...room.players.values()]
-    .filter(p => p.team === 'attack' && p.hp > 0).length;
+    .filter(player =>
+      player.team === 'attack' &&
+      player.hp > 0
+    ).length;
 
   const aliveDefense = [...room.players.values()]
-    .filter(p => p.team === 'defense' && p.hp > 0).length;
+    .filter(player =>
+      player.team === 'defense' &&
+      player.hp > 0
+    ).length;
 
   if (aliveAttack === 0 && aliveDefense === 0) {
-    finishBombRound(room, 'draw', 'elimination');
+    finishBombRound(
+      room,
+      'draw',
+      'elimination'
+    );
   } else if (aliveAttack === 0) {
-    finishBombRound(room, 'defense', 'elimination');
+    finishBombRound(
+      room,
+      'defense',
+      'elimination'
+    );
   } else if (aliveDefense === 0) {
-    finishBombRound(room, 'attack', 'elimination');
+    finishBombRound(
+      room,
+      'attack',
+      'elimination'
+    );
   }
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+// STATİK DOSYALAR
+app.use(
+  express.static(path.join(__dirname, 'public'))
+);
 
+// SUNUCU SAĞLIK KONTROLÜ
 app.get('/health', (req, res) => {
   res.json({
     ok: true,
@@ -385,6 +488,10 @@ io.on('connection', socket => {
 
   // ODA OLUŞTURMA
   socket.on('createRoom', (data = {}, cb = () => {}) => {
+    if (!data || typeof data !== 'object') {
+      data = {};
+    }
+
     let code;
 
     do {
@@ -395,11 +502,20 @@ io.on('connection', socket => {
 
     rooms.set(code, room);
 
-    join(socket, room, data.name, cb);
+    join(
+      socket,
+      room,
+      data.name,
+      cb
+    );
   });
 
   // ODAYA KATILMA
   socket.on('joinRoom', (data = {}, cb = () => {}) => {
+    if (!data || typeof data !== 'object') {
+      data = {};
+    }
+
     const code = String(data.code || '')
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '')
@@ -428,7 +544,12 @@ io.on('connection', socket => {
       });
     }
 
-    join(socket, room, data.name, cb);
+    join(
+      socket,
+      room,
+      data.name,
+      cb
+    );
   });
 
   // BOT AYARI
@@ -450,19 +571,9 @@ io.on('connection', socket => {
     if (!room || room.started) return;
     if (room.hostId !== socket.id) return;
 
-    const allowedModes = [
-      'deathmatch',
-      'ffa',
-      'bomb',
-      'domination'
-    ];
-
-    const allowedMaps = [
-      'desert',
-      'snow',
-      'factory',
-      'city'
-    ];
+    if (!data || typeof data !== 'object') {
+      data = {};
+    }
 
     const requestedMode = String(
       data.gameMode || 'deathmatch'
@@ -472,11 +583,11 @@ io.on('connection', socket => {
       data.map || 'desert'
     );
 
-    room.gameMode = allowedModes.includes(requestedMode)
+    room.gameMode = ALLOWED_MODES.includes(requestedMode)
       ? requestedMode
       : 'deathmatch';
 
-    room.map = allowedMaps.includes(requestedMap)
+    room.map = ALLOWED_MAPS.includes(requestedMap)
       ? requestedMap
       : 'desert';
 
@@ -489,48 +600,38 @@ io.on('connection', socket => {
       defense: 0
     };
 
-    room.bots = room.gameMode === 'bomb'
-      ? []
-      : (
-          room.botsEnabled
-            ? Array.from(
-                { length: BOT_COUNT },
-                () => ({
-                  hp: 100,
-                  dead: false
-                })
-              )
-            : []
-        );
+    // Bomba modunda bot bulunmaz.
+    if (room.gameMode === 'bomb') {
+      room.bots = [];
+    } else {
+      room.bots = room.botsEnabled
+        ? Array.from(
+            { length: BOT_COUNT },
+            () => ({
+              hp: 100,
+              dead: false
+            })
+          )
+        : [];
+    }
 
     room.started = true;
 
     resetBomb(room);
 
     if (room.gameMode === 'bomb') {
-      startBombRound(room);
+      // İlk turda gameStarted, roundStarting olayından önce gönderilir.
+      startBombRound(room, true);
     } else {
       room.roundActive = true;
+
+      sendGameStarted(room);
     }
-
-    io.to(room.code).emit('gameStarted', {
-      botsEnabled:
-        room.gameMode === 'bomb'
-          ? false
-          : room.botsEnabled,
-
-      bots: room.bots,
-      gameMode: room.gameMode,
-      map: room.map,
-      players: roomPlayers(room),
-      bomb: room.bomb,
-      round: room.round
-    });
 
     sendLobbyUpdate(room);
   });
 
-  // BOMBAYI ALMA
+  // BOMBAYI AL
   socket.on('pickBomb', () => {
     const room = rooms.get(socket.data.roomCode);
 
@@ -544,7 +645,9 @@ io.on('connection', socket => {
     if (player.team !== 'attack') return;
     if (player.hp <= 0) return;
 
-    if (room.bomb.pickedUp || room.bomb.planted) return;
+    if (room.bomb.pickedUp || room.bomb.planted) {
+      return;
+    }
 
     const distance = Math.hypot(
       player.x - BOMB_SPAWN.x,
@@ -562,7 +665,7 @@ io.on('connection', socket => {
     });
   });
 
-  // BOMBAYI KURMA
+  // BOMBAYI KUR
   socket.on('plantBomb', (data = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
@@ -580,7 +683,10 @@ io.on('connection', socket => {
     if (!room.bomb.pickedUp) return;
     if (room.bomb.carrierId !== socket.id) return;
 
-    const siteName = String(data?.site || '').toUpperCase();
+    const siteName = String(
+      data?.site || ''
+    ).toUpperCase();
+
     const site = BOMB_SITES[siteName];
 
     if (!site) return;
@@ -602,6 +708,8 @@ io.on('connection', socket => {
 
     const currentToken = room.roundToken;
 
+    clearBombTimers(room);
+
     io.to(room.code).emit('bombPlanted', {
       planted: true,
       site: siteName,
@@ -609,8 +717,7 @@ io.on('connection', socket => {
       planterId: socket.id
     });
 
-    clearBombTimers(room);
-
+    // 45 saniye sonunda bomba patlar.
     room.bombTimer = setTimeout(() => {
       if (!room.started || room.roundOver) return;
       if (room.roundToken !== currentToken) return;
@@ -618,7 +725,11 @@ io.on('connection', socket => {
 
       room.bombTimer = null;
 
-      finishBombRound(room, 'attack', 'explosion');
+      finishBombRound(
+        room,
+        'attack',
+        'explosion'
+      );
 
       io.to(room.code).emit('bombExploded', {
         winner: 'attack'
@@ -627,7 +738,7 @@ io.on('connection', socket => {
     }, BOMB_TIME);
   });
 
-  // BOMBAYI ETKİSİZLEŞTİRME
+  // BOMBAYI ETKİSİZLEŞTİR
   socket.on('defuseBomb', () => {
     const room = rooms.get(socket.data.roomCode);
 
@@ -664,6 +775,7 @@ io.on('connection', socket => {
       duration: DEFUSE_TIME
     });
 
+    // 5 saniye boyunca etkisizleştirme işlemi sürer.
     room.defuseTimer = setTimeout(() => {
       if (!room.started || room.roundOver) return;
       if (room.roundToken !== currentToken) return;
@@ -692,7 +804,11 @@ io.on('connection', socket => {
       room.bomb.planted = false;
       room.bomb.defuserId = null;
 
-      finishBombRound(room, 'defense', 'defused');
+      finishBombRound(
+        room,
+        'defense',
+        'defused'
+      );
 
       io.to(room.code).emit('bombDefused', {
         winner: 'defense'
@@ -711,6 +827,10 @@ io.on('connection', socket => {
 
     if (!player) return;
 
+    if (!state || typeof state !== 'object') {
+      return;
+    }
+
     for (const key of ['x', 'y', 'z', 'ry', 'rx']) {
       const number = Number(state[key]);
 
@@ -728,7 +848,10 @@ io.on('connection', socket => {
       state.weapon || 'Vandal'
     ).slice(0, 12);
 
-    socket.to(room.code).emit('playersUpdate', [player]);
+    socket.to(room.code).emit(
+      'playersUpdate',
+      [player]
+    );
   });
 
   // BOT HASARI
@@ -738,11 +861,17 @@ io.on('connection', socket => {
     if (!room || !room.started) return;
     if (!room.botsEnabled) return;
 
-    const id = Math.floor(Number(data?.botId));
+    if (!data || typeof data !== 'object') {
+      return;
+    }
+
+    const id = Math.floor(
+      Number(data.botId)
+    );
 
     const damage = Math.max(
       0,
-      Math.min(100, Number(data?.damage) || 0)
+      Math.min(100, Number(data.damage) || 0)
     );
 
     if (!Number.isInteger(id)) return;
@@ -753,7 +882,11 @@ io.on('connection', socket => {
 
     if (!bot || bot.dead) return;
 
-    bot.hp = Math.max(0, bot.hp - damage);
+    bot.hp = Math.max(
+      0,
+      bot.hp - damage
+    );
+
     bot.dead = bot.hp <= 0;
 
     io.to(room.code).emit('botUpdate', {
@@ -763,11 +896,15 @@ io.on('connection', socket => {
     });
   });
 
-  // OYUNCU HASARI
+  // OYUNCUYA HASAR VER
   socket.on('playerHit', (data = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
     if (!room || !room.started) return;
+
+    if (!data || typeof data !== 'object') {
+      return;
+    }
 
     if (
       room.gameMode === 'bomb' &&
@@ -779,15 +916,19 @@ io.on('connection', socket => {
     const attacker = room.players.get(socket.id);
 
     const target = room.players.get(
-      String(data?.targetId || '')
+      String(data.targetId || '')
     );
 
     if (!attacker || !target) return;
+
     if (attacker.id === target.id) return;
 
-    if (attacker.hp <= 0 || target.hp <= 0) return;
+    if (attacker.hp <= 0 || target.hp <= 0) {
+      return;
+    }
 
-    // Bomba ve ele geçirme modlarında takım arkadaşına hasar verilmez.
+    // Bomba ve ele geçirme modlarında
+    // takım arkadaşına hasar verilmesini engelle.
     if (
       ['bomb', 'domination'].includes(room.gameMode) &&
       attacker.team === target.team
@@ -797,7 +938,7 @@ io.on('connection', socket => {
 
     const damage = Math.max(
       0,
-      Math.min(100, Number(data?.damage) || 0)
+      Math.min(100, Number(data.damage) || 0)
     );
 
     if (!damage) return;
@@ -809,7 +950,10 @@ io.on('connection', socket => {
 
     if (distance > 150) return;
 
-    target.hp = Math.max(0, target.hp - damage);
+    target.hp = Math.max(
+      0,
+      target.hp - damage
+    );
 
     io.to(target.id).emit('playerDamaged', {
       damage,
@@ -824,7 +968,7 @@ io.on('connection', socket => {
         killerName: attacker.name
       });
 
-      // Bomba taşıyıcısı ölürse bomba yeniden başlangıç noktasına döner.
+      // Bomba taşıyıcısı ölürse bomba başlangıç noktasına döner.
       if (room.bomb.carrierId === target.id) {
         resetBomb(room);
 
@@ -834,7 +978,8 @@ io.on('connection', socket => {
         });
       }
 
-      // Etkisizleştirme yapan oyuncu ölürse işlem iptal edilir.
+      // Bombayı etkisizleştiren oyuncu ölürse
+      // etkisizleştirme işlemini iptal et.
       if (room.bomb.defuserId === target.id) {
         if (room.defuseTimer) {
           clearTimeout(room.defuseTimer);
@@ -863,14 +1008,10 @@ io.on('connection', socket => {
 
     if (!room) return;
 
-    const leavingPlayer = room.players.get(socket.id);
-
     room.players.delete(socket.id);
 
-    // Bomba taşıyıcısı ayrılırsa bomba başlangıç noktasına döner.
-    if (
-      room.bomb.carrierId === socket.id
-    ) {
+    // Bomba taşıyıcısı ayrılırsa bomba başlangıca döner.
+    if (room.bomb.carrierId === socket.id) {
       resetBomb(room);
 
       io.to(code).emit('bombReset', {
@@ -879,10 +1020,9 @@ io.on('connection', socket => {
       });
     }
 
-    // Bombayı etkisizleştiren oyuncu ayrılırsa işlem iptal edilir.
-    if (
-      room.bomb.defuserId === socket.id
-    ) {
+    // Bombayı etkisizleştiren oyuncu ayrılırsa
+    // etkisizleştirme işlemini iptal et.
+    if (room.bomb.defuserId === socket.id) {
       if (room.defuseTimer) {
         clearTimeout(room.defuseTimer);
         room.defuseTimer = null;
@@ -891,14 +1031,19 @@ io.on('connection', socket => {
       room.bomb.defuserId = null;
     }
 
-    io.to(code).emit('playerLeft', socket.id);
+    io.to(code).emit(
+      'playerLeft',
+      socket.id
+    );
 
+    // Odada kimse kalmadıysa odayı ve zamanlayıcıları sil.
     if (room.players.size === 0) {
       clearRoomTimers(room);
       rooms.delete(code);
       return;
     }
 
+    // Oda sahibi ayrılırsa yeni oda sahibi belirle.
     if (room.hostId === socket.id) {
       room.hostId = room.players.keys().next().value;
     }
