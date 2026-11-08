@@ -1651,25 +1651,42 @@ document.getElementById('weaponTouch').addEventListener('click',cycleWeapon);doc
 
 function drawMinimap(){
  const canvas=document.getElementById('miniMap');if(!canvas||!player||!game)return;
- const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=1.05;
+ const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=.9;
  ctx.clearRect(0,0,w,h);ctx.save();ctx.beginPath();ctx.arc(cx,cy,105,0,Math.PI*2);ctx.clip();ctx.fillStyle='#14212b';ctx.fillRect(0,0,w,h);
- const radius=98;
- const toMap=(x,z)=>{const dx=x-player.position.x,dz=z-player.position.z;return{x:cx+dx*scale,y:cy+dz*scale};};
- // Actual houses, walls and cover from the selected 3D map.
+ const radius=99;
+ const toMap=(x,z)=>({x:cx+(x-player.position.x)*scale,y:cy+(z-player.position.z)*scale});
+ // Draw map geometry using transformed world-space corners, including rotated cover.
  ctx.fillStyle='#607783';ctx.strokeStyle='#a8bdc7';ctx.lineWidth=1;
  for(const obj of mapObjects){
-  const p=obj.geometry?.parameters;if(!obj.isMesh||obj.position.y<.55||!p)continue;
-  const bw=p.width||0,bd=p.depth||0;if(bw<1||bd<1)continue;
-  const a=toMap(obj.position.x-bw/2,obj.position.z-bd/2),b=toMap(obj.position.x+bw/2,obj.position.z+bd/2);
-  const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),rw=Math.max(2,Math.abs(b.x-a.x)),rh=Math.max(2,Math.abs(b.y-a.y));
-  if(x<cx+radius&&x+rw>cx-radius&&y<cy+radius&&y+rh>cy-radius){ctx.fillRect(x,y,rw,rh);ctx.strokeRect(x,y,rw,rh);}
+  if(!obj.isMesh||!obj.geometry)continue;
+  const geometry=obj.geometry;
+  if(!geometry.boundingBox)geometry.computeBoundingBox();
+  const b=geometry.boundingBox;
+  if(!b)continue;
+  const points=[];
+  for(const x of [b.min.x,b.max.x])for(const z of [b.min.z,b.max.z]){
+   const v=obj.localToWorld(new THREE.Vector3(x,0,z));
+   points.push(toMap(v.x,v.z));
+  }
+  if(points.length!==4)continue;
+  const minX=Math.min(...points.map(p=>p.x)),maxX=Math.max(...points.map(p=>p.x));
+  const minY=Math.min(...points.map(p=>p.y)),maxY=Math.max(...points.map(p=>p.y));
+  if(maxX<cx-radius||minX>cx+radius||maxY<cy-radius||minY>cy+radius)continue;
+  ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+  for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);
+  ctx.closePath();ctx.fill();ctx.stroke();
  }
  if(selectedGameMode==='bomb')for(const [x,z,label] of [[-42,4,'A'],[42,-4,'B']]){
   const p=toMap(x,z);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);ctx.fillStyle='#ffd52a';ctx.fillRect(-6,-6,12,12);ctx.restore();
   ctx.fillStyle='#fff2b0';ctx.font='bold 10px Arial';ctx.fillText(label+' SITE',p.x+8,p.y-7);
  }
- for(const [id,p] of remotePlayers){const q=toMap(Number(p.x)||0,Number(p.z)||0);if(Math.hypot(q.x-cx,q.y-cy)<radius){ctx.fillStyle=p.team===myTeam?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(q.x,q.y,Date.now()<scanUntil?7:4.5,0,Math.PI*2);ctx.fill();}}
- // Player arrow follows the direction the camera faces.
+ for(const [id,p] of remotePlayers){
+  const q=toMap(Number(p.x)||0,Number(p.z)||0);
+  if(p.alive!==false&&Number(p.hp)!==0&&Math.hypot(q.x-cx,q.y-cy)<radius){
+   ctx.fillStyle=p.team===myTeam?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(q.x,q.y,Date.now()<scanUntil?7:4.5,0,Math.PI*2);ctx.fill();
+  }
+ }
+ // Direction pointer rotates with the player's facing direction.
  ctx.save();ctx.translate(cx,cy);ctx.rotate(player.rotation.y);ctx.fillStyle='#f5f8ff';ctx.strokeStyle='#07131d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
  ctx.restore();
 }
@@ -2073,8 +2090,14 @@ socket.on('bombReset', data => {
 });
 
 socket.on('roundStarting', data => {
-  game=true; hp=100; hpEl.textContent=100; end.style.display='none'; hud.style.display='block';
-  // Rebuild the complete player snapshot at every new round so respawned players are visible again.
+  game=true;
+  end.style.display='none';
+  hud.style.display='block';
+  // Reset local movement and rebuild every player's authoritative round-start state.
+  Object.keys(keys).forEach(k=>keys[k]=false);
+  touchMove={x:0,y:0};
+  jumping=false;jumpVelocity=0;jumpHeight=0;climbing=false;
+  netSendTimer=0;
   remotePlayers.clear();
   remoteMeshes.forEach(mesh=>scene&&scene.remove(mesh));
   remoteMeshes.clear();
@@ -2082,8 +2105,8 @@ socket.on('roundStarting', data => {
     if (p.id === socket.id) {
       if (player) {
         player.position.set(Number(p.x)||0, Number(p.y)||0, Number(p.z)||0);
-        player.rotation.y=Number(p.ry)||0;
-        camera.rotation.x=Number(p.rx)||0;
+        player.rotation.set(0,Number(p.ry)||0,0);
+        camera.rotation.set(Number(p.rx)||0,0,0);
       }
       mySpawn={x:Number(p.x)||0,z:Number(p.z)||0};
       hp=Number(p.hp)||100;
@@ -2092,27 +2115,24 @@ socket.on('roundStarting', data => {
       remotePlayers.set(p.id,p);
     }
   });
+  updateRemotePlayers();
+  // Immediately publish this client's new spawn so the server's hit-distance
+  // checks and the other clients use the same position from the first second.
+  if(socket?.connected&&player)socket.emit('playerState',{
+    x:player.position.x,y:player.position.y,z:player.position.z,
+    ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,
+    weapon:weaponName,character:selectedCharacter,shield:false
+  });
   if(matchMedia('(pointer:fine)').matches && renderer?.domElement?.requestPointerLock && !locked) renderer.domElement.requestPointerLock();
   stopBombClock();
   if (bombPrepInterval) clearInterval(bombPrepInterval);
-
   let seconds = data.prepareSeconds || 5;
-
   const status = document.getElementById('bombStatus');
-
-  status.textContent =
-    'ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
-
+  status.textContent='ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
   bombPrepInterval = setInterval(() => {
     seconds--;
-
-    if (seconds > 0) {
-      status.textContent =
-        'ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
-    } else {
-      clearInterval(bombPrepInterval);
-      bombPrepInterval = null;
-    }
+    if (seconds > 0) status.textContent='ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
+    else { clearInterval(bombPrepInterval); bombPrepInterval = null; }
   }, 1000);
 });
 
