@@ -1330,7 +1330,18 @@ function updateBots(dt){
   const direction=new THREE.Vector3(dx,0,dz),origin=new THREE.Vector3(b.position.x,1.35,b.position.z);
   const canSee=dist<30&&direction.lengthSq()>0&&!new THREE.Raycaster(origin,direction.clone().normalize(),0,dist).intersectObjects(mapObjects,true).length;
   if(canSee){
-   b.rotation.y=Math.atan2(-dx,-dz);b.userData.fire-=dt;
+   b.rotation.y=Math.atan2(-dx,-dz);
+   // Bot ability: occasionally dash sideways when spotted, rather than rushing the player.
+   b.userData.abilityTimer=(b.userData.abilityTimer??(5+Math.random()*5))-dt;
+   if(b.userData.abilityTimer<=0&&dist<20){
+    const side=(Math.random()<.5?-1:1)*4.5;
+    const dashX=b.position.x+Math.cos(b.rotation.y)*side;
+    const dashZ=b.position.z-Math.sin(b.rotation.y)*side;
+    if(!collides(dashX,dashZ))b.position.set(dashX,0,dashZ);
+    b.userData.abilityTimer=8+Math.random()*7;
+    b.userData.walk+=2.5;
+   }
+   b.userData.fire-=dt;
    if(b.userData.fire<=0){b.userData.fire=1+Math.random()*1.2;if(Math.random()<Math.max(.12,.62-dist*.012))damagePlayer(5+Math.floor(Math.random()*8));}
   }else{
    const wx=b.userData.targetX-b.position.x,wz=b.userData.targetZ-b.position.z,wd=Math.hypot(wx,wz)||1;
