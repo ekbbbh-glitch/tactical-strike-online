@@ -26,7 +26,7 @@ canvas{display:block}
 #updateNotice p{margin:0 0 8px;font-weight:700}
 #updateNotice button{margin:0;padding:9px 15px}
 @media(max-width:600px){#menu{padding:3vw}#menu .panel{max-height:94vh;width:100%;padding-right:6px}#installConsent{flex-wrap:wrap}}
-#menu{position:fixed;inset:0;z-index:5;background:linear-gradient(115deg,rgba(8,16,28,.97),rgba(18,38,52,.88)),radial-gradient(circle at 75% 30%,#31556a,transparent 40%);display:flex;align-items:center;padding:6vw}
+#menu{position:fixed;inset:0;z-index:1000;background:linear-gradient(115deg,rgba(0,0,0,.68),rgba(0,0,0,.78)),url("https://cdn.photoroom.com/v2/image-cache?path=gs://background-7ef44.appspot.com/backgrounds_v3/black/47_-_black.jpg") center center/cover no-repeat;display:flex;align-items:center;padding:6vw}#menu .panel{margin:auto;text-align:center}#menu h1{width:100%;text-align:center;font-size:clamp(58px,9vw,112px);letter-spacing:9px;text-shadow:0 4px 30px #000,0 0 22px #fff6}
 .panel{max-width:610px}
 h1{font-size:clamp(42px,7vw,86px);letter-spacing:5px;margin:0 0 8px;color:#f5f7fa;text-shadow:0 5px 30px #000}
 .sub{color:#a9c1cf;letter-spacing:3px;margin-bottom:34px}
@@ -489,7 +489,7 @@ const cross=document.getElementById('cross');
 
  let scene,camera,renderer,clock,player,weaponGroup;
  let mapObjects = [];
-let weaponName='Vandal',ammo=25,reserve=75,hp=100;
+let weaponName='Vandal',ammo=25,reserve=Infinity,hp=100;
  let selectedGameMode = 'deathmatch';
  let myTeam = null;
  let bombMesh = null;
@@ -1349,7 +1349,7 @@ function buildWeaponSafely(){
 }
 function updateAmmo(){
  const displayWeapon=weaponName==='Şerif'?'SHERIFF':weaponName.toUpperCase();
- ammoEl.innerHTML=`${ammo} / ${reserve}<small>${displayWeapon}${reloading?' • RELOADING':''}</small>`;
+ ammoEl.innerHTML=`${ammo} / ∞<small>${displayWeapon}${reloading?' • RELOADING':''}</small>`;
 }
 
 function setWeapon(n){
@@ -1357,7 +1357,7 @@ function setWeapon(n){
  weaponName=n;
  burstRemaining=0;
  ammo=specs[n].mag;
- reserve=specs[n].reserve;
+ reserve=Infinity;
  reloading=false;
  scoped=false;
  scopeEl.style.display='none';
@@ -1454,30 +1454,31 @@ buildMap();
 }
 
  function returnToMenu(){
-  // Tek çıkış noktası: çevrimdışı ve çevrimiçi maçlardan güvenli şekilde menüye dön.
+  // Maçtan çıkışı tek noktadan yönet; temizlikteki hata menünün açılmasını engellemesin.
   game=false;
   currentRankedMatch=false;
+  try{if(socket?.connected)socket.emit('leaveRoom');}catch(e){}
   online=false;
   try{Object.keys(keys||{}).forEach(k=>keys[k]=false);}catch(e){}
   try{touchMove={x:0,y:0};touchFire=false;touchSprint=false;lastMouseDown=false;climbing=false;unScope();}catch(e){}
   try{if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}}catch(e){}
-  if(bombPrepInterval){clearInterval(bombPrepInterval);bombPrepInterval=null;}
-  stopBombClock();
+  try{if(bombPrepInterval){clearInterval(bombPrepInterval);bombPrepInterval=null;}}catch(e){}
+  try{stopBombClock();}catch(e){}
   try{document.exitPointerLock?.();}catch(e){}
-  try{hud.style.display='none';}catch(e){}
-  try{end.style.display='none';}catch(e){}
-  try{lobby.style.display='none';}catch(e){}
-  try{document.getElementById('settingsPanel').style.display='none';}catch(e){}
+  try{hud.style.display='none';hud.style.visibility='hidden';}catch(e){}
+  try{end.style.display='none';end.style.visibility='hidden';}catch(e){}
+  try{lobby.style.display='none';lobby.style.visibility='hidden';}catch(e){}
+  try{const panel=document.getElementById('settingsPanel');if(panel)panel.style.display='none';}catch(e){}
   try{hideLoading();}catch(e){}
-  // Menü katmanını diğer oyun ekranlarının üstüne al.
-  menu.style.display='flex';
-  menu.style.visibility='visible';
-  menu.style.pointerEvents='auto';
-  menu.style.zIndex='50';
   try{remotePlayers.clear();}catch(e){}
   try{remoteMeshes.forEach(mesh=>scene&&scene.remove(mesh));remoteMeshes.clear();}catch(e){}
-  // Sunucudan odadan ayrıl; soketi açık tut ki yeniden oda kurulabilsin.
-  try{if(socket?.connected)socket.emit('leaveRoom');}catch(e){}
+  menu.hidden=false;
+  menu.style.display='flex';
+  menu.style.visibility='visible';
+  menu.style.opacity='1';
+  menu.style.pointerEvents='auto';
+  menu.style.zIndex='1000';
+  menu.setAttribute('aria-hidden','false');
 }
 function exitOnlineMatchToMenu(){
   returnToMenu();
@@ -1618,7 +1619,7 @@ document.addEventListener('contextmenu',e=>e.preventDefault());
 let mouseSensitivity=2.2,touchSensitivity=2.2;
 
 function reload(){
- if(reloading||ammo===specs[weaponName].mag||reserve<=0)return;
+ if(reloading||ammo===specs[weaponName].mag)return;
 
  reloading=true;
  reloadAnimStart=performance.now();
@@ -1630,10 +1631,9 @@ function reload(){
   if(!game)return;
 
   let need=specs[weaponName].mag-ammo;
-  let take=Math.min(need,reserve);
+  let take=need;
 
   ammo+=take;
-  reserve-=take;
   reloading=false;
   if(reloadMag&&reloadMagBase){reloadMag.position.copy(reloadMagBase.position);reloadMag.rotation.copy(reloadMagBase.rotation);}
   updateAmmo();
@@ -2679,9 +2679,9 @@ document.getElementById('launchGame').onclick = () => {
   });
 };
 document.getElementById('joinRoom').onclick=()=>connectRoom('join');
-document.getElementById('again').onclick=startGame;
+document.getElementById('again').onclick=()=>{end.style.display='none';end.style.visibility='hidden';startGame();};
 
-document.getElementById('back').onclick=exitOnlineMatchToMenu;
+document.getElementById('back').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();returnToMenu();});
 
 document.getElementById('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=document.getElementById('chatInput');const text=input.value.trim();if(text&&socket?.connected){socket.emit('chatMessage',text.slice(0,120));input.value='';}});
 document.getElementById('voiceTouch').addEventListener('pointerdown',startTalking);
@@ -2690,7 +2690,7 @@ document.getElementById('voiceTouch').addEventListener('pointercancel',stopTalki
 document.getElementById('abilityQ').addEventListener('click',()=>useAbility('Q'));
 document.getElementById('abilityF').addEventListener('click',()=>useAbility('F'));
 document.getElementById('settingsButton').addEventListener('click',()=>{const p=document.getElementById('settingsPanel');p.style.display=p.style.display==='block'?'none':'block';});
-document.getElementById('returnMenuSettings').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();exitOnlineMatchToMenu();});
+document.getElementById('returnMenuSettings').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();returnToMenu();});
 document.getElementById('closeSettings').addEventListener('click',()=>{if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}document.getElementById('settingsPanel').style.display='none';});
 document.getElementById('mouseSensitivity').addEventListener('input',e=>mouseSensitivity=Number(e.target.value));
 document.getElementById('touchSensitivity').addEventListener('input',e=>touchSensitivity=Number(e.target.value));
