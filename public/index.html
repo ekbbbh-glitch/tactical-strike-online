@@ -434,54 +434,6 @@ checkForNewGameVersion();setInterval(checkForNewGameVersion,60000);
 
 
 
-const DEVICE_CONSENT_KEY='rageXPrivacyConsentV1';
-let deviceAccountReady=false;
-let deviceAccountSaved=false;
-function setAccountStatus(message){const el=document.getElementById('accountStatus');if(el)el.textContent=message;}
-function applySavedPlayerName(name){
- const input=document.getElementById('playerName');if(!input)return;
- const clean=String(name||'').replace(/[<>]/g,'').trim().slice(0,16);
- if(clean){input.value=clean;input.readOnly=true;deviceAccountSaved=true;playerName=clean;document.getElementById('savePlayerName').style.display='none';setAccountStatus('Kayıtlı oyuncu adı: '+clean);}
-}
-async function registerDeviceVisit(){
- try{
-  const response=await fetch('/api/device/visit',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({consent:true})});
-  if(!response.ok)throw new Error(response.status===503?'Sunucu veritabanı henüz bağlanmadı.':'Cihaz hesabı kaydedilemedi.');
-  const data=await response.json();deviceAccountReady=true;
-  if(data.name)applySavedPlayerName(data.name);else setAccountStatus('Bu cihaz için henüz oyuncu adı seçilmedi.');
- }catch(error){
-  deviceAccountReady=false;const localName=localStorage.getItem('rageXPlayerName');if(localName)applySavedPlayerName(localName);
-  setAccountStatus((error.message||'Sunucu hesabına ulaşılamadı.')+' Yerel misafir hesabı kullanılabilir.');
- }
-}
-function showPrivacyConsent(){document.getElementById('privacyConsent').style.display='flex';}
-async function choosePrivacyConsent(accepted){
- localStorage.setItem(DEVICE_CONSENT_KEY,accepted?'accepted':'declined');
- document.getElementById('privacyConsent').style.display='none';
- if(accepted)await registerDeviceVisit();
- else{deviceAccountReady=false;const n=localStorage.getItem('rageXPlayerName');if(n)applySavedPlayerName(n);setAccountStatus('Misafir modu: sunucu cihaz hesabı ve IP ziyaret kaydı kapalı.');}
-}
-document.getElementById('acceptPrivacy').addEventListener('click',()=>choosePrivacyConsent(true));
-document.getElementById('rejectPrivacy').addEventListener('click',()=>choosePrivacyConsent(false));
-document.getElementById('privacySettings').addEventListener('click',showPrivacyConsent);
-document.getElementById('savePlayerName').addEventListener('click',async()=>{
- const input=document.getElementById('playerName');const name=String(input.value||'').replace(/[<>]/g,'').trim().slice(0,16);
- if(name.length<2){setAccountStatus('Oyuncu adı en az 2 karakter olmalı.');return;}if(deviceAccountSaved)return;
- if(localStorage.getItem(DEVICE_CONSENT_KEY)==='accepted'&&deviceAccountReady){
-  try{
-   const response=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name})});
-   const data=await response.json();if(!response.ok)throw new Error(data.error||'Oyuncu adı kaydedilemedi.');
-   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);
-  }catch(error){setAccountStatus(error.message||'Kayıt başarısız.');}
- }else{localStorage.setItem('rageXPlayerName',name);applySavedPlayerName(name);setAccountStatus('Oyuncu adı bu tarayıcıya kaydedildi (misafir hesabı).');}
-});
-(()=>{
- const consent=localStorage.getItem(DEVICE_CONSENT_KEY);
- if(consent==='accepted')registerDeviceVisit();
- else if(consent==='declined'){const n=localStorage.getItem('rageXPlayerName');if(n)applySavedPlayerName(n);setAccountStatus('Misafir modu etkin.');}
- else showPrivacyConsent();
-})();
-
 const menu=document.getElementById('menu');
  const lobby = document.getElementById('lobby');
 const lobbyPlayers = document.getElementById('lobbyPlayers');
@@ -603,6 +555,55 @@ let footstepTimer=0,portalCooldown=0;
 
 // ONLINE CO-OP bağlantısı
 let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
+const DEVICE_CONSENT_KEY='rageXPrivacyConsentV1';
+let deviceAccountReady=false;
+let deviceAccountSaved=false;
+function setAccountStatus(message){const el=document.getElementById('accountStatus');if(el)el.textContent=message;}
+function applySavedPlayerName(name){
+ const input=document.getElementById('playerName');if(!input)return;
+ const clean=String(name||'').replace(/[<>]/g,'').trim().slice(0,16);
+ if(clean){input.value=clean;input.readOnly=true;deviceAccountSaved=true;playerName=clean;document.getElementById('savePlayerName').style.display='none';setAccountStatus('Kayıtlı oyuncu adı: '+clean);}
+}
+async function registerDeviceVisit(){
+ try{
+  const response=await fetch('/api/device/visit',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({consent:true})});
+  if(!response.ok)throw new Error(response.status===503?'Sunucu veritabanı henüz bağlanmadı.':'Cihaz hesabı kaydedilemedi.');
+  const data=await response.json();deviceAccountReady=true;
+  if(data.name)applySavedPlayerName(data.name);else setAccountStatus('Bu cihaz için henüz oyuncu adı seçilmedi.');
+ }catch(error){
+  deviceAccountReady=false;const localName=localStorage.getItem('rageXPlayerName');if(localName)applySavedPlayerName(localName);
+  setAccountStatus((error.message||'Sunucu hesabına ulaşılamadı.')+' Yerel misafir hesabı kullanılabilir.');
+ }
+}
+function showPrivacyConsent(){document.getElementById('privacyConsent').style.display='flex';}
+async function choosePrivacyConsent(accepted){
+ localStorage.setItem(DEVICE_CONSENT_KEY,accepted?'accepted':'declined');
+ document.getElementById('privacyConsent').style.display='none';
+ if(accepted)await registerDeviceVisit();
+ else{deviceAccountReady=false;const n=localStorage.getItem('rageXPlayerName');if(n)applySavedPlayerName(n);setAccountStatus('Misafir modu: sunucu cihaz hesabı ve IP ziyaret kaydı kapalı.');}
+}
+document.getElementById('acceptPrivacy').addEventListener('click',()=>choosePrivacyConsent(true));
+document.getElementById('rejectPrivacy').addEventListener('click',()=>choosePrivacyConsent(false));
+document.getElementById('privacySettings').addEventListener('click',showPrivacyConsent);
+document.getElementById('savePlayerName').addEventListener('click',async()=>{
+ const input=document.getElementById('playerName');const name=String(input.value||'').replace(/[<>]/g,'').trim().slice(0,16);
+ if(name.length<2){setAccountStatus('Oyuncu adı en az 2 karakter olmalı.');return;}if(deviceAccountSaved)return;
+ if(localStorage.getItem(DEVICE_CONSENT_KEY)==='accepted'&&deviceAccountReady){
+  try{
+   const response=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name})});
+   const data=await response.json();if(!response.ok)throw new Error(data.error||'Oyuncu adı kaydedilemedi.');
+   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);
+  }catch(error){setAccountStatus(error.message||'Kayıt başarısız.');}
+ }else{localStorage.setItem('rageXPlayerName',name);applySavedPlayerName(name);setAccountStatus('Oyuncu adı bu tarayıcıya kaydedildi (misafir hesabı).');}
+});
+(()=>{
+ const consent=localStorage.getItem(DEVICE_CONSENT_KEY);
+ if(consent==='accepted')registerDeviceVisit();
+ else if(consent==='declined'){const n=localStorage.getItem('rageXPlayerName');if(n)applySavedPlayerName(n);setAccountStatus('Misafir modu etkin.');}
+ else showPrivacyConsent();
+})();
+
+
 let netSendTimer=0,voiceStream=null,voicePeers=new Map(),voiceHeld=false;
 let shieldUntil=0,nextShotDamage=0,scanUntil=0,abilityCooldowns={Q:0,F:0},abilitySpeedUntil=0,rapidFireUntil=0;
 
