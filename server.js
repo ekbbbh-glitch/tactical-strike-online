@@ -587,6 +587,11 @@ io.on('connection', socket => {
     }, DEFUSE_TIME);
   });
 
+  socket.on('weaponFired', () => {
+    const room=rooms.get(socket.data.roomCode);
+    if(room?.started&&room.players.has(socket.id))socket.to(room.code).emit('weaponFired');
+  });
+
   socket.on('chatMessage', raw => {
     const room=rooms.get(socket.data.roomCode),player=room?.players.get(socket.id);
     if(!room||!player||!room.started)return;
