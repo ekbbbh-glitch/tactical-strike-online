@@ -948,6 +948,15 @@ function spawnBot(x,z){
 
  function startGame(options = {}){
  if(!renderer)init();
+ const abilityNames={
+  jett:['IŞINLAN','TEK ATIŞ'],heavy:['ZIRH','PATLAYICI'],special:['İYİLEŞ','TARA'],
+  viper:['ZEHİR','HIZ'],steve:['SÜPER ZIPLA','HIZLI DOLDUR'],roblox:['HIZ PATLAMASI','KALKAN'],
+  soldier:['ADRENALİN','HIZLI ATIŞ']
+ };
+ const names=abilityNames[selectedCharacter]||abilityNames.soldier;
+ document.getElementById('abilityQ').innerHTML='Q<small>'+names[0]+'</small>';
+ document.getElementById('abilityF').innerHTML='F<small>'+names[1]+'</small>';
+ abilityCooldowns={Q:0,F:0};shieldUntil=0;nextShotDamage=0;
 selectedMap = mapSelect.value;
 selectedGameMode = gameModeSelect.value;
 buildMap();
@@ -1043,7 +1052,7 @@ function useAbility(slot){
  }else if(selectedCharacter==='viper'&&slot==='F'){abilitySpeedUntil=now+7000;message='VIPER: HIZ TAKVİYESİ';cooldown=18;
  }else if(selectedCharacter==='steve'&&slot==='Q'){jumping=true;jumpVelocity=10;message='STEVE: SÜPER ZIPLAMA';cooldown=12;
  }else if(selectedCharacter==='steve'&&slot==='F'){ammo=specs[weaponName].mag;updateAmmo();message='STEVE: HIZLI DOLDURMA';cooldown=16;
- }else if(selectedCharacter==='roblox'&&slot==='Q'){jumping=true;jumpVelocity=10;message='ROBLOX: SÜPER ZIPLAMA';cooldown=12;
+ }else if(selectedCharacter==='roblox'&&slot==='Q'){abilitySpeedUntil=now+6000;message='ROBLOX: HIZ PATLAMASI';cooldown=15;
  }else if(selectedCharacter==='roblox'&&slot==='F'){shieldUntil=now+5000;message='ROBLOX: KALKAN';cooldown=18;
  }else if(slot==='Q'){abilitySpeedUntil=now+6000;message='SOLDIER: ADRENALİN';cooldown=14;
  }else{rapidFireUntil=now+6000;message='SOLDIER: HIZLI ATIŞ';cooldown=18;}
@@ -1732,6 +1741,8 @@ if (selectedGameMode === 'bomb') {
   socket.on('playerJoined', p => {remotePlayers.set(p.id,p);if(voiceStream)createVoiceOffer(p.id);});
 
   socket.on('playerLeft', id => {
+    const voice=voicePeers.get(id);if(voice){voice.close();voicePeers.delete(id);}
+    document.getElementById('voice-'+id)?.remove();
     remotePlayers.delete(id);
     const m = remoteMeshes.get(id);
     if (m) {
@@ -1965,6 +1976,7 @@ socket.on('gameEnded', data => {
   });
 
   socket.on('disconnect', () => {
+    stopTalking();voicePeers.forEach(pc=>pc.close());voicePeers.clear();
     online = false;
     stopBombClock();
     if (bombPrepInterval) {
