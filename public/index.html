@@ -1,1288 +1,75 @@
-<!doctype html>
-<html lang="tr">
-<head>
- <meta name="google-site-verification" content="f-7aqUQdwwaiGFW9d9TWmQe8-MJZyxw_hltzDnIhUBM" />
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EmirCritical - Tactical Strike Online</title>
- <meta name="description" content="EmirCritical, çevrimiçi arkadaşlarınla oynayabileceğin ücretsiz 3D FPS savaş oyunudur. Hemen odayı oluştur ve savaşa katıl!">
-<style>
-*{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#fff;font-family:Arial,Helvetica,sans-serif}
-canvas{display:block}
-#menu{position:fixed;inset:0;z-index:5;background:linear-gradient(115deg,rgba(8,16,28,.97),rgba(18,38,52,.88)),radial-gradient(circle at 75% 30%,#31556a,transparent 40%);display:flex;align-items:center;padding:6vw}
-.panel{max-width:610px}
-h1{font-size:clamp(42px,7vw,86px);letter-spacing:5px;margin:0 0 8px;color:#f5f7fa;text-shadow:0 5px 30px #000}
-.sub{color:#a9c1cf;letter-spacing:3px;margin-bottom:34px}
-button,select{background:#e7a83e;color:#101820;border:0;padding:14px 22px;font-weight:800;letter-spacing:1px;cursor:pointer;font-size:15px;margin:8px 8px 8px 0}
-button:hover{background:#ffc45c}
-select{background:#e8edf0;min-width:190px}
-.small{color:#c4d2da;line-height:1.6;max-width:560px;font-size:14px}
-.tag{display:inline-block;border:1px solid #617989;padding:7px 10px;margin:5px 5px 15px 0;color:#b9cbd5;font-size:11px;letter-spacing:1px}
-#hud{position:fixed;inset:0;pointer-events:none;display:none;z-index:3;text-shadow:0 2px 4px #000}
-#top{position:absolute;top:18px;left:50%;transform:translateX(-50%);background:#08131ccc;padding:9px 20px;border:1px solid #8299a766;letter-spacing:2px;font-size:13px}
-#health{position:absolute;bottom:25px;left:25px;background:#08131ccc;padding:12px 16px;border-left:4px solid #61c98c;font-weight:bold}
-#ammo{position:absolute;bottom:24px;right:28px;text-align:right;background:#08131ccc;padding:12px 16px;font-size:24px;font-weight:bold}
-#ammo small{display:block;font-size:11px;color:#b8c6ce;letter-spacing:2px;margin-top:4px}
-#hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-size:11px;color:#d5e0e5;letter-spacing:1px}
-#cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px}
-#cross:before,#cross:after{content:"";position:absolute;background:#f5f5f5;box-shadow:0 0 3px #000}
-#cross:before{width:2px;height:18px;left:10px;top:2px}
-#cross:after{height:2px;width:18px;top:10px;left:2px}
-#scope{display:none;position:absolute;inset:0;background:radial-gradient(circle,transparent 0 17%,rgba(0,0,0,.96) 17.5%);border:0}
-#scope:before{content:"";position:absolute;left:50%;top:0;height:100%;width:1px;background:#111}
-#scope:after{content:"";position:absolute;top:50%;left:0;width:100%;height:1px;background:#111}
-#message{position:absolute;top:30%;left:50%;transform:translateX(-50%);font-size:22px;font-weight:bold;letter-spacing:2px;color:#ffc45c}
-#end{display:none;position:fixed;inset:0;z-index:8;background:#07111eee;align-items:center;justify-content:center;text-align:center}
-#end h2{font-size:54px;margin:0 0 10px}
-.online-box{border:1px solid #688394;background:#07131dcc;padding:14px;margin:14px 0;max-width:570px}
-.online-box h3{margin:0 0 10px;color:#ffc45c;letter-spacing:2px;font-size:14px}
-.online-box input{background:#e8edf0;border:0;padding:12px;margin:5px 8px 8px 0;min-width:190px;max-width:100%;font-size:14px}
-.online-actions{display:flex;align-items:center;flex-wrap:wrap}
-#onlineStatus{color:#a9c1cf;font-size:13px;margin-top:5px;min-height:18px}
-#players{position:absolute;top:58px;right:18px;background:#08131ccc;padding:9px 12px;font-size:12px;line-height:1.6;max-width:190px}
- #menu {
-  max-height: 85vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 25px;
-  box-sizing: border-box;
-}
-</style>
-</head>
-<body>
+from pathlib import Path
+import re
 
-<div id="menu">
- <div class="panel">
-  <div class="tag">SINGLE PLAYER • BOT MATCH • 3D FPS</div>
-  <h1>TACTICAL<br>STRIKE</h1>
-  <div class="sub">ROUND ZERO // TRAINING GROUNDS</div>
-  <p class="small">Üç koridorlu, taktik nişancı tarzında özgün bir haritada botlara karşı savaş. Blok biçimli Roblox-esintili karakterler, üç silah, dürbün, şarjör ve can sistemi.</p>
-  <div class="online-box">
-   <h3>ONLINE CO-OP • 10 OYUNCU</h3>
-   <label for="playerName">Oyuncu adı</label><br>
-   <input id="playerName" maxlength="16" placeholder="Oyuncu adın" value="Oyuncu" />
-   <label for="serverUrl">Sunucu adresi</label><br>
-   <input id="serverUrl" placeholder="Sunucu adresi" value="https://tactical-strike-online.onrender.com" readonly />
-   <div class="online-actions">
-    <button id="createRoom">ODA OLUŞTUR</button>
-    <input id="roomCode" maxlength="8" placeholder="ODA KODU" />
-    <button id="joinRoom">ODAYA KATIL</button>
-   </div>
-   <div id="onlineStatus">Önce oda oluştur veya oda koduyla katıl.</div>
-  </div>
-  <p>
-  <label for="gameMode">OYUN MODU</label><br>
-  <select id="gameMode">
-    <option value="deathmatch">Takım Ölüm Maçı</option>
-    <option value="ffa">Herkes Tek</option>
-    <option value="bomb">Bomba İmha</option>
-    <option value="domination">Bölge Hakimiyeti</option>
-  </select>
-</p>
+src = Path("/mnt/data/Yapıştırılan metin(1).txt")
+html = src.read_text(encoding="utf-8")
 
-<p>
-  <label for="mapSelect">HARİTA SEÇ</label><br>
-  <select id="mapSelect">
-    <option value="desert">Çöl Kasabası</option>
-    <option value="snow">Karlı Askerî Üs</option>
-    <option value="factory">Fabrika</option>
-    <option value="city">Şehir</option>
-  </select>
-</p>
-  <p><label for="weapon">Başlangıç silahı</label><br>
-  <select id="weapon">
-   <option>Vandal</option>
-   <option>Şerif</option>
-   <option>AWM</option>
-  </select></p>
-  <button id="start">MAÇA BAŞLA</button>
-  <p class="small"><b>Kontroller:</b> WASD hareket • Fare nişan • Sol tık ateş • Sağ tık dürbün (AWM) • R şarjör • 1 Vandal / 2 Şerif / 3 AWM • ESC menü/fare kilidi</p>
-  <p class="small">Not: Bu, tarayıcıda çalışan özgün bir prototiptir; gerçek Valorant/Riot içeriği veya çevrimiçi çok oyunculu mod içermez.</p>
- </div>
-</div>
-
- 
-<div id="lobby" style="display:none;position:fixed;inset:0;z-index:7;background:#101d29;align-items:center;justify-content:center;text-align:center;padding:20px;">
- <div style="width:100%;max-width:550px;background:#172b3a;border:1px solid #688394;padding:30px;">
-  <h1 style="font-size:32px;color:#ffc45c;">EMIRCRITICAL</h1>
-  <h2>OYUNCULAR BEKLENİYOR...</h2>
-  <p>Oda kodu: <strong id="lobbyCode">------</strong></p>
-  <h3>OYUNCU LİSTESİ</h3>
-  <div id="lobbyPlayers">Oyuncular yükleniyor...</div>
-  <hr>
-  <h3>BOTLAR</h3>
-  <button id="botsYes">BOTLAR VAR</button>
-  <button id="botsNo">BOTLAR YOK</button>
-  <p id="botStatus">Botlar: VAR</p>
-  <button id="launchGame" style="background:#35b875;color:white;">OYUNU BAŞLAT</button>
-  <p id="lobbyStatus">Oyuncuların katılması bekleniyor.</p>
- </div>
-</div>
-
-<div id="hud">
- <div id="top">TACTICAL STRIKE&nbsp; // &nbsp;<span id="round">BOT MATCH</span></div>
-  <div id="players">OYUNCULAR: 1/10</div>
- <div id="cross"></div>
- <div id="scope"></div>
- <div id="health">♥ <span id="hp">100</span> HP</div>
- <div id="ammo">25 / 75<small>VANDAL</small></div>
- <div id="hint">WASD • MOUSE • LMB FIRE • R RELOAD</div>
- <div id="message"></div>
- <div id="bombStatus" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:20px;font-weight:bold;z-index:20;"></div>
-</div>
-
-<div id="end">
- <div>
-  <h2>ELENDİN</h2>
-  <p id="endtxt">Botlar seni yakaladı.</p>
-  <button id="again">TEKRAR DENE</button>
-  <button id="back">ANA MENÜ</button>
- </div>
-</div>
-
-<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-
-const menu=document.getElementById('menu');
- const lobby = document.getElementById('lobby');
-const lobbyPlayers = document.getElementById('lobbyPlayers');
-const lobbyCode = document.getElementById('lobbyCode');
-const lobbyStatus = document.getElementById('lobbyStatus');
-
-let isRoomHost = false;
-let currentBotsEnabled = true;
- function updateLobby(data) {
-  lobbyCode.textContent = data.code;
+# Replace lobby rendering with safe, server-authoritative team grouping.
+start = html.index(" function updateLobby(data) {")
+end = html.index("\n \nconst hud=", start)
+new_lobby = """ function updateLobby(data) {
+  lobbyCode.textContent = data.code || '------';
   lobbyPlayers.innerHTML = '';
 
-  if (gameModeSelect.value === 'bomb') {
+  const players = data.players || [];
+  const isBombLobby = (data.gameMode || gameModeSelect.value) === 'bomb';
+
+  if (isBombLobby) {
     const attackTitle = document.createElement('div');
     attackTitle.textContent = '🔵 SALDIRI TAKIMI';
     attackTitle.style.cssText = 'padding:10px;font-weight:bold;color:#3399ff;';
     lobbyPlayers.appendChild(attackTitle);
 
+    players.filter(p => p.team === 'attack').forEach(player => {
+      const item = document.createElement('div');
+      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+      item.style.cssText = 'padding:8px;color:#3399ff;';
+      lobbyPlayers.appendChild(item);
+    });
+
     const defenseTitle = document.createElement('div');
     defenseTitle.textContent = '🔴 SAVUNMA TAKIMI';
     defenseTitle.style.cssText = 'padding:10px;font-weight:bold;color:#ff4444;';
-
-    (data.players || []).forEach(player => {
-      const item = document.createElement('div');
-      item.textContent = player.name;
-      item.style.padding = '8px';
-
-      if (player.team === 'attack') {
-        item.style.color = '#3399ff';
-        lobbyPlayers.insertBefore(item, defenseTitle);
-      } else {
-        item.style.color = '#ff4444';
-        lobbyPlayers.appendChild(item);
-      }
-    });
-
     lobbyPlayers.appendChild(defenseTitle);
-  } else {
-    (data.players || []).forEach(player => {
+
+    players.filter(p => p.team === 'defense').forEach(player => {
       const item = document.createElement('div');
-      item.textContent =
-        player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+      item.style.cssText = 'padding:8px;color:#ff6666;';
+      lobbyPlayers.appendChild(item);
+    });
+  } else {
+    players.forEach(player => {
+      const item = document.createElement('div');
+      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
       item.style.padding = '8px';
       lobbyPlayers.appendChild(item);
     });
   }
 
-  isRoomHost = data.hostId === socket.id;
-  currentBotsEnabled = data.botsEnabled;
+  isRoomHost = !!socket && data.hostId === socket.id;
+  currentBotsEnabled = data.botsEnabled !== false;
 
   document.getElementById('botStatus').textContent =
     'Botlar: ' + (currentBotsEnabled ? 'VAR' : 'YOK');
 
-  document.getElementById('botsYes').disabled = !isRoomHost;
-  document.getElementById('botsNo').disabled = !isRoomHost;
+  document.getElementById('botsYes').disabled = !isRoomHost || isBombLobby;
+  document.getElementById('botsNo').disabled = !isRoomHost || isBombLobby;
   document.getElementById('launchGame').disabled = !isRoomHost;
-}
- 
-const hud=document.getElementById('hud');
-const end=document.getElementById('end');
-const ammoEl=document.getElementById('ammo');
-const hpEl=document.getElementById('hp');
-const msg=document.getElementById('message');
-const scopeEl=document.getElementById('scope');
-const cross=document.getElementById('cross');
+}"""
+html = html[:start] + new_lobby + html[end:]
 
- let scene,camera,renderer,clock,player,weaponGroup;
- let mapObjects = [];
-let weaponName='Vandal',ammo=25,reserve=75,hp=100;
- let selectedGameMode = 'deathmatch';
- let myTeam = null;
- let bombMesh = null;
-let bombState = {
-  planted: false,
-  pickedUp: false,
-  carrierId: null,
-  site: null,
-  endsAt: null
-};
-let selectedMap = 'desert';
-
-const gameModeSelect = document.getElementById('gameMode');
-const mapSelect = document.getElementById('mapSelect');
-
-gameModeSelect.addEventListener('change', () => {
-  selectedGameMode = gameModeSelect.value;
-});
-
-mapSelect.addEventListener('change', () => {
-  selectedMap = mapSelect.value;
-});
-let bots=[],keys={},locked=false,scoped=false,reloading=false;
-let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
-let jumping=false,jumpVelocity=0,jumpHeight=0;
-
-// ONLINE CO-OP bağlantısı
-let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
-let netSendTimer=0;
- let mySpawn = { x: -8, z: 37 };
-
-const specs={
- Vandal:{mag:25,reserve:75,damage:34,rate:.105,range:85,auto:true},
- Şerif:{mag:6,reserve:36,damage:72,rate:.34,range:75,auto:false},
- AWM:{mag:5,reserve:20,damage:100,rate:1.05,range:150,auto:false}
-};
-
-const mat=(c,rough=.8,metal=0)=>new THREE.MeshStandardMaterial({
- color:c,roughness:rough,metalness:metal
-});
-
-const mats={
- wall:mat(0x596b70),
- dark:mat(0x263b46),
- floor:mat(0x66736d),
- trim:mat(0xd49a48),
- blue:mat(0x2787a4),
- red:mat(0xb94e42),
- skin:mat(0xd6a77d),
- black:mat(0x151b20,.45,.45),
- gun:mat(0x202a30,.35,.65),
- glass:new THREE.MeshStandardMaterial({
-  color:0x72b9c8,
-  transparent:true,
-  opacity:.25,
-  metalness:.6,
-  roughness:.15
- })
-};
-
-function box(parent,x,y,z,sx,sy,sz,material){
- let m=new THREE.Mesh(
-  new THREE.BoxGeometry(sx,sy,sz),
-  material
- );
- m.position.set(x,y,z);
- m.castShadow=true;
- m.receiveShadow=true;
- parent.add(m);
- return m;
-}
-
-function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
- let m=new THREE.Mesh(
-  new THREE.CylinderGeometry(r1,r2,len,12),
-  material
- );
- m.position.set(x,y,z);
- m.rotation.z=rotZ;
- m.castShadow=true;
- parent.add(m);
- return m;
-}
-
- function makeBlockCharacter(isBot = false, team = null) {
-  const character = new THREE.Group();
-
-  const bodyMaterial = selectedGameMode === 'bomb'
-  ? (team === myTeam ? mats.blue : mats.red)
-  : (isBot ? mats.red : mats.blue);
-  
-
-  box(character, 0, 1.05, 0, 0.65, 0.8, 0.35, bodyMaterial);
-  box(character, 0, 1.65, 0, 0.42, 0.42, 0.42, mats.skin);
-
-  box(character, 0, 1.91, 0, 0.46, 0.12, 0.46, mats.black);
-
-  box(character, -0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
-  box(character, 0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
-
-  box(character, -0.45, 1.1, 0, 0.2, 0.7, 0.22, bodyMaterial);
-  box(character, 0.45, 1.1, 0, 0.2, 0.7, 0.22, bodyMaterial);
-
+# Team-aware mesh recreation when team/mode changes.
+html = html.replace(
+"""  return character;
+}""",
+"""  character.userData.team = team;
+  character.userData.gameMode = selectedGameMode;
   return character;
-}
-function init(){
- scene=new THREE.Scene();
- scene.background=new THREE.Color(0x9ab4bd);
- scene.fog=new THREE.Fog(0x9ab4bd,55,155);
-
- camera=new THREE.PerspectiveCamera(
-  76,innerWidth/innerHeight,.1,250
- );
-
- camera.position.set(0,1.7,16);
-
- renderer=new THREE.WebGLRenderer({antialias:true});
- renderer.setSize(innerWidth,innerHeight);
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
- renderer.shadowMap.enabled=true;
- renderer.shadowMap.type=THREE.PCFSoftShadowMap;
- document.body.appendChild(renderer.domElement);
-
- scene.add(new THREE.HemisphereLight(0xd8edff,0x536052,2.0));
-
- const sun=new THREE.DirectionalLight(0xffedcf,2.4);
- sun.position.set(-20,35,18);
- sun.castShadow=true;
- sun.shadow.mapSize.set(2048,2048);
- scene.add(sun);
-
- buildMap();
-
- player=new THREE.Object3D();
- player.position.set(0,0,17);
- scene.add(player);
- player.add(camera);
- camera.position.set(0,1.65,0);
-
- buildWeapon();
-
- clock=new THREE.Clock();
- window.addEventListener('resize',resize);
-
- // GELİŞTİRİLMİŞ KLAVYE KONTROLLERİ
- const movementCodes={
-  w:'KeyW',
-  a:'KeyA',
-  s:'KeyS',
-  d:'KeyD',
-  arrowup:'KeyW',
-  arrowleft:'KeyA',
-  arrowdown:'KeyS',
-  arrowright:'KeyD',
-  shift:'ShiftLeft'
- };
-
- window.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
-  const k=e.key.toLowerCase();
-  if (e.code === 'Digit5' && game) {
-  e.preventDefault();
-  game = false;
-  online = false;
-  if (socket && socket.connected) {
-    socket.disconnect();
-  }
-  document.exitPointerLock?.();
-  menu.style.display = 'block';
-hud.style.display = 'none';
-end.style.display = 'none';
-  return;
-}
-  const code=movementCodes[k]||(
-   e.code==='ShiftRight'?'ShiftLeft':e.code
-  );
-
-  if([
-   'KeyW','KeyA','KeyS','KeyD',
-   'ShiftLeft','KeyR','Digit1','Digit2','Digit3','Space'
-  ].includes(code)){
-   e.preventDefault();
-  }
-
-  keys[code]=true;
-  keydown({code:code});
- },{passive:false});
-
- window.addEventListener('keyup',e=>{
-  const k=e.key.toLowerCase();
-  const code=movementCodes[k]||(
-   e.code==='ShiftRight'?'ShiftLeft':e.code
-  );
-  keys[code]=false;
- });
-
- window.addEventListener('blur',()=>{
-  keys={};
- });
-
- document.addEventListener('mousemove',mouseMove);
- document.addEventListener('mousedown',mouseDown);
- document.addEventListener('mouseup',mouseUp);
-
- document.addEventListener('pointerlockchange',()=>{
-  locked=document.pointerLockElement===renderer.domElement;
- });
-
- renderer.domElement.addEventListener('click',()=>{
-  if(game&&!locked){
-   renderer.domElement.requestPointerLock();
-  }
- });
-
- animate();
-}
-
-
- function buildDesertMap() {
- const concrete = mat(0x626970);
- const road = mat(0x292e35);
- const yellow = mat(0xe5b83e);
- const windowMat = mat(0x263d50);
- const sand = mat(0xb4a078);
- const metal = mat(0x414b55);
- const green = mat(0x354b35);
-
- // Zemin
- box(scene,0,-.35,0,132,.7,132,mats.floor);
-
- // Askerî üs yolları
- box(scene,0,.015,0,13,.04,130,road);
- box(scene,0,.025,0,.18,.05,130,yellow);
-
- for(let z=-58;z<=58;z+=12){
-  box(scene,-3,.04,z,.22,.06,5,yellow);
-  box(scene,3,.04,z,.22,.06,5,yellow);
- }
-
- // Dış duvarlar
- for(const x of [-65,65]){
-  box(scene,x,3,0,2,6,130,mats.wall);
- }
- for(const z of [-65,65]){
-  box(scene,0,3,z,130,6,2,mats.wall);
- }
-
- // İç savunma duvarları
- const walls=[
-  [-17,2,-12,2,4,35],
-  [17,2,-12,2,4,35],
-  [-17,2,17,2,4,26],
-  [17,2,17,2,4,26],
-  [-29,2,0,18,4,2],
-  [29,2,0,18,4,2],
-  [0,2,-24,2,4,18],
-  [0,2,24,2,4,16],
-  [-8,1.5,-3,9,3,2],
-  [8,1.5,3,9,3,2],
-  [-27,1.5,-20,8,3,2],
-  [27,1.5,20,8,3,2],
-  [-25,1.5,20,2,3,10],
-  [25,1.5,-20,2,3,10]
- ];
- walls.forEach(a=>box(scene,...a,mats.wall));
-
- // Askerî binalar
- for(const [x,z] of [[-45,-40],[45,-40],[-45,40],[45,40]]){
-  box(scene,x,3,z,13,6,12,concrete);
-  box(scene,x,6.1,z,14,.5,13,metal);
-
-  for(const wx of [-4,0,4]){
-   box(scene,x+wx,3.8,z-6.08,1.8,1.5,.08,windowMat);
-  }
-
-  box(scene,x,1.5,z-6.2,2.5,3,.15,metal);
-  box(scene,x,6.5,z,1,.5,1,yellow);
- }
-
- // Siperler ve kum torbaları
- for(const [x,z] of [
-  [-9,12],[9,12],[-27,-8],[27,8],
-  [-7,-25],[8,26],[0,5],[-32,27],[32,-27]
- ]){
-  for(let i=-1;i<=1;i++){
-   box(scene,x+i*1.05,.55,z,1,1.1,1,sand);
-  }
-  box(scene,x,1.15,z,3.2,.12,1.1,mats.trim);
- }
-
- // Metal sandıklar
- for(const [x,z] of [
-  [-48,-42],[48,-42],[-48,42],[48,42],
-  [-42,0],[42,0],[0,-49],[0,49]
- ]){
-  box(scene,x,1.1,z,5,2.2,5,metal);
-  box(scene,x,2.25,z,5.1,.15,5.1,mats.trim);
-  box(scene,x,1.1,z-2.55,3,.3,.12,yellow);
- }
-
- // Bariyerler
- for(const [x,z] of [
-  [-54,-22],[54,22],[-22,54],[22,-54]
- ]){
-  box(scene,x,1.1,z,2.5,2.2,13,concrete);
-  for(let i=-1;i<=1;i++){
-   box(scene,x,2.25,z+i*4,2.6,.12,.6,yellow);
-  }
- }
-
- // Gözetleme kuleleri
- for(const [x,z] of [
-  [-35,-35],[35,-35],[-35,35],[35,35]
- ]){
-  box(scene,x,5,z,1,10,1,mats.dark);
-  box(scene,x,10.2,z,2,.4,2,mats.trim);
-  box(scene,x,10.8,z,3,.5,3,metal);
- }
-
- // Aydınlatma direkleri
- for(const [x,z] of [
-  [-58,0],[58,0],[0,-58],[0,58],
-  [-30,0],[30,0]
- ]){
-  box(scene,x,4,z,.25,8,.25,mats.dark);
-  box(scene,x,8.1,z,1,.35,1,yellow);
- }
-
- // Zemindeki operasyon alanları
- for(const [x,z] of [[-25,-25],[25,25]]){
-  const p=box(scene,x,.02,z,13,.04,13,mat(0xc69a55));
-  p.material.transparent=true;
-  p.material.opacity=.18;
- }
-}
- 
-
-
-function buildMap() {
-  // Önce eski haritayı temizle
-  mapObjects.forEach(obj => scene.remove(obj));
-  mapObjects = [];
-
-  const before = new Set(scene.children);
-
-  if (selectedMap === 'desert') {
-    buildDesertMap();
-  } else {
-    const colors = {
-      snow: 0xeaf4fa,
-      factory: 0x555b60,
-      city: 0x777777
-    };
-
-    const ground = mat(colors[selectedMap] || 0x777777);
-    const wall = mat(0x414b55);
-
-    box(scene, 0, -.35, 0, 132, .7, 132, ground);
-
-    for (const x of [-65, 65]) {
-      box(scene, x, 3, 0, 2, 6, 130, wall);
-    }
-
-    for (const z of [-65, 65]) {
-      box(scene, 0, 3, z, 130, 6, 2, wall);
-    }
-
-    if (selectedMap === 'snow') {
-      const ice = mat(0x9fc9dc);
-
-      for (const [x,z] of [[-30,-25],[30,-25],[-30,25],[30,25]]) {
-        box(scene,x,2,z,12,4,12,ice);
-      }
-
-      for (const [x,z] of [[-10,0],[10,0],[0,-18],[0,18]]) {
-        box(scene,x,1,z,7,2,3,ice);
-      }
-    }
-
-    if (selectedMap === 'factory') {
-      const metal = mat(0x343c43,.4,.7);
-      const orange = mat(0xd47a32);
-
-      box(scene,-35,5,-25,22,10,18,metal);
-      box(scene,35,5,25,22,10,18,metal);
-      box(scene,0,7,0,30,1,8,metal);
-
-      for (const [x,z] of [[-12,-20],[12,-20],[-12,20],[12,20]]) {
-        box(scene,x,1.5,z,9,3,4,orange);
-      }
-    }
-
-    if (selectedMap === 'city') {
-      const building = mat(0x777b82);
-      const glass = mat(0x284b65);
-
-      for (const [x,z] of [[-42,-35],[42,-35],[-42,35],[42,35]]) {
-        box(scene,x,8,z,17,16,15,building);
-
-        for (let y=5;y<=12;y+=4) {
-          box(scene,x,y,z-7.6,12,1.5,.15,glass);
-        }
-      }
-
-      for (const [x,z] of [[-12,0],[12,0],[0,-12],[0,12]]) {
-        box(scene,x,1.5,z,6,3,6,building);
-      }
-    }
-  }
-
-  // Yeni harita nesnelerini kaydet
-  mapObjects = scene.children.filter(obj => !before.has(obj));
-}
-function createBombMesh() {
-  if (!scene || bombMesh) return;
-
-  const group = new THREE.Group();
-
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.7, 0.45, 0.7),
-    new THREE.MeshStandardMaterial({
-      color: 0x222222,
-      metalness: 0.6,
-      roughness: 0.35
-    })
-  );
-
-  body.position.y = 0.35;
-  group.add(body);
-
-  const light = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-  );
-
-  light.position.y = 0.65;
-  group.add(light);
-
-  group.position.set(-48, 0, -48);
-  scene.add(group);
-
-  bombMesh = group;
-}
-function buildWeapon(){
- if(weaponGroup) camera.remove(weaponGroup);
-
- weaponGroup = new THREE.Group();
- camera.add(weaponGroup);
-
- const gunMetal = mats.gun;
- const black = mats.black;
- const dark = mats.dark;
- const trim = mats.trim;
-
- if(weaponName === 'Vandal'){
-
-  // Ana gövde
-  box(weaponGroup,.38,-.34,-.85,.24,.22,.82,gunMetal);
-
-  // Namlu
-  cylinder(weaponGroup,.38,-.31,-1.48,.045,.045,.72,black,Math.PI/2);
-  cylinder(weaponGroup,.38,-.31,-1.85,.065,.065,.12,trim,Math.PI/2);
-
-  // Dipçik
-  box(weaponGroup,.38,-.36,-.32,.18,.2,.45,dark);
-
-  // Şarjör
-  box(weaponGroup,.38,-.56,-.85,.15,.35,.23,black);
-
-  // Kabza
-  box(weaponGroup,.38,-.52,-.58,.16,.32,.2,dark);
-
-  // Üst ray
-  box(weaponGroup,.38,-.21,-.82,.16,.07,.7,trim);
-
-  // Dürbün
-  box(weaponGroup,.38,-.12,-.88,.15,.13,.3,black);
-  cylinder(weaponGroup,.38,-.12,-1.05,.08,.08,.08,trim,Math.PI/2);
-
-  // Namlu altı tutacak
-  box(weaponGroup,.38,-.52,-1.12,.14,.28,.18,dark);
-
-  // Yan detaylar
-  box(weaponGroup,.25,-.31,-.8,.04,.1,.5,trim);
-  box(weaponGroup,.51,-.31,-.8,.04,.1,.5,trim);
-
- }else if(weaponName === 'Şerif'){
-
-  // Tabanca gövdesi
-  box(weaponGroup,.38,-.34,-.75,.2,.2,.48,gunMetal);
-
-  // Uzun namlu
-  cylinder(weaponGroup,.38,-.31,-1.12,.045,.045,.48,black,Math.PI/2);
-
-  // Kabza
-  box(weaponGroup,.38,-.55,-.68,.17,.36,.2,dark);
-
-  // Tetik koruması
-  box(weaponGroup,.38,-.49,-.87,.2,.05,.18,trim);
-
-  // Üst gez ve arpacık
-  box(weaponGroup,.38,-.21,-.78,.1,.06,.25,black);
-
-  // Sürgü detayları
-  box(weaponGroup,.26,-.34,-.75,.04,.1,.3,trim);
-
- }else{
-
-  // Ağır silah gövdesi
-  box(weaponGroup,.38,-.34,-.88,.24,.22,1,gunMetal);
-
-  // Uzun namlu
-  cylinder(weaponGroup,.38,-.31,-1.72,.05,.05,1,black,Math.PI/2);
-  cylinder(weaponGroup,.38,-.31,-2.2,.075,.075,.16,trim,Math.PI/2);
-
-  // Dipçik
-  box(weaponGroup,.38,-.36,-.35,.2,.22,.4,dark);
-
-  // Şarjör
-  box(weaponGroup,.38,-.57,-.9,.17,.38,.25,black);
-
-  // Kabza
-  box(weaponGroup,.38,-.53,-.6,.16,.3,.2,dark);
-
-  // Üst ray
-  box(weaponGroup,.38,-.2,-.9,.16,.08,.8,trim);
-
-  // Dürbün
-  cylinder(weaponGroup,.38,-.1,-.9,.1,.1,.4,black,Math.PI/2);
-
-  // Ön tutacak
-  box(weaponGroup,.38,-.52,-1.15,.15,.3,.2,dark);
- }
-
- // El ve tutuş
- box(weaponGroup,.18,-.48,-.52,.14,.1,.22,mats.skin);
-
- // Silahın konumu
- weaponGroup.position.set(0,0,0);
-}
-
-function updateAmmo(){
- ammoEl.innerHTML=`${ammo} / ${reserve}<small>${weaponName.toUpperCase()}${reloading?' • DOLDURULUYOR':''}</small>`;
-}
-
-function setWeapon(n){
- weaponName=n;
- ammo=specs[n].mag;
- reserve=specs[n].reserve;
- reloading=false;
- scoped=false;
- scopeEl.style.display='none';
- cross.style.display='block';
- buildWeapon();
- updateAmmo();
-}
-
-function spawnBot(x,z){
- const bot=makeBlockCharacter(true);
- bot.position.set(x,0,z);
- scene.add(bot);
-
- bot.userData={
-  id:bots.length,
-  hp:100,
-  fire:1+Math.random()*1.4,
-  walk:Math.random()*6,
-  alive:true
- };
-
- bots.push(bot);
-}
-
- function startGame(options = {}){
- if(!renderer)init();
-selectedMap = mapSelect.value;
-selectedGameMode = gameModeSelect.value;
-buildMap();
-  createBombMesh();
- menu.style.display='none';
- end.style.display='none';
- hud.style.display='block';
-
- game=true;
- hp=100;
- kills=0;
-
- player.position.set(mySpawn.x, 0, mySpawn.z);
-
- player.rotation.set(0,0,0);
- camera.rotation.set(0,0,0);
-
- bots.forEach(b=>scene.remove(b));
- bots=[];
-
- setWeapon(document.getElementById('weapon').value);
-
- if (!online || options.bots !== false) {
-  [
-    [-25,-22],
-    [25,-22],
-    [-29,25],
-    [28,25],
-    [0,-32],
-    [0,1],
-    [-46,8],
-    [46,-8]
-  ].forEach(p => spawnBot(...p));
-}
-
- renderer.domElement.requestPointerLock();
-
- msg.textContent='';
- updateHud();
-}
-
- function returnToMenu(){
- game=false;
- document.exitPointerLock();
- hud.style.display='none';
- end.style.display='none';
- menu.style.display='block';
-}
- document.getElementById('back').addEventListener('click',returnToMenu);
-function updateHud(){
- hpEl.textContent=hp;
- document.getElementById('round').textContent=(online?`CO-OP ${roomCode}`:'BOT MATCH')+` • ${kills} ELİM`;
- document.getElementById('players').textContent=`OYUNCULAR: ${Math.max(1,remotePlayers.size+1)}/10`;
- updateAmmo();
-}
-
-function keydown(e){
- keys[e.code]=true;
-
- if(!game)return;
-
- if (e.code === 'KeyE' && !e.repeat && online && selectedGameMode === 'bomb') {
-  const sites = [
-    { name: 'A', x: -25, z: 0 },
-    { name: 'B', x: 25, z: 0 }
-  ];
-
-  const bombSpawnDistance = Math.hypot(
-    player.position.x - (-48),
-    player.position.z - (-48)
-  );
-
-  if (myTeam === 'attack' && !bombState.pickedUp && !bombState.planted) {
-    if (bombSpawnDistance <= 6) {
-      socket.emit('pickBomb');
-    }
-  } else {
-    const site = sites.find(s =>
-      Math.hypot(
-        player.position.x - s.x,
-        player.position.z - s.z
-      ) <= 8
-    );
-
-    if (site) {
-      if (myTeam === 'attack' && bombState.pickedUp && !bombState.planted) {
-        socket.emit('plantBomb', { site: site.name });
-      } else if (myTeam === 'defense' && bombState.planted && bombState.site === site.name) {
-        socket.emit('defuseBomb');
-      }
-    }
-  }
- }
-
- if(e.code==='KeyR')reload();
- if(e.code==='Digit1')setWeapon('Vandal');
- if(e.code==='Digit2')setWeapon('Şerif');
- if(e.code==='Digit3')setWeapon('AWM');
-}
-
-let lastMouseDown=false;
-
-function mouseMove(e){
- if(!game||!locked)return;
-
- player.rotation.y-=e.movementX*.0022;
- camera.rotation.x-=e.movementY*.0022;
-
- camera.rotation.x=Math.max(
-  -1.48,
-  Math.min(1.48,camera.rotation.x)
- );
-}
-
-function mouseDown(e){
- if(!game)return;
-
- if(e.button===0){
-  lastMouseDown=true;
-  shoot();
- }
-
- if(e.button===2&&weaponName==='AWM'){
-  scoped=true;
-  scopeEl.style.display='block';
-  cross.style.display='none';
-  camera.fov=27;
-  camera.updateProjectionMatrix();
- }
-}
-
-function mouseUp(e){
- if(e.button===0)lastMouseDown=false;
- if(e.button===2)unScope();
-}
-
-function unScope(){
- scoped=false;
- scopeEl.style.display='none';
- cross.style.display='block';
-
- if(camera){
-  camera.fov=76;
-  camera.updateProjectionMatrix();
- }
-}
-
-document.addEventListener('contextmenu',e=>e.preventDefault());
-
-function reload(){
- if(reloading||ammo===specs[weaponName].mag||reserve<=0)return;
-
- reloading=true;
- updateAmmo();
-
- setTimeout(()=>{
-  if(!game)return;
-
-  let need=specs[weaponName].mag-ammo;
-  let take=Math.min(need,reserve);
-
-  ammo+=take;
-  reserve-=take;
-  reloading=false;
-  updateAmmo();
-
- },weaponName==='AWM'?1900:1450);
-}
-
-function shoot(){
- if(!game||!locked||reloading||shootCd>0)return;
-
- if(ammo<=0){
-  msg.textContent='ŞARJÖR BOŞ — R İLE DOLDUR';
-  setTimeout(()=>msg.textContent='',900);
-  return;
- }
-
- ammo--;
- shootCd=specs[weaponName].rate;
- recoil=.09;
- // Ateş efekti
-if (weaponGroup) {
-  weaponGroup.position.z = 0.12;
-
-  setTimeout(() => {
-    if (weaponGroup) {
-      weaponGroup.position.z = 0;
-    }
-  }, 75);
-}
- // Namlu alevi
-if (weaponGroup) {
-  const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.13, 8, 8),
-    new THREE.MeshBasicMaterial({ color: 0xffa500 })
-  );
-
-  flash.scale.set(1, 1, 2);
-
-  if (weaponName === 'Şerif') {
-    flash.position.set(0.38, -0.31, -1.2);
-  } else if (weaponName === 'Vandal') {
-    flash.position.set(0.38, -0.31, -1.9);
-  } else {
-    flash.position.set(0.38, -0.31, -2.2);
-  }
-
-  weaponGroup.add(flash);
-
-  setTimeout(() => {
-    flash.removeFromParent();
-    flash.geometry.dispose();
-    flash.material.dispose();
-  }, 100);
-}
- updateAmmo();
-
- const ray=new THREE.Raycaster();
- ray.setFromCamera(new THREE.Vector2(0,0),camera);
- ray.far=specs[weaponName].range;
-
- let targets=[];
-
- bots.filter(b=>b.userData.alive).forEach(b=>{
-  b.traverse(o=>{
-   if(o.isMesh)targets.push(o);
-  });
- });
-
- const botHit = ray.intersectObjects(targets, false)[0];
-const playerRayHit = ray.intersectObjects([...remoteMeshes.values()], true)[0];
-
-if (playerRayHit && (!botHit || playerRayHit.distance < botHit.distance)) {
-  let hitPlayerId = null;
-
-  for (const [id, mesh] of remoteMeshes) {
-    let node = playerRayHit.object;
-
-    while (node && node !== mesh) {
-      node = node.parent;
-    }
-
-    if (node === mesh) {
-      hitPlayerId = id;
-      break;
-    }
-  }
-
-  if (hitPlayerId && online && socket && socket.connected) {
-    socket.emit('playerHit', {
-      targetId: hitPlayerId,
-      damage: specs[weaponName].damage
-    });
-    return;
-  }
-}
-
-const hit = botHit;
-
- if(hit){
-  let b=hit.object;
-
-  while(b.parent&&!b.userData.alive){
-   b=b.parent;
-  }
-
-  if(b.userData.alive){
-   if(online&&socket&&socket.connected){
-    socket.emit('botHit',{botId:b.userData.id,damage:specs[weaponName].damage});
-   }else{
-    b.userData.hp-=specs[weaponName].damage;
-    if(b.userData.hp<=0){
-     b.userData.alive=false;
-     b.visible=false;
-     kills++;
-     msg.textContent='HEDEF ETKİSİZ';
-     setTimeout(()=>msg.textContent='',700);
-     updateHud();
-    }
-   }
-  }
- }
-}
-
-function damagePlayer(d){
- hp=Math.max(0,hp-d);
- hpEl.textContent=hp;
-
- if(hp<=0){
-  game=false;
-  document.exitPointerLock?.();
-  end.style.display='flex';
- }
-}
-
-function updateBots(dt){
- bots.forEach(b=>{
-  if(!b.userData.alive)return;
-
-  let dx=player.position.x-b.position.x;
-  let dz=player.position.z-b.position.z;
-  let dist=Math.hypot(dx,dz);
-
-  b.userData.walk+=dt*7;
-  b.position.y=Math.abs(Math.sin(b.userData.walk))*.04;
-
-  if(dist>7){
-   b.position.x+=dx/dist*dt*1.55;
-   b.position.z+=dz/dist*dt*1.55;
-   b.rotation.y=Math.atan2(-dx,-dz);
-  }
-
-  b.userData.fire-=dt;
-
-  if(dist<32&&b.userData.fire<=0){
-   b.userData.fire=1.1+Math.random()*1.2;
-
-   if(Math.random()<Math.max(.16,.68-dist*.014)){
-    damagePlayer(5+Math.floor(Math.random()*8));
-   }
-  }
- });
-}
-
-function update(dt){
- if(!game)return;
-
- shootCd=Math.max(0,shootCd-dt);
-// ZIPLAMA
-if (keys.Space && !jumping) {
-  jumping = true;
-  jumpVelocity = 6;
-}
-
-if (jumping) {
-  jumpVelocity -= 18 * dt;
-  jumpHeight += jumpVelocity * dt;
-
-  if (jumpHeight <= 0) {
-    jumpHeight = 0;
-    jumping = false;
-    jumpVelocity = 0;
-  }
-}
- if(lastMouseDown&&specs[weaponName].auto)shoot();
-
- let f=0,s=0;
-
- if(keys.KeyW)f-=1;
- if(keys.KeyS)f+=1;
- if(keys.KeyA)s-=1;
- if(keys.KeyD)s+=1;
-
- let len=Math.hypot(f,s)||1;
-
- f/=len;
- s/=len;
-
- const speed=keys.ShiftLeft?8:5.3;
-
- let sin=Math.sin(player.rotation.y);
- let cos=Math.cos(player.rotation.y);
-
- let nx=player.position.x+(s*cos+f*sin)*speed*dt;
- let nz=player.position.z+(f*cos-s*sin)*speed*dt;
-
- // DÜZELTİLDİ: X ve Z hareketleri ayrı kontrol edilir.
- // Böylece duvar boyunca kayarak hareket edebilirsin.
-
- if(Math.abs(nx)<61&&!collides(nx,player.position.z)){
-  player.position.x=nx;
- }
-
- if(Math.abs(nz)<61&&!collides(player.position.x,nz)){
-  player.position.z=nz;
- }
-
- if(f||s){
-  const running = keys.ShiftLeft;
-  moveBob += dt * (running ? 16 : 10);
-
-  camera.position.y = 1.65 + jumpHeight +
-    Math.sin(moveBob) * (running ? 0.065 : 0.035);
-
-  weaponGroup.position.x =
-    Math.sin(moveBob * 0.5) * (running ? 0.045 : 0.025);
-
-  weaponGroup.position.y =
-    -recoil + Math.abs(Math.sin(moveBob)) * (running ? 0.045 : 0.02);
-}else{
-  camera.position.y = 1.65 + jumpHeight;
-  weaponGroup.position.x = 0;
-  weaponGroup.position.y = -recoil;
-}
- recoil=Math.max(0,recoil-dt*.6);
- weaponGroup.position.y=-recoil;
- weaponGroup.rotation.x=recoil*.8;
-weaponGroup.rotation.z =
-  (f || s) ? Math.sin(moveBob * 0.5) * 0.025 : 0;
-
-if (keys.ShiftLeft && (f || s)) {
-  weaponGroup.rotation.x += 0.035;
-}
- updateBots(dt);
- if(online&&socket&&socket.connected){
-  netSendTimer+=dt;
-  if(netSendTimer>=.05){
-   netSendTimer=0;
-   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:weaponName});
-  }
- }
- updateRemotePlayers();
-
- if (!online && bots.filter(b => b.userData.alive).length === 0) {
-  spawnBot(
-    (Math.random() - 0.5) * 104,
-    (Math.random() - 0.5) * 104
-  );
-}
-}
-
-function collides(x,z){
- const blocks=[
-  [-17,-12,2,35],
-  [17,-12,2,35],
-  [-17,17,2,26],
-  [17,17,2,26],
-  [-29,0,18,2],
-  [29,0,18,2],
-  [0,-24,2,18],
-  [0,24,2,16],
-  [-8,-3,9,2],
-  [8,3,9,2],
-  [-27,-20,8,2],
-  [27,20,8,2],
-  [-25,20,2,10],
-  [25,-20,2,10]
- ];
-
- for(const [bx,bz,w,d] of blocks){
-  if(
-   Math.abs(x-bx)<w/2+.55&&
-   Math.abs(z-bz)<d/2+.55
-  ){
-   return true;
-  }
- }
-
- for(const [bx,bz] of [
-  [-9,12],
-  [9,12],
-  [-27,-8],
-  [27,8],
-  [-7,-25],
-  [8,26],
-  [0,5],
-  [-32,27],
-  [32,-27]
- ]){
-  if(
-   Math.abs(x-bx)<2.1&&
-   Math.abs(z-bz)<2.1
-  ){
-   return true;
-  }
- }
-
- return false;
-}
-
-function animate(){
- requestAnimationFrame(animate);
-
- let dt=clock?Math.min(clock.getDelta(),.05):0;
-
- update(dt);
-
- if(renderer){
-  renderer.render(scene,camera);
- }
-}
-
-function setOnlineStatus(text){
- const el=document.getElementById('onlineStatus');
- if(el)el.textContent=text;
-}
-
-function updatePlayerCount(){
- const el=document.getElementById('players');if(el)el.textContent=`OYUNCULAR: ${Math.min(10,remotePlayers.size+1)}/10`;
-}
-function updateRemotePlayers(){
- if(!scene)return;
- for(const [id,p] of remotePlayers){
+}""",
+1
+)
+old = """ for(const [id,p] of remotePlayers){
   let mesh=remoteMeshes.get(id);
   if(!mesh){
   mesh=makeBlockCharacter(false,p.team);
@@ -1291,240 +78,166 @@ function updateRemotePlayers(){
 }
   mesh.position.set(Number(p.x)||0,0,Number(p.z)||0);
   mesh.rotation.y=Number(p.ry)||0;
- }
- updatePlayerCount();
-}
+ }"""
+new = """ for(const [id,p] of remotePlayers){
+  let mesh=remoteMeshes.get(id);
 
- function connectRoom(action) {
-  const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
-  const name = (document.getElementById('playerName').value.trim() || 'Oyuncu').slice(0, 16);
-  const code = document.getElementById('roomCode').value.trim().toUpperCase();
-
-  if (!url) {
-    setOnlineStatus('Sunucu adresini gir.');
-    return;
+  if(mesh && (mesh.userData.team !== p.team ||
+              mesh.userData.gameMode !== selectedGameMode)){
+    scene.remove(mesh);
+    mesh = null;
+    remoteMeshes.delete(id);
   }
 
-  if (action === 'join' && !code) {
-    setOnlineStatus('Katılmak için oda kodunu gir.');
-    return;
+  if(!mesh){
+    mesh=makeBlockCharacter(false,p.team);
+    scene.add(mesh);
+    remoteMeshes.set(id,mesh);
   }
 
-  if (socket) {
-    socket.disconnect();
-    socket = null;
+  mesh.visible = p.alive !== false && Number(p.hp) !== 0;
+  mesh.position.set(Number(p.x)||0,0,Number(p.z)||0);
+  mesh.rotation.y=Number(p.ry)||0;
+ }"""
+assert old in html
+html = html.replace(old, new, 1)
+
+# Align visible bomb site pads with server interaction coordinates.
+html = html.replace(
+"for(const [x,z] of [[-25,-25],[25,25]]){",
+"for(const [x,z] of [[-25,0],[25,0]]){",
+1
+)
+
+# Reset bomb mesh and local timers when each game starts.
+html = html.replace(
+"""  createBombMesh();
+ menu.style.display='none';""",
+"""  createBombMesh();
+  if (bombMesh) {
+    bombMesh.visible = selectedGameMode === 'bomb';
+    bombMesh.position.set(-48, 0, -48);
   }
-
-  playerName = name;
-  setOnlineStatus('Sunucuya bağlanılıyor...');
-
-  socket = io(url, {
-    transports: ['websocket', 'polling'],
-    timeout: 10000
-  });
-
-  socket.on('connect', () => {
-    socket.emit(
-      action === 'create' ? 'createRoom' : 'joinRoom',
-      { code, name },
-      res => {
-        if (!res || !res.ok) {
-          setOnlineStatus(res?.error || 'Odaya girilemedi.');
-          return;
-        }
-
-        online = true;
-        roomCode = res.code;
-       mySpawn = res.spawn || { x: -8, z: 37 };
-        menu.style.display = 'none';
-        hud.style.display = 'none';
-        end.style.display = 'none';
-        lobby.style.display = 'flex';
-
-        updateLobby(res);
-        lobbyStatus.textContent = 'Oyuncuların katılması bekleniyor.';
-      }
-    );
-  });
-
-  socket.on('lobbyUpdate', data => updateLobby(data));
-
-  
-socket.on('gameStarted', data => {
-  const me = (data.players || []).find(p => p.id === socket.id);
-
-  myTeam = me ? me.team : null;
-  selectedGameMode = data.gameMode || 'deathmatch';
-gameModeSelect.value = selectedGameMode;
-
-if (selectedGameMode === 'bomb') {
-  document.getElementById('bombStatus').textContent =
-    myTeam === 'attack'
-      ? '🔵 SEN SALDIRI TAKIMINDASIN'
-      : '🔴 SEN SAVUNMA TAKIMINDASIN';
-}
-    
-      
-  
-
-
-  if (me) {
-    mySpawn = { x: me.x, z: me.z };
-  }
-
-  bombState = data.bomb || {
+  bombState = {
     planted: false,
     pickedUp: false,
     carrierId: null,
     site: null,
     endsAt: null
   };
+ menu.style.display='none';""",
+1
+)
 
-  selectedGameMode = data.gameMode || 'deathmatch';
-  gameModeSelect.value = selectedGameMode;
+# Keep the round's server-selected map/mode rather than overwriting with stale UI values.
+html = html.replace(
+""" selectedMap = mapSelect.value;
+selectedGameMode = gameModeSelect.value;
+buildMap();""",
+""" selectedMap = mapSelect.value || selectedMap;
+selectedGameMode = gameModeSelect.value || selectedGameMode;
+buildMap();""",
+1
+)
 
-  selectedMap = data.map || 'desert';
-  mapSelect.value = selectedMap;
+# Introduce a bomb countdown interval.
+html = html.replace(
+"let bombPrepInterval = null;",
+"let bombPrepInterval = null;\nlet bombClockInterval = null;",
+1
+)
 
-  currentBotsEnabled = data.botsEnabled;
-  lobby.style.display = 'none';
+# Replace all duplicate bomb event handlers with one set matching server payloads.
+bomb_start = html.index("socket.on('bombPickedUp', data => {", html.index("let bombPrepInterval"))
+round_start = html.index("socket.on('roundStarting', data => {", bomb_start)
 
-  startGame({
-    bots: selectedGameMode === 'bomb' ? false : currentBotsEnabled
-  });
-
-  (data.bots || []).forEach((state, i) => {
-    const b = bots[i];
-
-    if (b) {
-      b.userData.hp = state.hp;
-      b.userData.dead = state.dead;
-      b.userData.alive = !state.dead;
-      b.visible = !state.dead;
-    }
-  });
-});
-
-
-  socket.on('connect_error', () => {
-    setOnlineStatus('Sunucuya bağlanılamadı. Sunucunun açık ve adresin doğru olduğundan emin ol.');
-  });
-
-  socket.on('playerJoined', p => remotePlayers.set(p.id, p));
-
-  socket.on('playerLeft', id => {
-    remotePlayers.delete(id);
-    const m = remoteMeshes.get(id);
-    if (m) {
-      scene.remove(m);
-      remoteMeshes.delete(id);
-    }
-  });
-  socket.on('playerDamaged', data => {
-    damagePlayer(Number(data?.damage) || 0);
-
-    msg.textContent = (data?.attacker || 'Bir oyuncu') + ' sana ateş etti!';
-
-    setTimeout(() => {
-      msg.textContent = '';
-    }, 900);
-  });
-  socket.on('playerEliminated', data => {
-  const mesh = remoteMeshes.get(data.playerId);
-
-  if (mesh) {
-    mesh.visible = false;
+bomb_handlers = """function stopBombClock() {
+  if (bombClockInterval) {
+    clearInterval(bombClockInterval);
+    bombClockInterval = null;
   }
+}
 
-  remotePlayers.delete(data.playerId);
+function showBombCountdown() {
+  stopBombClock();
+  const status = document.getElementById('bombStatus');
 
-  if (data.killerId === socket.id) {
-    kills++;
-    updateHud();
-    msg.textContent = 'RAKİP ETKİSİZ!';
-    setTimeout(() => msg.textContent = '', 1000);
-  }
-});
-  socket.on('playersUpdate', list => {
-    (list || []).forEach(p => {
-      if (p.id !== socket.id) remotePlayers.set(p.id, p);
-    });
-    updatePlayerCount();
-  });
- 
-let bombPrepInterval = null;
+  const update = () => {
+    if (!bombState.planted || !bombState.endsAt) return;
+    const remaining = Math.max(0, Math.ceil((bombState.endsAt - Date.now()) / 1000));
+    status.textContent = '💣 BOMBA KURULU: ' + remaining + ' SANİYE';
+  };
+
+  update();
+  bombClockInterval = setInterval(update, 250);
+}
 
 socket.on('bombPickedUp', data => {
   bombState.pickedUp = true;
-  bombState.carrierId = data.carrierId;
+  bombState.carrierId = data.carrierId || null;
   bombState.planted = false;
+  bombState.site = null;
+  bombState.endsAt = null;
+  stopBombClock();
 
-  if (bombMesh) {
-    bombMesh.visible = false;
-  }
+  if (bombMesh) bombMesh.visible = false;
 
   document.getElementById('bombStatus').textContent =
-    '💣 BOMBA ALINDI: ' + data.playerName;
+    '💣 BOMBA ALINDI: ' + (data.playerName || 'SALDIRI TAKIMI');
 });
 
 socket.on('bombPlanted', data => {
   bombState.pickedUp = false;
   bombState.planted = true;
   bombState.carrierId = null;
-  bombState.site = data.site;
-  bombState.endsAt = data.endsAt;
+  bombState.site = data.site || null;
+  bombState.endsAt = data.endsAt || null;
 
   if (bombMesh) {
     bombMesh.visible = true;
-
-    const site = data.site === 'A'
+    const sitePosition = data.site === 'A'
       ? { x: -25, z: 0 }
       : { x: 25, z: 0 };
-
-    bombMesh.position.set(site.x, 0, site.z);
+    bombMesh.position.set(sitePosition.x, 0, sitePosition.z);
   }
 
-  document.getElementById('bombStatus').textContent =
-    '💣 BOMBA KURULDU! ' + data.site + ' NOKTASI';
+  showBombCountdown();
 });
 
-socket.on('bombDefusing', () => {
+socket.on('bombDefusing', data => {
   document.getElementById('bombStatus').textContent =
-    'BOMBA ETKİSİZLEŞTİRİLİYOR...';
-});
-  socket.on('bombDefused', () => {
-  bombState.planted = false;
-
-  if (bombMesh) {
-    bombMesh.visible = false;
-  }
-
-  document.getElementById('bombStatus').textContent =
-    '✅ BOMBA ETKİSİZLEŞTİRİLDİ!';
-});
-  socket.on('bombExploded', () => {
-  bombState.planted = false;
-
-  if (bombMesh) {
-    bombMesh.visible = false;
-  }
-
-  document.getElementById('bombStatus').textContent =
-    '💥 BOMBA PATLADI!';
-});
-
-socket.on('bombExploded', () => {
-  document.getElementById('bombStatus').textContent =
-    'BOMBA PATLADI! SALDIRI TAKIMI KAZANDI!';
+    '🔧 SAVUNMA TAKIMI BOMBAYI ETKİSİZLEŞTİRİYOR...';
 });
 
 socket.on('bombDefused', () => {
+  bombState.planted = false;
+  bombState.pickedUp = false;
+  stopBombClock();
+  if (bombMesh) bombMesh.visible = false;
+
   document.getElementById('bombStatus').textContent =
-    'BOMBA ETKİSİZLEŞTİRİLDİ! SAVUNMA TAKIMI KAZANDI!';
+    '✅ BOMBA ETKİSİZLEŞTİRİLDİ! SAVUNMA TAKIMI KAZANDI!';
+});
+
+socket.on('bombExploded', () => {
+  bombState.planted = false;
+  bombState.pickedUp = false;
+  stopBombClock();
+  if (bombMesh) bombMesh.visible = false;
+
+  document.getElementById('bombStatus').textContent =
+    '💥 BOMBA PATLADI! SALDIRI TAKIMI KAZANDI!';
 });
 
 socket.on('bombReset', data => {
-  bombState = data.bomb;
+  stopBombClock();
+  bombState = data?.bomb || {
+    planted: false,
+    pickedUp: false,
+    carrierId: null,
+    site: null,
+    endsAt: null
+  };
 
   if (!bombMesh) createBombMesh();
 
@@ -1533,152 +246,94 @@ socket.on('bombReset', data => {
     bombMesh.position.set(-48, 0, -48);
   }
 });
-socket.on('bombPickedUp', data => {
-  bombState = data.bomb;
 
-  if (bombMesh) {
-    bombMesh.visible = false;
+"""
+html = html[:bomb_start] + bomb_handlers + html[round_start:]
+
+# Ensure reset of bomb countdown on round start / round preparation.
+html = html.replace(
+"""socket.on('roundStarting', data => {
+  if (bombPrepInterval) clearInterval(bombPrepInterval);""",
+"""socket.on('roundStarting', data => {
+  stopBombClock();
+  if (bombPrepInterval) clearInterval(bombPrepInterval);""",
+1
+)
+
+# Update local team and all current remote player states before starting the match.
+html = html.replace(
+"""  myTeam = me ? me.team : null;
+  selectedGameMode = data.gameMode || 'deathmatch';""",
+"""  myTeam = me ? me.team : null;
+  remotePlayers.clear();
+  remoteMeshes.forEach(mesh => scene && scene.remove(mesh));
+  remoteMeshes.clear();
+  (data.players || []).forEach(p => {
+    if (p.id !== socket.id) remotePlayers.set(p.id, p);
+  });
+  selectedGameMode = data.gameMode || 'deathmatch';""",
+1
+)
+
+# Clean remote mesh on player elimination and don't resurrect eliminated mesh from stale object.
+html = html.replace(
+"""  if (mesh) {
+    mesh.visible = false;
   }
-});
-  socket.on('bombPlanted', data => {
-  bombState = data.bomb;
 
-  if (bombMesh) {
-    bombMesh.visible = true;
-
-    const site = data.bomb.site === 'A'
-      ? { x: -25, z: 0 }
-      : { x: 25, z: 0 };
-
-    bombMesh.position.set(site.x, 0, site.z);
+  remotePlayers.delete(data.playerId);""",
+"""  if (mesh) {
+    scene.remove(mesh);
+    remoteMeshes.delete(data.playerId);
   }
 
-  document.getElementById('bombStatus').textContent =
-    '💣 BOMBA KURULDU! ' + data.bomb.site NOKTASI;
-});
-  socket.on('bombDefusing', data => {
-  document.getElementById('bombStatus').textContent =
-    '🔧 SAVUNMA TAKIMI BOMBAYI ETKİSİZLEŞTİRİYOR!';
-});
-socket.on('roundStarting', data => {
-  if (bombPrepInterval) clearInterval(bombPrepInterval);
+  remotePlayers.delete(data.playerId);""",
+1
+)
 
-  let seconds = data.prepareSeconds || 5;
-
-  const status = document.getElementById('bombStatus');
-
-  status.textContent =
-    'TUR ' + data.round + '/12 - HAZIRLAN! ' + seconds;
-
-  bombPrepInterval = setInterval(() => {
-    seconds--;
-
-    if (seconds > 0) {
-      status.textContent =
-        'TUR ' + data.round + '/12 - HAZIRLAN! ' + seconds;
-    } else {
+# Ensure bomb state/interval is cleaned when leaving the game or disconnecting.
+html = html.replace(
+"""function returnToMenu(){
+ game=false;""",
+"""function returnToMenu(){
+ game=false;
+ if (bombPrepInterval) {
+   clearInterval(bombPrepInterval);
+   bombPrepInterval = null;
+ }
+ stopBombClock();""",
+1
+)
+html = html.replace(
+"""  socket.on('disconnect', () => {
+    online = false;""",
+"""  socket.on('disconnect', () => {
+    online = false;
+    stopBombClock();
+    if (bombPrepInterval) {
       clearInterval(bombPrepInterval);
       bombPrepInterval = null;
-    }
-  }, 1000);
-});
+    }""",
+1
+)
 
-socket.on('roundStarted', data => {
-  if (bombPrepInterval) {
-    clearInterval(bombPrepInterval);
-    bombPrepInterval = null;
-  }
+# Make startGame robust when local bots are accidentally enabled for bomb mode.
+html = html.replace(
+""" if (!online || options.bots !== false) {""",
+""" if (selectedGameMode !== 'bomb' && (!online || options.bots !== false)) {""",
+1
+)
 
-  document.getElementById('bombStatus').textContent =
-    'TUR ' + data.round + '/12 BAŞLADI!';
-});
+# Fix duplicate back button click handlers (retain the explicit handler below).
+html = html.replace(
+" document.getElementById('back').addEventListener('click',returnToMenu);\n",
+"",
+1
+)
+# Use flex for the menu when returning.
+html = html.replace(" menu.style.display='block';", " menu.style.display='flex';", 1)
 
-socket.on('roundOver', data => {
-  document.getElementById('bombStatus').textContent =
-    'TUR ' + data.round + '/12 BİTTİ! KAZANAN: ' +
-    (data.winner === 'attack' ? 'SALDIRI' : 'SAVUNMA') +
-    ' | SKOR: ' + data.attackWins + '-' + data.defenseWins;
-});
-
-socket.on('gameEnded', data => {
-  document.getElementById('bombStatus').textContent =
-    '12 TUR TAMAMLANDI! ' +
-    (data.winner === 'draw'
-      ? 'BERABERE!'
-      : data.winner === 'attack'
-        ? 'SALDIRI TAKIMI KAZANDI!'
-        : 'SAVUNMA TAKIMI KAZANDI!');
-});
-
-  socket.on('botUpdate', data => {
-    const b = bots[data.botId];
-    if (!b) return;
-    b.userData.hp = data.hp;
-
-    if (data.dead && !b.userData.dead) {
-      b.userData.dead = true;
-      b.userData.alive = false;
-      b.visible = false;
-      kills++;
-      msg.textContent = 'HEDEF ETKİSİZ';
-      setTimeout(() => msg.textContent = '', 700);
-      updateHud();
-    }
-  });
-
-  socket.on('roomMessage', t => setOnlineStatus(t));
-
-  socket.on('disconnect', () => {
-    online = false;
-    lobby.style.display = 'none';
-    setOnlineStatus('Sunucu bağlantısı kesildi. Tekrar bağlanmayı dene.');
-  });
-}
-function resize(){
- if(!camera||!renderer)return;
-
- camera.aspect=innerWidth/innerHeight;
- camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);
-}
-
-document.getElementById('start').onclick=()=>{online=false;startGame();};
-document.getElementById('createRoom').onclick=()=>connectRoom('create');
- document.getElementById('botsYes').onclick = () => {
-  if (isRoomHost && socket) {
-    socket.emit('setBotMode', true);
-  }
-};
-
-document.getElementById('botsNo').onclick = () => {
-  if (isRoomHost && socket) {
-    socket.emit('setBotMode', false);
-  }
-};
-
-document.getElementById('launchGame').onclick = () => {
-  if (isRoomHost && socket) {
-   socket.emit('startMatch', {
-  gameMode: gameModeSelect.value,
-  map: mapSelect.value
-}); 
-  
-
-  }
-};
-document.getElementById('joinRoom').onclick=()=>connectRoom('join');
-document.getElementById('again').onclick=startGame;
-
-document.getElementById('back').onclick=()=>{
- game=false;
- end.style.display='none';
- hud.style.display='none';
- menu.style.display='flex';
- document.exitPointerLock?.();
-};
-
-init();
-
-</script>
-</body>
-</html>
+# Save corrected artifact.
+out = Path("/mnt/data/index.html")
+out.write_text(html, encoding="utf-8")
+print(f"Kaydedildi: {out} | {len(html)} karakter | {html.count(chr(10))+1} satır")
