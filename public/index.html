@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.10">
+<meta name="app-version" content="2026.11.08.11">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -743,13 +743,15 @@ function init(){
  };
 
  window.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  const isTyping=e.target?.tagName==='INPUT'||e.target?.tagName==='TEXTAREA'||e.target?.isContentEditable;
+  if(!isTyping&&game&&(e.code==='Digit5'||e.code==='Numpad5'||e.key==='5')){
+    e.preventDefault();
+    if(online)exitOnlineMatchToMenu();
+    else returnToMenu();
+    return;
+  }
+  if(isTyping)return;
   const k=e.key.toLowerCase();
-  if (e.code === 'Digit5' && game) {
-  e.preventDefault();
-  exitOnlineMatchToMenu();
-  return;
-}
   const code=movementCodes[k]||(
    e.code==='ShiftRight'?'ShiftLeft':e.code
   );
