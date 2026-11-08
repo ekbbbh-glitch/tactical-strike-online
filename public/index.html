@@ -57,6 +57,8 @@ body{overscroll-behavior:none}
 #chatForm button{margin:0;padding:7px 10px;border-radius:6px}
 #mobileActions button{width:64px;height:64px;min-width:64px;padding:5px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
 #mobileActions button .sym{font-size:21px;line-height:1}
+#lookPad{display:none;position:absolute;right:102px;top:32%;width:calc(52vw - 110px);height:42%;pointer-events:auto;touch-action:none;background:transparent}
+@media (pointer:coarse),(max-width:800px){#lookPad{display:block}}
 @media (pointer:coarse),(max-width:800px){
  #menu{align-items:flex-start;padding:16px 18px 28px}#menu .panel{margin:0 auto}
  #mobileControls{display:block}#hint{display:none}
@@ -170,7 +172,7 @@ body{overscroll-behavior:none}
  <div id="message"></div>
  <canvas id="miniMap" width="220" height="220" aria-label="Minimap"></canvas>
  <div id="mobileControls">
-  <div id="movePad"><div id="moveStick"></div></div>
+  <div id="movePad"><div id="moveStick"></div></div><div id="lookPad" aria-label="Bakış alanı"></div>
   <div id="mobileActions">
    <button id="fireTouch"><span class="sym">✹</span>ATEŞ</button>
    <button id="sprintTouch"><span class="sym">🏃</span>KOŞ</button>
@@ -1142,6 +1144,7 @@ function shoot(){
 
  ammo--;
  playSfx('shot');
+ if(online&&socket?.connected)socket.emit('weaponFired');
  shootCd=specs[weaponName].rate;
  recoil=.09;
  // Ateş efekti
@@ -1272,30 +1275,24 @@ function damagePlayer(d){
 function updateBots(dt){
  bots.forEach(b=>{
   if(!b.userData.alive)return;
-
-  let dx=player.position.x-b.position.x;
-  let dz=player.position.z-b.position.z;
-  let dist=Math.hypot(dx,dz);
-
+  const dx=player.position.x-b.position.x,dz=player.position.z-b.position.z,dist=Math.hypot(dx,dz);
   b.userData.walk+=dt*7;
-  b.position.y=Math.abs(Math.sin(b.userData.walk))*.04;
   if(b.userData.parts){const swing=Math.sin(b.userData.walk)*.5;b.userData.parts.leftLeg.rotation.x=swing;b.userData.parts.rightLeg.rotation.x=-swing;b.userData.parts.leftArm.rotation.x=-swing*.6;b.userData.parts.rightArm.rotation.x=swing*.6;}
-
-  if(dist>7){
-   b.position.x+=dx/dist*dt*1.55;
-   b.position.z+=dz/dist*dt*1.55;
-   b.rotation.y=Math.atan2(-dx,-dz);
+  // Patrol randomly; only fire when the player is in line of sight.
+  if(b.userData.targetTimer<=0||Math.hypot(b.userData.targetX-b.position.x,b.userData.targetZ-b.position.z)<2){
+   b.userData.targetX=(Math.random()-.5)*150;b.userData.targetZ=(Math.random()-.5)*150;b.userData.targetTimer=3+Math.random()*5;
   }
-
-  b.userData.fire-=dt;
-
-  if(dist<32&&b.userData.fire<=0){
-   b.userData.fire=1.1+Math.random()*1.2;
-
-   if(Math.random()<Math.max(.16,.68-dist*.014)){
-    damagePlayer(5+Math.floor(Math.random()*8));
-   }
+  b.userData.targetTimer-=dt;
+  const direction=new THREE.Vector3(dx,0,dz),origin=new THREE.Vector3(b.position.x,1.35,b.position.z);
+  const canSee=dist<30&&direction.lengthSq()>0&&!new THREE.Raycaster(origin,direction.clone().normalize(),0,dist).intersectObjects(mapObjects,true).length;
+  if(canSee){
+   b.rotation.y=Math.atan2(-dx,-dz);b.userData.fire-=dt;
+   if(b.userData.fire<=0){b.userData.fire=1+Math.random()*1.2;if(Math.random()<Math.max(.12,.62-dist*.012))damagePlayer(5+Math.floor(Math.random()*8));}
+  }else{
+   const wx=b.userData.targetX-b.position.x,wz=b.userData.targetZ-b.position.z,wd=Math.hypot(wx,wz)||1;
+   b.position.x+=wx/wd*dt*1.05;b.position.z+=wz/wd*dt*1.05;b.rotation.y=Math.atan2(-wx,-wz);
   }
+  b.position.y=Math.abs(Math.sin(b.userData.walk))*.04;
  });
 }
 
@@ -1907,6 +1904,7 @@ socket.on('gameEnded', data => {
 
   socket.on('roomMessage', t => setOnlineStatus(t));
   socket.on('chatMessage', data => appendChat(data));
+  socket.on('weaponFired', () => playSfx('shot'));
   socket.on('voiceSignal', async data => {
     if(!data?.from||!data.signal)return;
     const pc=ensureVoicePeer(data.from);
@@ -1992,6 +1990,10 @@ document.querySelectorAll('#mobileActions button').forEach(btn=>{
 });
 document.getElementById('scopeTouch').addEventListener('pointerdown',()=>{if(weaponName==='AWM'){scoped=true;scopeEl.style.display='block';cross.style.display='none';camera.fov=27;camera.updateProjectionMatrix();}});
 document.getElementById('scopeTouch').addEventListener('pointerup',unScope);document.getElementById('scopeTouch').addEventListener('pointercancel',unScope);
+const lookPad=document.getElementById('lookPad');let lookPointer=null,lastLookX=0,lastLookY=0;
+lookPad.addEventListener('pointerdown',e=>{lookPointer=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;lookPad.setPointerCapture(e.pointerId);});
+lookPad.addEventListener('pointermove',e=>{if(lookPointer!==e.pointerId||!game)return;const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;lastLookX=e.clientX;lastLookY=e.clientY;player.rotation.y-=dx*.004*(touchSensitivity/2.2);camera.rotation.x=Math.max(-1.48,Math.min(1.48,camera.rotation.x-dy*.004*(touchSensitivity/2.2)));});
+lookPad.addEventListener('pointerup',()=>lookPointer=null);lookPad.addEventListener('pointercancel',()=>lookPointer=null);
 document.getElementById('jumpTouch').addEventListener('pointerdown',()=>keys.Space=true);document.getElementById('jumpTouch').addEventListener('pointerup',()=>keys.Space=false);document.getElementById('jumpTouch').addEventListener('pointercancel',()=>keys.Space=false);
 setupTouchControls();
 init();
