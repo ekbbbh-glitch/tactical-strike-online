@@ -1294,41 +1294,49 @@ function updateRemotePlayers(){
 
   socket.on('lobbyUpdate', data => updateLobby(data));
 
-  socket.on('gameStarted', data => {
-     const me = (data.players || []).find(p => p.id === socket.id);
+  
+socket.on('gameStarted', data => {
+  const me = (data.players || []).find(p => p.id === socket.id);
+
   myTeam = me ? me.team : null;
-   if (me) {
-  mySpawn = { x: me.x, z: me.z };
-}
+
+  if (me) {
+    mySpawn = { x: me.x, z: me.z };
+  }
+
   bombState = data.bomb || {
     planted: false,
+    pickedUp: false,
+    carrierId: null,
     site: null,
     endsAt: null
   };
-     selectedGameMode = data.gameMode || 'deathmatch';
+
+  selectedGameMode = data.gameMode || 'deathmatch';
   gameModeSelect.value = selectedGameMode;
-   selectedMap = data.map || 'desert';
-mapSelect.value = selectedMap;
-    currentBotsEnabled = data.botsEnabled;
-    lobby.style.display = 'none';
 
-startGame({
-  bots: selectedGameMode === 'bomb' ? false : currentBotsEnabled
-});
-});
+  selectedMap = data.map || 'desert';
+  mapSelect.value = selectedMap;
 
-    (data.bots || []).forEach((state, i) => {
-      const b = bots[i];
-      if (b) {
-    startGame({
-  bots: selectedGameMode === 'bomb' ? false 
-        b.userData.hp = state.hp;
-        b.userData.dead = state.dead;
-        b.userData.alive = !state.dead;
-        b.visible = !state.dead;
-      }
-    });
+  currentBotsEnabled = data.botsEnabled;
+  lobby.style.display = 'none';
+
+  startGame({
+    bots: selectedGameMode === 'bomb' ? false : currentBotsEnabled
   });
+
+  (data.bots || []).forEach((state, i) => {
+    const b = bots[i];
+
+    if (b) {
+      b.userData.hp = state.hp;
+      b.userData.dead = state.dead;
+      b.userData.alive = !state.dead;
+      b.visible = !state.dead;
+    }
+  });
+});
+
 
   socket.on('connect_error', () => {
     setOnlineStatus('Sunucuya bağlanılamadı. Sunucunun açık ve adresin doğru olduğundan emin ol.');
