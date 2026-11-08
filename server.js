@@ -778,6 +778,22 @@ io.on('connection', socket => {
       hp: bot.hp,
       dead: bot.dead
     });
+    if(bot.dead){
+      const attacker=room.players.get(socket.id);
+      if(attacker){
+        attacker.kills=(attacker.kills||0)+1;
+        if(room.gameMode==='deathmatch')room.score[attacker.team]+=1;
+        if(room.gameMode==='escalation'){
+          room.escalationLevels[attacker.team]=Math.min(12,room.escalationLevels[attacker.team]+1);
+          const level=room.escalationLevels[attacker.team];
+          io.to(room.code).emit('escalationUpdate',{team:attacker.team,level,playerId:attacker.id});
+          if(level>=12)finishScoreMatch(room,attacker.team,'escalation');
+        }
+        if(room.gameMode==='ffa'&&attacker.kills>=40)finishScoreMatch(room,attacker.id,'kills');
+        if(room.gameMode==='deathmatch'&&room.score[attacker.team]>=100)finishScoreMatch(room,attacker.team,'kills');
+        publishScore(room);
+      }
+    }
   });
 
   socket.on('playerHit', (data = {}) => {
