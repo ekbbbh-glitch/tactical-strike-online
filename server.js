@@ -103,6 +103,7 @@ function createRoom(code) {
     bots: [],
     gameMode: 'deathmatch',
     map: 'desert',
+    ranked: false,
     bomb: createBombState(),
     bombTimer: null,
     defuseTimer: null,
@@ -152,7 +153,8 @@ function lobbyData(room) {
     started: room.started,
     botsEnabled: room.botsEnabled,
     gameMode: room.gameMode,
-    map: room.map
+    map: room.map,
+    ranked: room.ranked === true
   };
 }
 
@@ -166,6 +168,7 @@ function sendGameStarted(room) {
     bots: room.bots,
     gameMode: room.gameMode,
     map: room.map,
+    ranked: room.ranked === true,
     players: roomPlayers(room),
     bomb: room.bomb,
     round: room.round
@@ -232,7 +235,7 @@ function finishScoreMatch(room, winner, reason = 'score') {
   if (room.matchTimer) clearTimeout(room.matchTimer);
   if (room.dominationTimer) clearInterval(room.dominationTimer);
   room.matchTimer = null; room.dominationTimer = null;
-  io.to(room.code).emit('matchEnded',{gameMode:room.gameMode,winner,reason,score:room.score,players:roomPlayers(room)});
+  io.to(room.code).emit('matchEnded',{gameMode:room.gameMode,winner,reason,score:room.score,players:roomPlayers(room),ranked:room.ranked===true});
   sendLobbyUpdate(room);
 }
 function publishScore(room) {
@@ -385,7 +388,8 @@ function finishBombRound(room, winner, reason) {
     io.to(room.code).emit('gameEnded', {
       attackWins: room.roundWins.attack,
       defenseWins: room.roundWins.defense,
-      winner: finalWinner
+      winner: finalWinner,
+      ranked: room.ranked === true
     });
 
     sendLobbyUpdate(room);
@@ -513,6 +517,7 @@ io.on('connection', socket => {
     room.map = ALLOWED_MAPS.includes(requestedMap)
       ? requestedMap
       : 'desert';
+    room.ranked = data?.ranked === true;
 
     room.round = 1;
     room.roundOver = false;
