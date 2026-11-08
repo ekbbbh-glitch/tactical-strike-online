@@ -277,6 +277,7 @@ body{overscroll-behavior:none}
  <div id="chatPanel"><div id="chatLog" aria-live="polite"></div><form id="chatForm"><input id="chatInput" maxlength="120" placeholder="Mesaj yaz..." autocomplete="off"><button type="submit">GÖNDER</button></form></div>
  <div id="abilityButtons"><button id="abilityQ" type="button">Q<small>YETENEK 1</small></button><button id="abilityF" type="button">F<small>YETENEK 2</small></button></div>
  <div id="bombStatus" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:20px;font-weight:bold;z-index:20;"></div>
+ <div id="roundCountdown" style="display:none;position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:60;text-align:center;color:white;font-size:30px;font-weight:900;text-shadow:0 3px 12px #000;pointer-events:none;"><div id="roundCountdownTitle">RAUND BAŞLIYOR</div><div id="roundCountdownNumber" style="font-size:100px;color:#ffc94d;line-height:1.1;">5</div><div id="roundSpawnInfo" style="font-size:16px;color:#8feaff;"></div></div>
 </div>
 <button id="settingsButton" title="Ayarlar">⚙</button>
 <div id="settingsPanel">
@@ -494,6 +495,8 @@ let weaponName='Vandal',ammo=25,reserve=Infinity,hp=100;
  let myTeam = null;
  let bombMesh = null;
 let localBombEndsAt = null;
+let preRoundEndsAt = 0;
+let bombSpawnMarkers = [];
 let localBombDefuseProgress = 0;
 let bombState = {
   planted: false,
@@ -1401,6 +1404,9 @@ function spawnBot(x,z){
  abilityCooldowns={Q:0,F:0};shieldUntil=0;nextShotDamage=0;
 selectedMap = mapSelect.value;
 selectedGameMode = gameModeSelect.value;
+if(!online&&selectedGameMode==='bomb'){
+ const bindMap=selectedMap==='bind';mySpawn=bindMap?{x:0,z:72}:{x:-78,z:-73};
+}
 buildMap();
   createBombMesh();
   if (bombMesh) {
@@ -1419,6 +1425,9 @@ buildMap();
  hud.style.display='block';
 
  game=true;
+ preRoundEndsAt=(!online&&selectedGameMode==='bomb')?performance.now()+5000:0;
+ const countdown=document.getElementById('roundCountdown');
+ if(countdown){countdown.style.display=preRoundEndsAt?'block':'none';document.getElementById('roundCountdownTitle').textContent='RAUND BAŞLIYOR';document.getElementById('roundCountdownNumber').textContent='5';document.getElementById('roundSpawnInfo').textContent='MAVİ: SEN • KIRMIZI: BOTLAR';}
  hp=100;
  kills=0;
 
@@ -1432,19 +1441,17 @@ buildMap();
  bots=[];
 
  setWeapon(document.getElementById('weapon').value);
- if(!online && selectedGameMode==='bomb'){myTeam='attack';localBombEndsAt=null;localBombDefuseProgress=0;document.getElementById('bombStatus').textContent='🔵 SALDIRI TAKIMI • E: BOMBA AL / KUR';}
+ if(!online && selectedGameMode==='bomb'){myTeam='attack';localBombEndsAt=null;localBombDefuseProgress=0;document.getElementById('bombStatus').textContent='🔵 SALDIRI • MAVİ HALKA: SENİN DOĞMA NOKTAN | KIRMIZI HALKALAR: BOTLAR';}
 
  if ((!['bomb','swiftplay','spike'].includes(selectedGameMode) || (!online && selectedGameMode === 'bomb')) && (!online || options.bots !== false)) {
-  [
-    [-25,-22],
-    [25,-22],
-    [-29,25],
-    [28,25],
-    [0,-32],
-    [0,1],
-    [-46,8],
-    [46,-8]
-  ].forEach(p => spawnBot(...p));
+  const bombBotSpawns=selectedMap==='bind'?[[-48,-20],[-42,-12],[-54,-16],[-38,-24],[48,-20],[42,-12],[54,-16],[38,-24]]:[[-44,2],[-38,10],[-48,10],[-36,-4],[44,-2],[38,-10],[48,-10],[36,4]];
+  const regularBotSpawns=[[-25,-22],[25,-22],[-29,25],[28,25],[0,-32],[0,1],[-46,8],[46,-8]];
+  (selectedGameMode==='bomb'&&!online?bombBotSpawns:regularBotSpawns).forEach(p=>spawnBot(...p));
+  if(selectedGameMode==='bomb'&&!online){
+   bombSpawnMarkers.forEach(m=>scene.remove(m));bombSpawnMarkers=[];
+   const marker=(x,z,color)=>{const m=new THREE.Mesh(new THREE.RingGeometry(2.2,2.8,32),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,transparent:true,opacity:.95}));m.rotation.x=-Math.PI/2;m.position.set(x,.08,z);scene.add(m);bombSpawnMarkers.push(m);};
+   marker(mySpawn.x,mySpawn.z,0x22ddff);bombBotSpawns.forEach(([x,z])=>marker(x,z,0xff4545));
+  }
 }
 
  if(matchMedia('(pointer:fine)').matches && renderer.domElement.requestPointerLock){
@@ -1534,7 +1541,7 @@ function keydown(e){
   const ladder=climbPoints.find(p=>Math.hypot(player.position.x-p.x,player.position.z-p.z)<3.2);
   if(ladder){player.position.x=ladder.x;player.position.z=ladder.z;player.position.y=0;climbing=true;playSfx('ladder');msg.textContent='TIRMANIYORSUN: W / S • E: BIRAK';return;}
  }
- if (e.code === 'KeyE' && !e.repeat && ['bomb','swiftplay','spike'].includes(selectedGameMode)) {
+ if (e.code === 'KeyE' && !e.repeat && !preRoundEndsAt && ['bomb','swiftplay','spike'].includes(selectedGameMode)) {
   if(!online && selectedGameMode==='bomb'){
    const spawn=getClientBombSpawn(),sites=getClientBombSites();
    if(!bombState.pickedUp&&!bombState.planted&&Math.hypot(player.position.x-spawn.x,player.position.z-spawn.z)<=7){
@@ -1659,7 +1666,7 @@ function reload(){
 }
 
 function shoot(isBurstContinuation=false){
- if(!game||(!locked&&!touchFire)||reloading||shootCd>0)return;
+ if(!game||preRoundEndsAt||(!locked&&!touchFire)||reloading||shootCd>0)return;
 
  if(ammo<=0){
   msg.textContent='OUT OF AMMO — PRESS R TO RELOAD';
@@ -1852,6 +1859,11 @@ function updateBots(dt){
 
 function update(dt){
  if(!game)return;
+ if(preRoundEndsAt){
+  const left=Math.max(0,Math.ceil((preRoundEndsAt-performance.now())/1000));const panel=document.getElementById('roundCountdown');
+  if(left>0){if(panel)panel.style.display='block';document.getElementById('roundCountdownTitle').textContent='RAUND BAŞLIYOR';document.getElementById('roundCountdownNumber').textContent=String(left);return;}
+  preRoundEndsAt=0;if(panel)panel.style.display='none';bombSpawnMarkers.forEach(m=>scene.remove(m));bombSpawnMarkers=[];playSfx('win');
+ }
  if(!online&&selectedGameMode==='bomb'&&bombState.planted&&localBombEndsAt){
   const left=Math.max(0,Math.ceil((localBombEndsAt-Date.now())/1000));
   document.getElementById('bombStatus').textContent='BOMBA KURULDU: '+bombState.site+' • '+left+'s';
