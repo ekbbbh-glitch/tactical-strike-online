@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
  <meta name="google-site-verification" content="f-7aqUQdwwaiGFW9d9TWmQe8-MJZyxw_hltzDnIhUBM" />
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EmirCritical - Tactical Strike Online</title>
- <meta name="description" content="EmirCritical, çevrimiçi arkadaşlarınla oynayabileceğin ücretsiz 3D FPS savaş oyunudur. Hemen odayı oluştur ve savaşa katıl!">
+ <meta name="description" content="EmirCritical is an online tactical 3D FPS game. Create a room and join the battle.">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#fff;font-family:Arial,Helvetica,sans-serif}
@@ -48,57 +48,79 @@ select{background:#e8edf0;min-width:190px}
   padding-bottom: 25px;
   box-sizing: border-box;
 }
+
+#miniMap{position:absolute;right:18px;top:105px;width:190px;height:190px;border-radius:50%;border:3px solid #dce8ef;background:rgba(5,12,20,.78);box-shadow:0 3px 18px #000;pointer-events:none}
+#mobileControls{display:none;position:absolute;inset:0;pointer-events:none}
+#movePad{position:absolute;left:22px;bottom:34px;width:132px;height:132px;border:2px solid #ffffff88;border-radius:50%;background:#ffffff18;pointer-events:auto;touch-action:none}
+#moveStick{position:absolute;left:41px;top:41px;width:46px;height:46px;border-radius:50%;background:#d9e7efbb;border:2px solid white}
+#mobileActions{position:absolute;right:18px;bottom:28px;display:flex;flex-direction:column;gap:9px;pointer-events:auto}
+#mobileActions button{margin:0;min-width:76px;padding:14px 10px;border-radius:50%;background:#d84a42;color:white;border:2px solid #fff;touch-action:none}
+#sprintTouch{background:#2787a4!important}#interactTouch{background:#d39a35!important}
+@media (pointer:coarse),(max-width:800px){#mobileControls{display:block}#hint{display:none}#miniMap{width:140px;height:140px;right:10px;top:72px}#players{top:220px;right:10px;font-size:10px}#ammo{bottom:18px;right:12px;font-size:18px}#health{bottom:18px;left:12px}}
+
 </style>
 </head>
 <body>
 
 <div id="menu">
  <div class="panel">
-  <div class="tag">SINGLE PLAYER • BOT MATCH • 3D FPS</div>
+  <div class="tag">ONLINE FPS • TACTICAL COMBAT • 3D</div>
   <h1>TACTICAL<br>STRIKE</h1>
-  <div class="sub">ROUND ZERO // TRAINING GROUNDS</div>
-  <p class="small">Üç koridorlu, taktik nişancı tarzında özgün bir haritada botlara karşı savaş. Blok biçimli Roblox-esintili karakterler, üç silah, dürbün, şarjör ve can sistemi.</p>
+  <div class="sub">ROUND ZERO // TACTICAL OPERATIONS</div>
+  <p class="small">Fight across tactical arenas with bots or online players. Choose your agent, weapon and battlefield.</p>
   <div class="online-box">
-   <h3>ONLINE CO-OP • 10 OYUNCU</h3>
-   <label for="playerName">Oyuncu adı</label><br>
-   <input id="playerName" maxlength="16" placeholder="Oyuncu adın" value="Oyuncu" />
-   <label for="serverUrl">Sunucu adresi</label><br>
-   <input id="serverUrl" placeholder="Sunucu adresi" value="https://tactical-strike-online.onrender.com" readonly />
+   <h3>ONLINE CO-OP • 10 PLAYERS</h3>
+   <label for="playerName">PLAYER NAME</label><br>
+   <input id="playerName" maxlength="16" placeholder="Your name" value="Player" />
+   <label for="serverUrl">SERVER URL</label><br>
+   <input id="serverUrl" placeholder="Server URL" value="https://tactical-strike-online.onrender.com" readonly />
    <div class="online-actions">
-    <button id="createRoom">ODA OLUŞTUR</button>
-    <input id="roomCode" maxlength="8" placeholder="ODA KODU" />
-    <button id="joinRoom">ODAYA KATIL</button>
+    <button id="createRoom">CREATE ROOM</button>
+    <input id="roomCode" maxlength="8" placeholder="ROOM CODE" />
+    <button id="joinRoom">JOIN ROOM</button>
    </div>
-   <div id="onlineStatus">Önce oda oluştur veya oda koduyla katıl.</div>
+   <div id="onlineStatus">Create a room or join with a room code.</div>
   </div>
   <p>
-  <label for="gameMode">OYUN MODU</label><br>
+  <label for="gameMode">GAME MODE</label><br>
   <select id="gameMode">
-    <option value="deathmatch">Takım Ölüm Maçı</option>
-    <option value="ffa">Herkes Tek</option>
-    <option value="bomb">Bomba İmha</option>
-    <option value="domination">Bölge Hakimiyeti</option>
+    <option value="deathmatch">Team Deathmatch</option>
+    <option value="ffa">Free For All</option>
+    <option value="bomb">Bomb Defusal</option>
+    <option value="domination">Domination</option>
   </select>
 </p>
 
 <p>
-  <label for="mapSelect">HARİTA SEÇ</label><br>
+  <label for="mapSelect">SELECT MAP</label><br>
   <select id="mapSelect">
-    <option value="desert">Çöl Kasabası</option>
-    <option value="snow">Karlı Askerî Üs</option>
-    <option value="factory">Fabrika</option>
-    <option value="city">Şehir</option>
+    <option value="desert">Desert Town</option>
+    <option value="snow">Snow Base</option>
+    <option value="factory">Factory</option>
+    <option value="city">City</option>
+    <option value="icebox">Icebox</option>
+    <option value="bind">Bind</option>
   </select>
 </p>
-  <p><label for="weapon">Başlangıç silahı</label><br>
+  <p><label for="characterSelect">CHOOSE YOUR AGENT</label><br>
+  <select id="characterSelect">
+   <option value="soldier">Tactical Soldier</option>
+   <option value="heavy">Heavy Soldier</option>
+   <option value="special">Special Forces</option>
+   <option value="jett">Jett-inspired Agent</option>
+   <option value="viper">Viper-inspired Agent</option>
+   <option value="steve">Block Adventurer</option>
+   <option value="roblox">Classic Block Avatar</option>
+  </select></p>
+  <p><label for="weapon">STARTING WEAPON</label><br>
   <select id="weapon">
    <option>Vandal</option>
-   <option>Şerif</option>
+   <option value="Şerif">Sheriff</option>
    <option>AWM</option>
   </select></p>
-  <button id="start">MAÇA BAŞLA</button>
-  <p class="small"><b>Kontroller:</b> WASD hareket • Fare nişan • Sol tık ateş • Sağ tık dürbün (AWM) • R şarjör • 1 Vandal / 2 Şerif / 3 AWM • ESC menü/fare kilidi</p>
-  <p class="small">Not: Bu, tarayıcıda çalışan özgün bir prototiptir; gerçek Valorant/Riot içeriği veya çevrimiçi çok oyunculu mod içermez.</p>
+  <button id="start">START MATCH</button>
+  <p class="small"><b>CONTROLS:</b> WASD move • Mouse aim • Left click fire • Right click scope • R reload • 1/2/3 switch weapon • Shift sprint • E interact</p>
+  <p class="small">Original fan-made prototype. No official Riot Games or Valorant assets are used.</p>
  </div>
 </div>
 
@@ -106,38 +128,43 @@ select{background:#e8edf0;min-width:190px}
 <div id="lobby" style="display:none;position:fixed;inset:0;z-index:7;background:#101d29;align-items:center;justify-content:center;text-align:center;padding:20px;">
  <div style="width:100%;max-width:550px;background:#172b3a;border:1px solid #688394;padding:30px;">
   <h1 style="font-size:32px;color:#ffc45c;">EMIRCRITICAL</h1>
-  <h2>OYUNCULAR BEKLENİYOR...</h2>
-  <p>Oda kodu: <strong id="lobbyCode">------</strong></p>
-  <h3>OYUNCU LİSTESİ</h3>
-  <div id="lobbyPlayers">Oyuncular yükleniyor...</div>
+  <h2>WAITING FOR PLAYERS...</h2>
+  <p>ROOM CODE: <strong id="lobbyCode">------</strong></p>
+  <h3>PLAYER LIST</h3>
+  <div id="lobbyPlayers">Loading players...</div>
   <hr>
-  <h3>BOTLAR</h3>
-  <button id="botsYes">BOTLAR VAR</button>
-  <button id="botsNo">BOTLAR YOK</button>
-  <p id="botStatus">Botlar: VAR</p>
-  <button id="launchGame" style="background:#35b875;color:white;">OYUNU BAŞLAT</button>
-  <p id="lobbyStatus">Oyuncuların katılması bekleniyor.</p>
+  <h3>BOTS</h3>
+  <button id="botsYes">BOTS ON</button>
+  <button id="botsNo">BOTS OFF</button>
+  <p id="botStatus">Bots: ON</p>
+  <button id="launchGame" style="background:#35b875;color:white;">START GAME</button>
+  <p id="lobbyStatus">WAITING FOR PLAYERS...</p>
  </div>
 </div>
 
 <div id="hud">
  <div id="top">TACTICAL STRIKE&nbsp; // &nbsp;<span id="round">BOT MATCH</span></div>
-  <div id="players">OYUNCULAR: 1/10</div>
+  <div id="players">PLAYERS: 1/10</div>
  <div id="cross"></div>
  <div id="scope"></div>
  <div id="health">♥ <span id="hp">100</span> HP</div>
  <div id="ammo">25 / 75<small>VANDAL</small></div>
  <div id="hint">WASD • MOUSE • LMB FIRE • R RELOAD</div>
  <div id="message"></div>
+ <canvas id="miniMap" width="220" height="220" aria-label="Minimap"></canvas>
+ <div id="mobileControls">
+  <div id="movePad"><div id="moveStick"></div></div>
+  <div id="mobileActions"><button id="fireTouch">FIRE</button><button id="sprintTouch">SPRINT</button><button id="interactTouch">USE</button></div>
+ </div>
  <div id="bombStatus" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:20px;font-weight:bold;z-index:20;"></div>
 </div>
 
 <div id="end">
  <div>
-  <h2>ELENDİN</h2>
-  <p id="endtxt">Botlar seni yakaladı.</p>
-  <button id="again">TEKRAR DENE</button>
-  <button id="back">ANA MENÜ</button>
+  <h2 id="resultTitle">YOU LOST</h2>
+  <p id="endtxt">You were eliminated.</p>
+  <button id="again">PLAY AGAIN</button>
+  <button id="back">MAIN MENU</button>
  </div>
 </div>
 
@@ -162,32 +189,32 @@ let currentBotsEnabled = true;
 
   if (isBombLobby) {
     const attackTitle = document.createElement('div');
-    attackTitle.textContent = '🔵 SALDIRI TAKIMI';
+    attackTitle.textContent = '🔵 ATTACK TEAM';
     attackTitle.style.cssText = 'padding:10px;font-weight:bold;color:#3399ff;';
     lobbyPlayers.appendChild(attackTitle);
 
     players.filter(p => p.team === 'attack').forEach(player => {
       const item = document.createElement('div');
-      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ROOM HOST' : '');
       item.style.cssText = 'padding:8px;color:#3399ff;';
       lobbyPlayers.appendChild(item);
     });
 
     const defenseTitle = document.createElement('div');
-    defenseTitle.textContent = '🔴 SAVUNMA TAKIMI';
+    defenseTitle.textContent = '🔴 DEFENSE TEAM';
     defenseTitle.style.cssText = 'padding:10px;font-weight:bold;color:#ff4444;';
     lobbyPlayers.appendChild(defenseTitle);
 
     players.filter(p => p.team === 'defense').forEach(player => {
       const item = document.createElement('div');
-      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ROOM HOST' : '');
       item.style.cssText = 'padding:8px;color:#ff6666;';
       lobbyPlayers.appendChild(item);
     });
   } else {
     players.forEach(player => {
       const item = document.createElement('div');
-      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+      item.textContent = player.name + (player.id === data.hostId ? ' 👑 ROOM HOST' : '');
       item.style.padding = '8px';
       lobbyPlayers.appendChild(item);
     });
@@ -197,7 +224,7 @@ let currentBotsEnabled = true;
   currentBotsEnabled = data.botsEnabled !== false;
 
   document.getElementById('botStatus').textContent =
-    'Botlar: ' + (currentBotsEnabled ? 'VAR' : 'YOK');
+    'Bots: ' + (currentBotsEnabled ? 'ON' : 'OFF');
 
   document.getElementById('botsYes').disabled = !isRoomHost || isBombLobby;
   document.getElementById('botsNo').disabled = !isRoomHost || isBombLobby;
@@ -226,9 +253,15 @@ let bombState = {
   endsAt: null
 };
 let selectedMap = 'desert';
+let selectedCharacter = 'soldier';
+let touchMove = {x:0,y:0};
+let touchSprint = false;
+let touchFire = false;
 
 const gameModeSelect = document.getElementById('gameMode');
 const mapSelect = document.getElementById('mapSelect');
+const characterSelect = document.getElementById('characterSelect');
+characterSelect.addEventListener('change',()=>{ selectedCharacter=characterSelect.value; });
 
 gameModeSelect.addEventListener('change', () => {
   selectedGameMode = gameModeSelect.value;
@@ -240,6 +273,7 @@ mapSelect.addEventListener('change', () => {
 let bots=[],keys={},locked=false,scoped=false,reloading=false;
 let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
 let jumping=false,jumpVelocity=0,jumpHeight=0;
+let footstepTimer=0,portalCooldown=0;
 
 // ONLINE CO-OP bağlantısı
 let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
@@ -299,27 +333,40 @@ function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
  return m;
 }
 
- function makeBlockCharacter(isBot = false, team = null) {
+ function makeBlockCharacter(isBot = false, team = null, characterType = selectedCharacter) {
   const character = new THREE.Group();
 
-  const bodyMaterial = selectedGameMode === 'bomb'
-  ? (team === myTeam ? mats.blue : mats.red)
-  : (isBot ? mats.red : mats.blue);
+  const friendly = team != null ? (team === myTeam) : !isBot;
+  const bodyMaterial = friendly ? mats.blue : mats.red;
+  const outfitMaterial = ({heavy:mat(0x505b68),special:mat(0x263c42),jett:mat(0x9fc8e8),viper:mat(0x426c4a),steve:mat(0x3b70b5),roblox:mat(0xb52c2c)})[characterType] || mat(0x596b70);
   
 
-  box(character, 0, 1.05, 0, 0.65, 0.8, 0.35, bodyMaterial);
+  const torso=box(character, 0, 1.05, 0, 0.65, 0.8, 0.35, outfitMaterial);
+  torso.material=bodyMaterial;
   box(character, 0, 1.65, 0, 0.42, 0.42, 0.42, mats.skin);
+  // Distinct cosmetic silhouettes; the torso and marker retain team colors.
+  if(characterType==='jett') box(character,0,1.92,0,.5,.12,.5,mat(0xdcefff));
+  if(characterType==='viper') box(character,0,1.65,0,.48,.18,.46,mat(0x263d2a));
+  if(characterType==='heavy') box(character,0,1.68,0,.52,.5,.5,mat(0x505b68));
+  if(characterType==='special') box(character,0,1.9,0,.48,.16,.48,mat(0x263c42));
+  if(characterType==='steve'||characterType==='roblox') box(character,0,1.65,0,.44,.44,.44,mat(0xd6a77d));
+  if(characterType==='soldier') box(character,0,1.91,0,.46,.12,.46,mats.black);
 
-  box(character, 0, 1.91, 0, 0.46, 0.12, 0.46, mats.black);
+  const leftLeg=box(character, -0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
+  const rightLeg=box(character, 0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
+  const leftArm=box(character, -0.45, 1.1, 0, 0.2, 0.7, 0.22, bodyMaterial);
+  const rightArm=box(character, 0.45, 1.1, 0, 0.2, 0.7, 0.22, bodyMaterial);
+  const marker=new THREE.Mesh(new THREE.SphereGeometry(0.16,16,12),new THREE.MeshBasicMaterial({color:friendly?0x168bff:0xff3030}));
+  marker.position.set(0,2.35,0); character.add(marker);
+  const remoteGun=box(character,0.43,0.88,-0.28,0.12,0.13,0.62,mats.gun);
+  remoteGun.rotation.x=-0.12;
+  character.userData.parts={leftLeg,rightLeg,leftArm,rightArm,marker};
 
-  box(character, -0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
-  box(character, 0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
-
-  box(character, -0.45, 1.1, 0, 0.2, 0.7, 0.22, bodyMaterial);
-  box(character, 0.45, 1.1, 0, 0.2, 0.7, 0.22, bodyMaterial);
-
+  character.userData.character = characterType;
   character.userData.team = team;
+  character.userData.friendly = friendly;
   character.userData.gameMode = selectedGameMode;
+  character.userData.walkPhase = Math.random()*6;
   return character;
 }
 function init(){
@@ -426,10 +473,25 @@ end.style.display = 'none';
  });
 
  renderer.domElement.addEventListener('click',()=>{
-  if(game&&!locked){
+  if(game&&!locked&&matchMedia('(pointer:fine)').matches&&renderer.domElement.requestPointerLock){
    renderer.domElement.requestPointerLock();
   }
  });
+ let touchLookId=null,touchLookX=0,touchLookY=0;
+ renderer.domElement.addEventListener('pointerdown',e=>{
+  if(!game||e.pointerType!=='touch')return;
+  touchLookId=e.pointerId;touchLookX=e.clientX;touchLookY=e.clientY;
+ });
+ renderer.domElement.addEventListener('pointermove',e=>{
+  if(!game||e.pointerType!=='touch'||e.pointerId!==touchLookId)return;
+  const dx=e.clientX-touchLookX,dy=e.clientY-touchLookY;
+  touchLookX=e.clientX;touchLookY=e.clientY;
+  player.rotation.y-=dx*.004;
+  camera.rotation.x=Math.max(-1.35,Math.min(1.35,camera.rotation.x-dy*.004));
+ });
+ const endTouchLook=()=>{touchLookId=null;};
+ renderer.domElement.addEventListener('pointerup',endTouchLook);
+ renderer.domElement.addEventListener('pointercancel',endTouchLook);
 
  animate();
 }
@@ -445,7 +507,7 @@ end.style.display = 'none';
  const green = mat(0x354b35);
 
  // Zemin
- box(scene,0,-.35,0,132,.7,132,mats.floor);
+ box(scene,0,-.35,0,200,.7,200,mats.floor);
 
  // Askerî üs yolları
  box(scene,0,.015,0,13,.04,130,road);
@@ -457,11 +519,11 @@ end.style.display = 'none';
  }
 
  // Dış duvarlar
- for(const x of [-65,65]){
-  box(scene,x,3,0,2,6,130,mats.wall);
+ for(const x of [-99,99]){
+  box(scene,x,3,0,2,6,200,mats.wall);
  }
- for(const z of [-65,65]){
-  box(scene,0,3,z,130,6,2,mats.wall);
+ for(const z of [-99,99]){
+  box(scene,0,3,z,200,6,2,mats.wall);
  }
 
  // İç savunma duvarları
@@ -546,7 +608,7 @@ end.style.display = 'none';
  }
 
  // Zemindeki operasyon alanları
- for(const [x,z] of [[-25,0],[25,0]]){
+ for(const [x,z] of [[-42,4],[42,-4]]){
   const p=box(scene,x,.02,z,13,.04,13,mat(0xc69a55));
   p.material.transparent=true;
   p.material.opacity=.18;
@@ -556,80 +618,76 @@ end.style.display = 'none';
 
 
 function buildMap() {
-  // Önce eski haritayı temizle
   mapObjects.forEach(obj => scene.remove(obj));
   mapObjects = [];
-
   const before = new Set(scene.children);
-
   if (selectedMap === 'desert') {
     buildDesertMap();
+  } else if (selectedMap === 'icebox') {
+    buildIceboxMap();
+  } else if (selectedMap === 'bind') {
+    buildBindMap();
   } else {
-    const colors = {
-      snow: 0xeaf4fa,
-      factory: 0x555b60,
-      city: 0x777777
-    };
-
+    const colors = { snow: 0xeaf4fa, factory: 0x555b60, city: 0x777777 };
     const ground = mat(colors[selectedMap] || 0x777777);
     const wall = mat(0x414b55);
-
-    box(scene, 0, -.35, 0, 132, .7, 132, ground);
-
-    for (const x of [-65, 65]) {
-      box(scene, x, 3, 0, 2, 6, 130, wall);
-    }
-
-    for (const z of [-65, 65]) {
-      box(scene, 0, 3, z, 130, 6, 2, wall);
-    }
-
+    box(scene, 0, -.35, 0, 200, .7, 200, ground);
+    for (const x of [-99,99]) box(scene,x,3,0,2,6,200,wall);
+    for (const z of [-99,99]) box(scene,0,3,z,200,6,2,wall);
     if (selectedMap === 'snow') {
-      const ice = mat(0x9fc9dc);
-
-      for (const [x,z] of [[-30,-25],[30,-25],[-30,25],[30,25]]) {
-        box(scene,x,2,z,12,4,12,ice);
-      }
-
-      for (const [x,z] of [[-10,0],[10,0],[0,-18],[0,18]]) {
-        box(scene,x,1,z,7,2,3,ice);
-      }
+      const ice=mat(0x9fc9dc), dark=mat(0x638493);
+      for(const [x,z] of [[-55,-42],[55,-42],[-55,42],[55,42],[-20,0],[20,0]]) box(scene,x,2,z,16,4,16,ice);
+      for(const [x,z] of [[-35,-15],[35,15],[-35,15],[35,-15]]) box(scene,x,1.4,z,12,2.8,5,dark);
     }
-
     if (selectedMap === 'factory') {
-      const metal = mat(0x343c43,.4,.7);
-      const orange = mat(0xd47a32);
-
-      box(scene,-35,5,-25,22,10,18,metal);
-      box(scene,35,5,25,22,10,18,metal);
-      box(scene,0,7,0,30,1,8,metal);
-
-      for (const [x,z] of [[-12,-20],[12,-20],[-12,20],[12,20]]) {
-        box(scene,x,1.5,z,9,3,4,orange);
-      }
+      const metal=mat(0x343c43,.4,.7), orange=mat(0xd47a32);
+      box(scene,-55,5,-40,26,10,22,metal); box(scene,55,5,40,26,10,22,metal);
+      for(const [x,z] of [[-28,-35],[28,35],[-28,35],[28,-35],[0,-50],[0,50]]) box(scene,x,1.5,z,12,3,5,orange);
     }
-
     if (selectedMap === 'city') {
-      const building = mat(0x777b82);
-      const glass = mat(0x284b65);
-
-      for (const [x,z] of [[-42,-35],[42,-35],[-42,35],[42,35]]) {
-        box(scene,x,8,z,17,16,15,building);
-
-        for (let y=5;y<=12;y+=4) {
-          box(scene,x,y,z-7.6,12,1.5,.15,glass);
-        }
-      }
-
-      for (const [x,z] of [[-12,0],[12,0],[0,-12],[0,12]]) {
-        box(scene,x,1.5,z,6,3,6,building);
-      }
+      const building=mat(0x777b82), glass=mat(0x284b65);
+      for(const [x,z] of [[-65,-55],[65,-55],[-65,55],[65,55]]) { box(scene,x,8,z,22,16,20,building); for(let y=5;y<=12;y+=4) box(scene,x,y,z-10.1,15,1.5,.15,glass); }
+      for(const [x,z] of [[-25,0],[25,0],[0,-30],[0,30]]) box(scene,x,1.5,z,9,3,9,building);
     }
   }
-
-  // Yeni harita nesnelerini kaydet
   mapObjects = scene.children.filter(obj => !before.has(obj));
 }
+
+function buildIceboxMap(){
+  const ice=mat(0xb9e4f2), blue=mat(0x5d91a8), metal=mat(0x455a67,.45,.65), orange=mat(0xd17b35), snow=mat(0xeaf4fa);
+  box(scene,0,-.35,0,200,.7,200,snow);
+  for(const x of [-99,99]) box(scene,x,3,0,2,6,200,blue);
+  for(const z of [-99,99]) box(scene,0,3,z,200,6,2,blue);
+  // Large container lanes and elevated-looking platforms; all routes remain ground-level and traversable.
+  const blocks=[[-62,0,18,26],[-30,-48,22,12],[0,-55,26,14],[48,-42,22,14],[65,0,14,30],[35,48,28,14],[0,58,20,12],[-48,48,24,14],[-70,-48,14,20],[-25,15,14,24],[22,8,14,24]];
+  for(const [x,z,w,d] of blocks){box(scene,x,2.4,z,w,4.8,d,metal);box(scene,x,4.9,z,w+.3,.2,d+.3,orange);}
+  // Open mid lane and site markings
+  for(const [x,z,label] of [[-42,4,'A'],[42,-4,'B']]){
+    const pad=box(scene,x,.025,z,24,.05,22,mat(0xe6b52e)); pad.material.transparent=true;pad.material.opacity=.28;
+    box(scene,x,0.08,z,1,.1,1,orange);
+  }
+  for(const [x,z] of [[-82,-82],[-82,82],[82,-82],[82,82]]) box(scene,x,1,z,8,2,8,ice);
+  // Snow banks / low cover
+  for(const [x,z] of [[-10,-22],[12,25],[-55,20],[55,-18],[0,0]]) box(scene,x,.9,z,10,1.8,5,ice);
+}
+
+function buildBindMap(){
+  const sand=mat(0xc6a36e), plaster=mat(0xd6c29c), stone=mat(0x88775f), teal=mat(0x3b7775), portal=mat(0x27d9cb,.3,.3), yellow=mat(0xe5b83e);
+  box(scene,0,-.35,0,200,.7,200,sand);
+  for(const x of [-99,99]) box(scene,x,3,0,2,6,200,stone);
+  for(const z of [-99,99]) box(scene,0,3,z,200,6,2,stone);
+  const blocks=[[-60,-45,24,18],[-35,-5,14,30],[-60,42,22,16],[-5,-58,28,14],[35,-42,18,24],[62,-5,24,16],[42,42,22,18],[0,55,20,14],[0,0,12,20],[-20,38,18,12],[20,-8,16,12]];
+  for(const [x,z,w,d] of blocks){box(scene,x,3,z,w,6,d,plaster);box(scene,x,6.1,z,w+.4,.3,d+.4,stone);}
+  // Short walls create readable lanes without sealing passages.
+  for(const [x,z,w,d] of [[-22,-42,18,3],[22,35,18,3],[-72,0,3,20],[72,0,3,20]]) box(scene,x,1.5,z,w,3,d,teal);
+  for(const [x,z] of [[-42,4],[42,-4]]){const pad=box(scene,x,.025,z,24,.05,22,yellow);pad.material.transparent=true;pad.material.opacity=.28;}
+  // Two stylized teleport gates, purely visual and not collision blockers.
+  for(const [x,z,ry] of [[-78,12,Math.PI/2],[78,-12,-Math.PI/2]]){
+    const gate=new THREE.Group();box(gate,0,3,0,1,6,7,teal);box(gate,0,3.1,.55,.25,4.8,5.6,portal);gate.rotation.y=ry;gate.position.set(x,0,z);scene.add(gate);
+  }
+  for(const [x,z] of [[-82,-82],[-82,82],[82,-82],[82,82]]) box(scene,x,1,z,8,2,8,stone);
+}
+
 function createBombMesh() {
   if (!scene || bombMesh) return;
 
@@ -655,11 +713,41 @@ function createBombMesh() {
   light.position.y = 0.65;
   group.add(light);
 
-  group.position.set(-48, 0, -48);
+  group.position.set(-78, 0, -78);
   scene.add(group);
 
   bombMesh = group;
 }
+
+let audioContext=null;
+function playSfx(kind='shot'){
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return;
+    audioContext ||= new AudioCtx();
+    if(audioContext.state==='suspended') audioContext.resume();
+    const now=audioContext.currentTime;
+    const osc=audioContext.createOscillator(), gain=audioContext.createGain();
+    const settings={shot:[95,.07,'sawtooth',.045],step:[72,.045,'triangle',.012],reload:[420,.18,'triangle',.035],pickup:[660,.12,'sine',.05],plant:[210,.5,'square',.045],defuse:[540,.4,'sine',.04],explosion:[55,.7,'sawtooth',.09],win:[740,.35,'triangle',.05],lose:[150,.45,'triangle',.05],teleport:[880,.2,'sine',.035]};
+    const [freq,duration,type,volume]=settings[kind]||settings.shot;
+    osc.type=type;osc.frequency.setValueAtTime(freq,now);
+    if(kind==='explosion')osc.frequency.exponentialRampToValueAtTime(35,now+duration);
+    gain.gain.setValueAtTime(volume,now);gain.gain.exponentialRampToValueAtTime(.001,now+duration);
+    osc.connect(gain);gain.connect(audioContext.destination);osc.start(now);osc.stop(now+duration);
+  }catch(e){}
+}
+function showRoundResult(won,detail,final=false){
+  const title=document.getElementById('resultTitle');
+  title.textContent=won===null?'DRAW':(won?'YOU WON':'YOU LOST');
+  title.style.color=won===null?'#f4d36b':(won?'#62e59a':'#ff6464');
+  document.getElementById('endtxt').textContent=detail||'';
+  document.getElementById('again').style.display=(final&&!online)?'inline-block':'none';
+  document.getElementById('back').style.display='inline-block';
+  end.style.display='flex';
+  playSfx(won===null?'win':won?'win':'lose');
+  if(!final){setTimeout(()=>{if(game)end.style.display='none';},2600);}
+}
+
 function buildWeapon(){
  if(weaponGroup) camera.remove(weaponGroup);
 
@@ -759,7 +847,8 @@ function buildWeapon(){
 }
 
 function updateAmmo(){
- ammoEl.innerHTML=`${ammo} / ${reserve}<small>${weaponName.toUpperCase()}${reloading?' • DOLDURULUYOR':''}</small>`;
+ const displayWeapon=weaponName==='Şerif'?'SHERIFF':weaponName.toUpperCase();
+ ammoEl.innerHTML=`${ammo} / ${reserve}<small>${displayWeapon}${reloading?' • RELOADING':''}</small>`;
 }
 
 function setWeapon(n){
@@ -798,7 +887,7 @@ buildMap();
   createBombMesh();
   if (bombMesh) {
     bombMesh.visible = selectedGameMode === 'bomb';
-    bombMesh.position.set(-48, 0, -48);
+    bombMesh.position.set(-78, 0, -78);
   }
   bombState = {
     planted: false,
@@ -838,7 +927,9 @@ buildMap();
   ].forEach(p => spawnBot(...p));
 }
 
- renderer.domElement.requestPointerLock();
+ if(matchMedia('(pointer:fine)').matches && renderer.domElement.requestPointerLock){
+  renderer.domElement.requestPointerLock();
+ }
 
  msg.textContent='';
  updateHud();
@@ -858,8 +949,8 @@ buildMap();
 }
 function updateHud(){
  hpEl.textContent=hp;
- document.getElementById('round').textContent=(online?`CO-OP ${roomCode}`:'BOT MATCH')+` • ${kills} ELİM`;
- document.getElementById('players').textContent=`OYUNCULAR: ${Math.max(1,remotePlayers.size+1)}/10`;
+ document.getElementById('round').textContent=(online?`CO-OP ${roomCode}`:'BOT MATCH')+` • ${kills} KILLS`;
+ document.getElementById('players').textContent=`PLAYERS: ${Math.max(1,remotePlayers.size+1)}/10`;
  updateAmmo();
 }
 
@@ -870,13 +961,13 @@ function keydown(e){
 
  if (e.code === 'KeyE' && !e.repeat && online && selectedGameMode === 'bomb') {
   const sites = [
-    { name: 'A', x: -25, z: 0 },
-    { name: 'B', x: 25, z: 0 }
+    { name: 'A', x: -42, z: 4 },
+    { name: 'B', x: 42, z: -4 }
   ];
 
   const bombSpawnDistance = Math.hypot(
-    player.position.x - (-48),
-    player.position.z - (-48)
+    player.position.x - (-78),
+    player.position.z - (-78)
   );
 
   if (myTeam === 'attack' && !bombState.pickedUp && !bombState.planted) {
@@ -960,6 +1051,7 @@ function reload(){
  if(reloading||ammo===specs[weaponName].mag||reserve<=0)return;
 
  reloading=true;
+ playSfx('reload');
  updateAmmo();
 
  setTimeout(()=>{
@@ -977,15 +1069,16 @@ function reload(){
 }
 
 function shoot(){
- if(!game||!locked||reloading||shootCd>0)return;
+ if(!game||(!locked&&!touchFire)||reloading||shootCd>0)return;
 
  if(ammo<=0){
-  msg.textContent='ŞARJÖR BOŞ — R İLE DOLDUR';
+  msg.textContent='OUT OF AMMO — PRESS R TO RELOAD';
   setTimeout(()=>msg.textContent='',900);
   return;
  }
 
  ammo--;
+ playSfx('shot');
  shootCd=specs[weaponName].rate;
  recoil=.09;
  // Ateş efekti
@@ -1083,7 +1176,7 @@ const hit = botHit;
      b.userData.alive=false;
      b.visible=false;
      kills++;
-     msg.textContent='HEDEF ETKİSİZ';
+     msg.textContent='TARGET ELIMINATED';
      setTimeout(()=>msg.textContent='',700);
      updateHud();
     }
@@ -1097,9 +1190,19 @@ function damagePlayer(d){
  hpEl.textContent=hp;
 
  if(hp<=0){
-  game=false;
-  document.exitPointerLock?.();
-  end.style.display='flex';
+  if(online && selectedGameMode==='bomb'){
+    game=false;
+    document.getElementById('resultTitle').textContent='YOU LOST';
+    document.getElementById('endtxt').textContent='YOU WERE ELIMINATED THIS ROUND';
+    document.getElementById('again').style.display='none';
+    document.getElementById('back').style.display='inline-block';
+    end.style.display='flex';
+  }else{
+    game=false;
+    document.exitPointerLock?.();
+    document.getElementById('resultTitle').textContent='YOU LOST';
+    end.style.display='flex';
+  }
  }
 }
 
@@ -1113,6 +1216,7 @@ function updateBots(dt){
 
   b.userData.walk+=dt*7;
   b.position.y=Math.abs(Math.sin(b.userData.walk))*.04;
+  if(b.userData.parts){const swing=Math.sin(b.userData.walk)*.5;b.userData.parts.leftLeg.rotation.x=swing;b.userData.parts.rightLeg.rotation.x=-swing;b.userData.parts.leftArm.rotation.x=-swing*.6;b.userData.parts.rightArm.rotation.x=swing*.6;}
 
   if(dist>7){
    b.position.x+=dx/dist*dt*1.55;
@@ -1152,7 +1256,7 @@ if (jumping) {
     jumpVelocity = 0;
   }
 }
- if(lastMouseDown&&specs[weaponName].auto)shoot();
+ if((lastMouseDown||touchFire)&&specs[weaponName].auto)shoot();
 
  let f=0,s=0;
 
@@ -1160,13 +1264,14 @@ if (jumping) {
  if(keys.KeyS)f+=1;
  if(keys.KeyA)s-=1;
  if(keys.KeyD)s+=1;
+ f += touchMove.y; s += touchMove.x;
 
  let len=Math.hypot(f,s)||1;
 
  f/=len;
  s/=len;
 
- const speed=keys.ShiftLeft?8:5.3;
+ const speed=(keys.ShiftLeft||touchSprint)?8:5.3;
 
  let sin=Math.sin(player.rotation.y);
  let cos=Math.cos(player.rotation.y);
@@ -1177,15 +1282,25 @@ if (jumping) {
  // DÜZELTİLDİ: X ve Z hareketleri ayrı kontrol edilir.
  // Böylece duvar boyunca kayarak hareket edebilirsin.
 
- if(Math.abs(nx)<61&&!collides(nx,player.position.z)){
-  player.position.x=nx;
+ const steps=Math.max(1,Math.ceil(Math.hypot(nx-player.position.x,nz-player.position.z)/.35));
+ const stepX=(nx-player.position.x)/steps, stepZ=(nz-player.position.z)/steps;
+ for(let i=0;i<steps;i++){
+  const testX=player.position.x+stepX;
+  if(Math.abs(testX)<97&&!collides(testX,player.position.z)) player.position.x=testX;
+  const testZ=player.position.z+stepZ;
+  if(Math.abs(testZ)<97&&!collides(player.position.x,testZ)) player.position.z=testZ;
  }
-
- if(Math.abs(nz)<61&&!collides(player.position.x,nz)){
-  player.position.z=nz;
+ if(portalCooldown>0) portalCooldown-=dt;
+ if(selectedMap==='bind'&&portalCooldown<=0){
+  const p1=Math.hypot(player.position.x+78,player.position.z-12);
+  const p2=Math.hypot(player.position.x-78,player.position.z+12);
+  if(p1<3.2){player.position.set(74,0,-12);portalCooldown=1.5;playSfx('teleport');}
+  else if(p2<3.2){player.position.set(-74,0,12);portalCooldown=1.5;playSfx('teleport');}
  }
-
  if(f||s){
+  footstepTimer-=dt;
+  if(footstepTimer<=0){playSfx('step');footstepTimer=(keys.ShiftLeft||touchSprint)?.28:.42;}
+
   const running = keys.ShiftLeft;
   moveBob += dt * (running ? 16 : 10);
 
@@ -1216,7 +1331,7 @@ if (keys.ShiftLeft && (f || s)) {
   netSendTimer+=dt;
   if(netSendTimer>=.05){
    netSendTimer=0;
-   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:weaponName});
+   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:weaponName,character:selectedCharacter});
   }
  }
  updateRemotePlayers();
@@ -1230,52 +1345,54 @@ if (keys.ShiftLeft && (f || s)) {
 }
 
 function collides(x,z){
- const blocks=[
-  [-17,-12,2,35],
-  [17,-12,2,35],
-  [-17,17,2,26],
-  [17,17,2,26],
-  [-29,0,18,2],
-  [29,0,18,2],
-  [0,-24,2,18],
-  [0,24,2,16],
-  [-8,-3,9,2],
-  [8,3,9,2],
-  [-27,-20,8,2],
-  [27,20,8,2],
-  [-25,20,2,10],
-  [25,-20,2,10]
- ];
-
- for(const [bx,bz,w,d] of blocks){
-  if(
-   Math.abs(x-bx)<w/2+.55&&
-   Math.abs(z-bz)<d/2+.55
-  ){
-   return true;
+  const r=.48;
+  if(x < -97+r || x > 97-r || z < -97+r || z > 97-r) return true;
+  const common=[];
+  if(selectedMap==='desert'){
+    common.push([-17,-12,2,35], [17,-12,2,35], [-17,17,2,26], [17,17,2,26], [-29,0,18,2], [29,0,18,2], [0,-24,2,18], [0,24,2,16], [-8,-3,9,2], [8,3,9,2], [-27,-20,8,2], [27,20,8,2], [-25,20,2,10], [25,-20,2,10]);
+    for(const [bx,bz] of [[-45,-40],[45,-40],[-45,40],[45,40]]) common.push([bx,bz,13,12]);
+    for(const [bx,bz] of [[-48,-42],[48,-42],[-48,42],[48,42],[-42,0],[42,0],[0,-49],[0,49]]) common.push([bx,bz,5,5]);
+    for(const [bx,bz] of [[-54,-22],[54,22],[-22,54],[22,-54]]) common.push([bx,bz,2.5,13]);
+    for(const [bx,bz] of [[-9,12],[9,12],[-27,-8],[27,8],[-7,-25],[8,26],[0,5],[-32,27],[32,-27]]) common.push([bx,bz,3.2,1.1]);
+  } else if(selectedMap==='icebox'){
+    common.push([-62,0,18,26],[-30,-48,22,12],[0,-55,26,14],[48,-42,22,14],[65,0,14,30],[35,48,28,14],[0,58,20,12],[-48,48,24,14],[-70,-48,14,20],[-25,15,14,24],[22,8,14,24],[-10,-22,10,5],[12,25,10,5],[-55,20,10,5],[55,-18,10,5],[0,0,10,5]);
+  } else if(selectedMap==='bind'){
+    common.push([-60,-45,24,18],[-35,-5,14,30],[-60,42,22,16],[-5,-58,28,14],[35,-42,18,24],[62,-5,24,16],[42,42,22,18],[0,55,20,14],[0,0,12,20],[-20,38,18,12],[20,-8,16,12],[-22,-42,18,3],[22,35,18,3],[-72,0,3,20],[72,0,3,20]);
+  } else if(selectedMap==='snow'){
+    for(const [bx,bz] of [[-55,-42],[55,-42],[-55,42],[55,42],[-20,0],[20,0]]) common.push([bx,bz,16,16]);
+    for(const [bx,bz] of [[-35,-15],[35,15],[-35,15],[35,-15]]) common.push([bx,bz,12,5]);
+  } else if(selectedMap==='factory'){
+    common.push([-55,-40,26,22],[55,40,26,22],[-28,-35,12,5],[28,35,12,5],[-28,35,12,5],[28,-35,12,5],[0,-50,12,5],[0,50,12,5]);
+  } else if(selectedMap==='city'){
+    for(const [bx,bz] of [[-65,-55],[65,-55],[-65,55],[65,55]]) common.push([bx,bz,22,20]);
+    for(const [bx,bz] of [[-25,0],[25,0],[0,-30],[0,30]]) common.push([bx,bz,9,9]);
   }
- }
+  return common.some(([bx,bz,w,d])=>Math.abs(x-bx)<w/2+r && Math.abs(z-bz)<d/2+r);
+}
 
- for(const [bx,bz] of [
-  [-9,12],
-  [9,12],
-  [-27,-8],
-  [27,8],
-  [-7,-25],
-  [8,26],
-  [0,5],
-  [-32,27],
-  [32,-27]
- ]){
-  if(
-   Math.abs(x-bx)<2.1&&
-   Math.abs(z-bz)<2.1
-  ){
-   return true;
-  }
- }
+function setupTouchControls(){
+ const pad=document.getElementById('movePad'), stick=document.getElementById('moveStick');
+ if(!pad||!stick)return;
+ let active=false, rect=null;
+ const move=e=>{ if(!active)return; const t=e.touches?e.touches[0]:e; rect=pad.getBoundingClientRect(); const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2; let dx=t.clientX-cx,dy=t.clientY-cy; const max=42,len=Math.hypot(dx,dy)||1; if(len>max){dx=dx/len*max;dy=dy/len*max;} touchMove={x:dx/max,y:dy/max}; stick.style.transform=`translate(${dx}px,${dy}px)`; };
+ const end=()=>{active=false;touchMove={x:0,y:0};stick.style.transform='translate(0,0)';};
+ pad.addEventListener('touchstart',e=>{active=true;move(e);e.preventDefault();},{passive:false});
+ pad.addEventListener('touchmove',e=>{move(e);e.preventDefault();},{passive:false});
+ pad.addEventListener('touchend',end);pad.addEventListener('touchcancel',end);
+ const fire=document.getElementById('fireTouch'); fire.addEventListener('pointerdown',e=>{touchFire=true;lastMouseDown=true;if(!specs[weaponName].auto)shoot();e.preventDefault();}); fire.addEventListener('pointerup',()=>{touchFire=false;lastMouseDown=false;}); fire.addEventListener('pointercancel',()=>{touchFire=false;lastMouseDown=false;});
+ const sprint=document.getElementById('sprintTouch'); sprint.addEventListener('pointerdown',e=>{touchSprint=true;e.preventDefault();}); sprint.addEventListener('pointerup',()=>touchSprint=false); sprint.addEventListener('pointercancel',()=>touchSprint=false);
+ document.getElementById('interactTouch').addEventListener('click',()=>keydown({code:'KeyE'}));
+}
 
- return false;
+function drawMinimap(){
+ const canvas=document.getElementById('miniMap'); if(!canvas||!player||!game)return;
+ const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=1.35;
+ ctx.clearRect(0,0,w,h);ctx.save();ctx.beginPath();ctx.arc(cx,cy,105,0,Math.PI*2);ctx.clip();ctx.fillStyle='#14212b';ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle='#8195a2';ctx.lineWidth=2;ctx.strokeRect(cx-84,cy-84,168,168);
+ const px=cx,py=cy;ctx.fillStyle='#e9eef2';ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+ for(const [id,p] of remotePlayers){const dx=(Number(p.x)-player.position.x)*scale, dz=(Number(p.z)-player.position.z)*scale;const x=cx+dx,y=cy+dz;if(Math.hypot(dx,dz)<98){ctx.fillStyle=(p.team===myTeam)?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.fill();}}
+ if(selectedGameMode==='bomb'&&bombState.carrierId===socket?.id&&!bombState.planted){ctx.fillStyle='#ffd52a';for(const [x,z,label] of [[-42,4,'A'],[42,-4,'B']]){const sx=cx+(x-player.position.x)*scale,sy=cy+(z-player.position.z)*scale;ctx.beginPath();ctx.arc(sx,sy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';ctx.font='bold 9px Arial';ctx.fillText(label,sx-3,sy+3);ctx.fillStyle='#ffd52a';}}
+ ctx.restore();
 }
 
 function animate(){
@@ -1284,6 +1401,7 @@ function animate(){
  let dt=clock?Math.min(clock.getDelta(),.05):0;
 
  update(dt);
+ drawMinimap();
 
  if(renderer){
   renderer.render(scene,camera);
@@ -1296,7 +1414,7 @@ function setOnlineStatus(text){
 }
 
 function updatePlayerCount(){
- const el=document.getElementById('players');if(el)el.textContent=`OYUNCULAR: ${Math.min(10,remotePlayers.size+1)}/10`;
+ const el=document.getElementById('players');if(el)el.textContent=`PLAYERS: ${Math.min(10,remotePlayers.size+1)}/10`;
 }
 function updateRemotePlayers(){
  if(!scene)return;
@@ -1304,6 +1422,7 @@ function updateRemotePlayers(){
   let mesh=remoteMeshes.get(id);
 
   if(mesh && (mesh.userData.team !== p.team ||
+              mesh.userData.character !== (p.character||'soldier') ||
               mesh.userData.gameMode !== selectedGameMode)){
     scene.remove(mesh);
     mesh = null;
@@ -1311,14 +1430,25 @@ function updateRemotePlayers(){
   }
 
   if(!mesh){
-    mesh=makeBlockCharacter(false,p.team);
+    mesh=makeBlockCharacter(false,p.team,p.character||'soldier');
     scene.add(mesh);
     remoteMeshes.set(id,mesh);
   }
 
   mesh.visible = p.alive !== false && Number(p.hp) !== 0;
-  mesh.position.set(Number(p.x)||0,0,Number(p.z)||0);
+  const oldX=mesh.position.x, oldZ=mesh.position.z;
+  const newX=Number(p.x)||0, newZ=Number(p.z)||0;
+  const moving=Math.hypot(newX-oldX,newZ-oldZ)>0.002;
+  mesh.position.set(newX,0,newZ);
   mesh.rotation.y=Number(p.ry)||0;
+  const parts=mesh.userData.parts;
+  if(parts){
+   const phase=(mesh.userData.walkPhase||0)+(moving?0.32:0); mesh.userData.walkPhase=phase;
+   const swing=moving?Math.sin(phase)*0.55:0;
+   parts.leftLeg.rotation.x=swing; parts.rightLeg.rotation.x=-swing;
+   parts.leftArm.rotation.x=-swing*0.65; parts.rightArm.rotation.x=swing*0.65;
+   parts.marker.material.color.set(mesh.userData.friendly?0x168bff:0xff3030);
+  }
  }
  updatePlayerCount();
 }
@@ -1329,12 +1459,12 @@ function updateRemotePlayers(){
   const code = document.getElementById('roomCode').value.trim().toUpperCase();
 
   if (!url) {
-    setOnlineStatus('Sunucu adresini gir.');
+    setOnlineStatus('ENTER THE SERVER URL.');
     return;
   }
 
   if (action === 'join' && !code) {
-    setOnlineStatus('Katılmak için oda kodunu gir.');
+    setOnlineStatus('ENTER A ROOM CODE TO JOIN.');
     return;
   }
 
@@ -1344,7 +1474,8 @@ function updateRemotePlayers(){
   }
 
   playerName = name;
-  setOnlineStatus('Sunucuya bağlanılıyor...');
+  selectedCharacter = characterSelect.value;
+  setOnlineStatus('CONNECTING TO SERVER...');
 
   socket = io(url, {
     transports: ['websocket', 'polling'],
@@ -1354,10 +1485,10 @@ function updateRemotePlayers(){
   socket.on('connect', () => {
     socket.emit(
       action === 'create' ? 'createRoom' : 'joinRoom',
-      { code, name },
+      { code, name, character: selectedCharacter },
       res => {
         if (!res || !res.ok) {
-          setOnlineStatus(res?.error || 'Odaya girilemedi.');
+          setOnlineStatus(res?.error || 'COULD NOT JOIN THE ROOM.');
           return;
         }
 
@@ -1370,7 +1501,7 @@ function updateRemotePlayers(){
         lobby.style.display = 'flex';
 
         updateLobby(res);
-        lobbyStatus.textContent = 'Oyuncuların katılması bekleniyor.';
+        lobbyStatus.textContent = 'WAITING FOR PLAYERS...';
       }
     );
   });
@@ -1394,8 +1525,8 @@ gameModeSelect.value = selectedGameMode;
 if (selectedGameMode === 'bomb') {
   document.getElementById('bombStatus').textContent =
     myTeam === 'attack'
-      ? '🔵 SEN SALDIRI TAKIMINDASIN'
-      : '🔴 SEN SAVUNMA TAKIMINDASIN';
+      ? '🔵 YOU ARE ATTACKING'
+      : '🔴 YOU ARE DEFENDING';
 }
     
       
@@ -1441,7 +1572,7 @@ if (selectedGameMode === 'bomb') {
 
 
   socket.on('connect_error', () => {
-    setOnlineStatus('Sunucuya bağlanılamadı. Sunucunun açık ve adresin doğru olduğundan emin ol.');
+    setOnlineStatus('COULD NOT CONNECT. CHECK THE SERVER URL AND STATUS.');
   });
 
   socket.on('playerJoined', p => remotePlayers.set(p.id, p));
@@ -1457,7 +1588,7 @@ if (selectedGameMode === 'bomb') {
   socket.on('playerDamaged', data => {
     damagePlayer(Number(data?.damage) || 0);
 
-    msg.textContent = (data?.attacker || 'Bir oyuncu') + ' sana ateş etti!';
+    msg.textContent = (data?.attacker || 'An enemy') + ' hit you!';
 
     setTimeout(() => {
       msg.textContent = '';
@@ -1476,13 +1607,16 @@ if (selectedGameMode === 'bomb') {
   if (data.killerId === socket.id) {
     kills++;
     updateHud();
-    msg.textContent = 'RAKİP ETKİSİZ!';
+    msg.textContent = 'ENEMY ELIMINATED!';
     setTimeout(() => msg.textContent = '', 1000);
   }
 });
   socket.on('playersUpdate', list => {
     (list || []).forEach(p => {
-      if (p.id !== socket.id) remotePlayers.set(p.id, p);
+      if (p.id === socket.id && player && p.hp > 0) {
+        player.position.set(Number(p.x)||0,0,Number(p.z)||0);
+        hp=Number(p.hp)||100; hpEl.textContent=hp;
+      } else if (p.id !== socket.id) remotePlayers.set(p.id, p);
     });
     updatePlayerCount();
   });
@@ -1504,7 +1638,7 @@ function showBombCountdown() {
   const update = () => {
     if (!bombState.planted || !bombState.endsAt) return;
     const remaining = Math.max(0, Math.ceil((bombState.endsAt - Date.now()) / 1000));
-    status.textContent = '💣 BOMBA KURULU: ' + remaining + ' SANİYE';
+    status.textContent = 'BOMB PLANTED: ' + remaining + 's';
   };
 
   update();
@@ -1522,7 +1656,8 @@ socket.on('bombPickedUp', data => {
   if (bombMesh) bombMesh.visible = false;
 
   document.getElementById('bombStatus').textContent =
-    '💣 BOMBA ALINDI: ' + (data.playerName || 'SALDIRI TAKIMI');
+    'BOMB PICKED UP: ' + (data.playerName || 'ATTACK TEAM');
+  playSfx('pickup');
 });
 
 socket.on('bombPlanted', data => {
@@ -1535,17 +1670,19 @@ socket.on('bombPlanted', data => {
   if (bombMesh) {
     bombMesh.visible = true;
     const sitePosition = data.site === 'A'
-      ? { x: -25, z: 0 }
-      : { x: 25, z: 0 };
+      ? { x: -42, z: 4 }
+      : { x: 42, z: -4 };
     bombMesh.position.set(sitePosition.x, 0, sitePosition.z);
   }
 
   showBombCountdown();
+  playSfx('plant');
 });
 
 socket.on('bombDefusing', () => {
   document.getElementById('bombStatus').textContent =
-    '🔧 SAVUNMA TAKIMI BOMBAYI ETKİSİZLEŞTİRİYOR...';
+    'DEFUSING...';
+  playSfx('defuse');
 });
 
 socket.on('bombDefused', () => {
@@ -1555,7 +1692,7 @@ socket.on('bombDefused', () => {
   if (bombMesh) bombMesh.visible = false;
 
   document.getElementById('bombStatus').textContent =
-    '✅ BOMBA ETKİSİZLEŞTİRİLDİ! SAVUNMA TAKIMI KAZANDI!';
+    '✅ BOMB DEFUSED! DEFENDERS WIN!';
 });
 
 socket.on('bombExploded', () => {
@@ -1565,7 +1702,8 @@ socket.on('bombExploded', () => {
   if (bombMesh) bombMesh.visible = false;
 
   document.getElementById('bombStatus').textContent =
-    '💥 BOMBA PATLADI! SALDIRI TAKIMI KAZANDI!';
+    'BOMB EXPLODED! ATTACK TEAM WINS!';
+  playSfx('explosion');
 });
 
 socket.on('bombReset', data => {
@@ -1582,11 +1720,13 @@ socket.on('bombReset', data => {
 
   if (bombMesh) {
     bombMesh.visible = true;
-    bombMesh.position.set(-48, 0, -48);
+    bombMesh.position.set(-78, 0, -78);
   }
 });
 
 socket.on('roundStarting', data => {
+  game=true; hp=100; hpEl.textContent=100; end.style.display='none'; hud.style.display='block';
+  if(matchMedia('(pointer:fine)').matches && renderer?.domElement?.requestPointerLock && !locked) renderer.domElement.requestPointerLock();
   stopBombClock();
   if (bombPrepInterval) clearInterval(bombPrepInterval);
 
@@ -1595,14 +1735,14 @@ socket.on('roundStarting', data => {
   const status = document.getElementById('bombStatus');
 
   status.textContent =
-    'TUR ' + data.round + '/12 - HAZIRLAN! ' + seconds;
+    'ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
 
   bombPrepInterval = setInterval(() => {
     seconds--;
 
     if (seconds > 0) {
       status.textContent =
-        'TUR ' + data.round + '/12 - HAZIRLAN! ' + seconds;
+        'ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
     } else {
       clearInterval(bombPrepInterval);
       bombPrepInterval = null;
@@ -1617,24 +1757,18 @@ socket.on('roundStarted', data => {
   }
 
   document.getElementById('bombStatus').textContent =
-    'TUR ' + data.round + '/12 BAŞLADI!';
+    'ROUND ' + data.round + '/12 STARTED!';
 });
 
 socket.on('roundOver', data => {
-  document.getElementById('bombStatus').textContent =
-    'TUR ' + data.round + '/12 BİTTİ! KAZANAN: ' +
-    (data.winner === 'attack' ? 'SALDIRI' : 'SAVUNMA') +
-    ' | SKOR: ' + data.attackWins + '-' + data.defenseWins;
+  const won = data.winner === 'draw' ? null : data.winner === myTeam;
+  showRoundResult(won, `ROUND ${data.round}/12  •  SCORE ${data.attackWins}-${data.defenseWins}`, false);
 });
 
 socket.on('gameEnded', data => {
-  document.getElementById('bombStatus').textContent =
-    '12 TUR TAMAMLANDI! ' +
-    (data.winner === 'draw'
-      ? 'BERABERE!'
-      : data.winner === 'attack'
-        ? 'SALDIRI TAKIMI KAZANDI!'
-        : 'SAVUNMA TAKIMI KAZANDI!');
+  game=false;
+  const won = data.winner === 'draw' ? null : data.winner === myTeam;
+  showRoundResult(won, `MATCH COMPLETE  •  ${data.attackWins}-${data.defenseWins}`, true);
 });
 
   socket.on('botUpdate', data => {
@@ -1647,7 +1781,7 @@ socket.on('gameEnded', data => {
       b.userData.alive = false;
       b.visible = false;
       kills++;
-      msg.textContent = 'HEDEF ETKİSİZ';
+      msg.textContent = 'TARGET ELIMINATED';
       setTimeout(() => msg.textContent = '', 700);
       updateHud();
     }
@@ -1663,7 +1797,7 @@ socket.on('gameEnded', data => {
       bombPrepInterval = null;
     }
     lobby.style.display = 'none';
-    setOnlineStatus('Sunucu bağlantısı kesildi. Tekrar bağlanmayı dene.');
+    setOnlineStatus('SERVER DISCONNECTED. PLEASE RECONNECT.');
   });
 }
 function resize(){
@@ -1674,7 +1808,7 @@ function resize(){
  renderer.setSize(innerWidth,innerHeight);
 }
 
-document.getElementById('start').onclick=()=>{online=false;startGame();};
+document.getElementById('start').onclick=()=>{online=false;selectedCharacter=characterSelect.value;startGame();};
 document.getElementById('createRoom').onclick=()=>connectRoom('create');
  document.getElementById('botsYes').onclick = () => {
   if (isRoomHost && socket) {
@@ -1709,6 +1843,7 @@ document.getElementById('back').onclick=()=>{
  document.exitPointerLock?.();
 };
 
+setupTouchControls();
 init();
 
 </script>
