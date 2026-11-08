@@ -191,6 +191,8 @@ let weaponName='Vandal',ammo=25,reserve=75,hp=100;
  let myTeam = null;
 let bombState = {
   planted: false,
+  pickedUp: false,
+  carrierId: null,
   site: null,
   endsAt: null
 };
@@ -799,20 +801,34 @@ function keydown(e){
     { name: 'B', x: 25, z: 0 }
   ];
 
-  const site = sites.find(s =>
-    Math.hypot(player.position.x - s.x, player.position.z - s.z) <= 8
+  const bombSpawnDistance = Math.hypot(
+    player.position.x - (-48),
+    player.position.z - (-48)
   );
 
-  if (site) {
-    if (myTeam === 'attack' && !bombState.planted) {
-      socket.emit('plantBomb', { site: site.name });
-    } else if (myTeam === 'defense' && bombState.planted && bombState.site === site.name) {
-      socket.emit('defuseBomb');
+  if (myTeam === 'attack' && !bombState.pickedUp && !bombState.planted) {
+    if (bombSpawnDistance <= 6) {
+      socket.emit('pickBomb');
+    }
+  } else {
+    const site = sites.find(s =>
+      Math.hypot(
+        player.position.x - s.x,
+        player.position.z - s.z
+      ) <= 8
+    );
+
+    if (site) {
+      if (myTeam === 'attack' && bombState.pickedUp && !bombState.planted) {
+        socket.emit('plantBomb', { site: site.name });
+      } else if (myTeam === 'defense' && bombState.planted && bombState.site === site.name) {
+        socket.emit('defuseBomb');
+      }
     }
   }
-}
- if(e.code==='KeyR')reload();
+ }
 
+ if(e.code==='KeyR')reload();
  if(e.code==='Digit1')setWeapon('Vandal');
  if(e.code==='Digit2')setWeapon('Şerif');
  if(e.code==='Digit3')setWeapon('AWM');
@@ -1355,8 +1371,20 @@ mapSelect.value = selectedMap;
     });
     updatePlayerCount();
   });
+ socket.on('bombPickedUp', data => {
+  bombState.pickedUp = true;
+  bombState.carrierId = data.carrierId;
+
+  document.getElementById('bombStatus').textContent =
+    'BOMBA ALINDI! TAŞIYAN: ' + data.playerName;
+});
 socket.on('bombPlanted', data => {
-  bombState = data;
+  bombState = {
+    ...data,
+    pickedUp: false,
+    carrierId: null
+  };
+  
   document.getElementById('bombStatus').textContent =
     'BOMBA KURULDU! BÖLGE: ' + data.site;
 });
