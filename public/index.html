@@ -390,7 +390,7 @@ function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
  function makeBlockCharacter(isBot = false, team = null, characterType = selectedCharacter) {
   const character = new THREE.Group();
 
-  const friendly = team != null ? (team === myTeam) : !isBot;
+  const friendly = selectedGameMode === 'ffa' ? false : (team != null ? (team === myTeam) : !isBot);
   const bodyMaterial = friendly ? mats.blue : mats.red;
   const outfitMaterial = ({heavy:mat(0x505b68),special:mat(0x263c42),jett:mat(0x9fc8e8),viper:mat(0x426c4a),steve:mat(0x3b70b5),roblox:mat(0xb52c2c)})[characterType] || mat(0x596b70);
   
