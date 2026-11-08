@@ -1383,45 +1383,97 @@ socket.on('gameStarted', data => {
     });
     updatePlayerCount();
   });
- socket.on('bombPickedUp', data => {
+ 
+let bombPrepInterval = null;
+
+socket.on('bombPickedUp', data => {
   bombState.pickedUp = true;
   bombState.carrierId = data.carrierId;
 
   document.getElementById('bombStatus').textContent =
     'BOMBA ALINDI! TAŞIYAN: ' + data.playerName;
 });
+
 socket.on('bombPlanted', data => {
   bombState = {
     ...data,
     pickedUp: false,
     carrierId: null
   };
-  
+
   document.getElementById('bombStatus').textContent =
     'BOMBA KURULDU! BÖLGE: ' + data.site;
 });
-  socket.on('bombDefusing', data => {
+
+socket.on('bombDefusing', () => {
   document.getElementById('bombStatus').textContent =
     'BOMBA ETKİSİZLEŞTİRİLİYOR...';
 });
- socket.on('bombExploded', data => {
+
+socket.on('bombExploded', () => {
   document.getElementById('bombStatus').textContent =
     'BOMBA PATLADI! SALDIRI TAKIMI KAZANDI!';
 });
 
-socket.on('bombDefused', data => {
+socket.on('bombDefused', () => {
   document.getElementById('bombStatus').textContent =
     'BOMBA ETKİSİZLEŞTİRİLDİ! SAVUNMA TAKIMI KAZANDI!';
-});
-  socket.on('bombExploded', data => {
-  document.getElementById('bombStatus').textContent =
-    'BOMBA PATLADI! SALDIRI TAKIMI KAZANDI!';
 });
 
-socket.on('bombDefused', data => {
-  document.getElementById('bombStatus').textContent =
-    'BOMBA ETKİSİZLEŞTİRİLDİ! SAVUNMA TAKIMI KAZANDI!';
+socket.on('bombReset', data => {
+  bombState = data.bomb;
 });
+
+socket.on('roundStarting', data => {
+  if (bombPrepInterval) clearInterval(bombPrepInterval);
+
+  let seconds = data.prepareSeconds || 5;
+
+  const status = document.getElementById('bombStatus');
+
+  status.textContent =
+    'TUR ' + data.round + '/12 - HAZIRLAN! ' + seconds;
+
+  bombPrepInterval = setInterval(() => {
+    seconds--;
+
+    if (seconds > 0) {
+      status.textContent =
+        'TUR ' + data.round + '/12 - HAZIRLAN! ' + seconds;
+    } else {
+      clearInterval(bombPrepInterval);
+      bombPrepInterval = null;
+    }
+  }, 1000);
+});
+
+socket.on('roundStarted', data => {
+  if (bombPrepInterval) {
+    clearInterval(bombPrepInterval);
+    bombPrepInterval = null;
+  }
+
+  document.getElementById('bombStatus').textContent =
+    'TUR ' + data.round + '/12 BAŞLADI!';
+});
+
+socket.on('roundOver', data => {
+  document.getElementById('bombStatus').textContent =
+    'TUR ' + data.round + '/12 BİTTİ! KAZANAN: ' +
+    (data.winner === 'attack' ? 'SALDIRI' : 'SAVUNMA') +
+    ' | SKOR: ' + data.attackWins + '-' + data.defenseWins;
+});
+
+socket.on('gameEnded', data => {
+  document.getElementById('bombStatus').textContent =
+    '12 TUR TAMAMLANDI! ' +
+    (data.winner === 'draw'
+      ? 'BERABERE!'
+      : data.winner === 'attack'
+        ? 'SALDIRI TAKIMI KAZANDI!'
+        : 'SAVUNMA TAKIMI KAZANDI!');
+});
+
   socket.on('botUpdate', data => {
     const b = bots[data.botId];
     if (!b) return;
