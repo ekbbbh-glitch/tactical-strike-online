@@ -310,7 +310,8 @@ let footstepTimer=0,portalCooldown=0;
 
 // ONLINE CO-OP bağlantısı
 let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
-let netSendTimer=0;
+let netSendTimer=0,voiceStream=null,voicePeers=new Map(),voiceHeld=false;
+
  let mySpawn = { x: -8, z: 37 };
 
 const specs={
@@ -512,6 +513,7 @@ end.style.display = 'none';
  },{passive:false});
 
  window.addEventListener('keyup',e=>{
+  if(e.code==='KeyU')stopTalking();
   const k=e.key.toLowerCase();
   const code=movementCodes[k]||(
    e.code==='ShiftRight'?'ShiftLeft':e.code
@@ -1015,7 +1017,8 @@ function updateHud(){
 
 function keydown(e){
  keys[e.code]=true;
-
+ if(e.code==='KeyU'){startTalking();return;}
+ if(e.code==='KeyT'&&!e.repeat){document.getElementById('chatInput')?.focus();return;}
  if(!game)return;
 
  if (e.code === 'KeyE' && !e.repeat && online && selectedGameMode === 'bomb') {
@@ -1482,6 +1485,47 @@ function animate(){
  }
 }
 
+function appendChat(data){
+ const log=document.getElementById('chatLog');if(!log)return;
+ const line=document.createElement('div'),name=document.createElement('b'),body=document.createElement('span');
+ name.textContent=(data.name||'Oyuncu')+': ';body.textContent=String(data.text||'').slice(0,120);
+ line.append(name,body);log.appendChild(line);log.scrollTop=log.scrollHeight;
+ while(log.children.length>35)log.firstChild.remove();
+}
+function ensureVoicePeer(id){
+ if(voicePeers.has(id))return voicePeers.get(id);
+ const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+ voicePeers.set(id,pc);
+ pc.onicecandidate=e=>{if(e.candidate&&socket?.connected)socket.emit('voiceSignal',{targetId:id,signal:{candidate:e.candidate}});};
+ pc.ontrack=e=>{
+  let audio=document.getElementById('voice-'+id);
+  if(!audio){audio=document.createElement('audio');audio.id='voice-'+id;audio.autoplay=true;audio.playsInline=true;document.body.appendChild(audio);}
+  audio.srcObject=e.streams[0];audio.play().catch(()=>{});
+ };
+ pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState)){pc.close();voicePeers.delete(id);document.getElementById('voice-'+id)?.remove();}};
+ return pc;
+}
+function attachVoiceTracks(pc){
+ if(!voiceStream)return;
+ const senders=pc.getSenders().map(s=>s.track).filter(Boolean);
+ voiceStream.getAudioTracks().forEach(track=>{if(!senders.includes(track))pc.addTrack(track,voiceStream);});
+}
+async function createVoiceOffer(id){
+ if(!socket?.connected||!voiceStream||id===socket.id)return;
+ const pc=ensureVoicePeer(id);attachVoiceTracks(pc);
+ try{const offer=await pc.createOffer();await pc.setLocalDescription(offer);socket.emit('voiceSignal',{targetId:id,signal:{description:pc.localDescription}});}catch(err){console.warn('Voice offer failed',err);}
+}
+async function startTalking(){
+ if(!game||!online||!socket?.connected||voiceHeld)return;
+ voiceHeld=true;
+ try{
+  if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  voiceStream.getAudioTracks().forEach(t=>t.enabled=true);
+  for(const id of remotePlayers.keys())await createVoiceOffer(id);
+  setOnlineStatus('MIKROFON AÇIK — KONUŞMAK İÇİN U TUŞUNU BASILI TUT.');
+ }catch(err){voiceHeld=false;setOnlineStatus('MİKROFON İZNİ VERİLMEDİ VEYA DESTEKLENMİYOR.');}
+}
+function stopTalking(){voiceHeld=false;voiceStream?.getAudioTracks().forEach(t=>t.enabled=false);}
 function setOnlineStatus(text){
  const el=document.getElementById('onlineStatus');
  if(el)el.textContent=text;
@@ -1649,7 +1693,7 @@ if (selectedGameMode === 'bomb') {
     setOnlineStatus('COULD NOT CONNECT. CHECK THE SERVER URL AND STATUS.');
   });
 
-  socket.on('playerJoined', p => remotePlayers.set(p.id, p));
+  socket.on('playerJoined', p => {remotePlayers.set(p.id,p);if(voiceStream)createVoiceOffer(p.id);});
 
   socket.on('playerLeft', id => {
     remotePlayers.delete(id);
@@ -1862,6 +1906,21 @@ socket.on('gameEnded', data => {
   });
 
   socket.on('roomMessage', t => setOnlineStatus(t));
+  socket.on('chatMessage', data => appendChat(data));
+  socket.on('voiceSignal', async data => {
+    if(!data?.from||!data.signal)return;
+    const pc=ensureVoicePeer(data.from);
+    try{
+      if(data.signal.description){
+        await pc.setRemoteDescription(data.signal.description);
+        if(data.signal.description.type==='offer'){
+          attachVoiceTracks(pc);
+          const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
+          socket.emit('voiceSignal',{targetId:data.from,signal:{description:pc.localDescription}});
+        }
+      }else if(data.signal.candidate){await pc.addIceCandidate(data.signal.candidate);}
+    }catch(err){console.warn('Voice signal error',err);}
+  });
 
   socket.on('disconnect', () => {
     online = false;
@@ -1918,6 +1977,9 @@ document.getElementById('back').onclick=()=>{
 };
 
 document.getElementById('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=document.getElementById('chatInput');const text=input.value.trim();if(text&&socket?.connected){socket.emit('chatMessage',text.slice(0,120));input.value='';}});
+document.getElementById('voiceTouch').addEventListener('pointerdown',startTalking);
+document.getElementById('voiceTouch').addEventListener('pointerup',stopTalking);
+document.getElementById('voiceTouch').addEventListener('pointercancel',stopTalking);
 document.getElementById('settingsButton').addEventListener('click',()=>{const p=document.getElementById('settingsPanel');p.style.display=p.style.display==='block'?'none':'block';});
 document.getElementById('closeSettings').addEventListener('click',()=>document.getElementById('settingsPanel').style.display='none');
 document.getElementById('mouseSensitivity').addEventListener('input',e=>mouseSensitivity=Number(e.target.value));
