@@ -1775,6 +1775,7 @@ function damagePlayer(d,serverApplied=false){
 }
 
 function moveBotWithCollision(bot,dx,dz){
+ const startX=bot.position.x,startZ=bot.position.z;
  const distance=Math.hypot(dx,dz);
  const steps=Math.max(1,Math.ceil(distance/.22));
  const sx=dx/steps,sz=dz/steps;
@@ -1784,6 +1785,7 @@ function moveBotWithCollision(bot,dx,dz){
   const nextZ=bot.position.z+sz;
   if(!collides(bot.position.x,nextZ))bot.position.z=nextZ;
  }
+ return Math.hypot(bot.position.x-startX,bot.position.z-startZ)>.001;
 }
 function updateBots(dt){
  bots.forEach(b=>{
@@ -1814,8 +1816,8 @@ function updateBots(dt){
    if(b.userData.fire<=0){b.userData.fire=1+Math.random()*1.2;if(Math.random()<Math.max(.12,.62-dist*.012))damagePlayer(5+Math.floor(Math.random()*8));}
   }else{
    const wx=b.userData.targetX-b.position.x,wz=b.userData.targetZ-b.position.z,wd=Math.hypot(wx,wz)||1;
-   moveBotWithCollision(b,wx/wd*dt*1.05,wz/wd*dt*1.05);b.rotation.y=Math.atan2(-wx,-wz);
-   if(Math.hypot(b.userData.targetX-b.position.x,b.userData.targetZ-b.position.z)>1&&Math.hypot(wx,wz)>0&&!collides(b.position.x+wx/wd*.35,b.position.z+wz/wd*.35)){/* keep current patrol target */}
+   const moved=moveBotWithCollision(b,wx/wd*dt*1.05,wz/wd*dt*1.05);b.rotation.y=Math.atan2(-wx,-wz);
+   if(!moved)b.userData.targetTimer=0;
   }
   b.position.y=Math.abs(Math.sin(b.userData.walk))*.04;
  });
