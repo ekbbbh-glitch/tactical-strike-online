@@ -741,7 +741,7 @@ function addWatchtower(x,z){
  box(scene,x,5.65,z,3.5,.35,3.5,deck);box(scene,x,5.95,z-1.62,3.5,.55,.12,metal);box(scene,x-1.62,5.95,z,.12,.55,3.5,metal);box(scene,x+1.62,5.95,z,.12,.55,3.5,metal);
  for(const dx of [-.48,.48])cylinder(scene,x+dx,2.8,z+1.45,.065,.065,5.6,warning);
  for(let y=.35;y<=5.3;y+=.48)box(scene,x,y,z+1.82,1.05,.075,.09,metal);
- climbPoints.push({x,z:z+1.45,top:5.35});watchtowerDecks.push({x,z});
+ climbPoints.push({x,z:z+1.45,top:5.85,deckZ:z+0.75});watchtowerDecks.push({x,z});
  const dome=new THREE.Mesh(new THREE.SphereGeometry(.65,18,12,0,Math.PI*2,0,Math.PI/2),mat(0x80949d,.4,.7));dome.position.set(x,6.02,z);scene.add(dome);cylinder(scene,x,7.05,z,.045,.045,1.4,warning);
 }
 function addMapDetails(){climbPoints=[];watchtowerDecks=[];const stone=mat(0x77766e),sand=mat(0xb69a70),green=mat(0x425d45),metal=mat(0x3c4c55,.5,.65);addWatchtower(-12,74);addWatchtower(12,-74);
@@ -819,20 +819,42 @@ function createBombMesh() {
 
 let audioContext=null;
 function playSfx(kind='shot'){
-  try{
-    const AudioCtx=window.AudioContext||window.webkitAudioContext;
-    if(!AudioCtx)return;
-    audioContext ||= new AudioCtx();
-    if(audioContext.state==='suspended') audioContext.resume();
-    const now=audioContext.currentTime;
-    const osc=audioContext.createOscillator(), gain=audioContext.createGain();
-    const settings={shot:[95,.07,'sawtooth',.045],step:[72,.045,'triangle',.012],reload:[420,.18,'triangle',.035],pickup:[660,.12,'sine',.05],plant:[210,.5,'square',.045],defuse:[540,.4,'sine',.04],explosion:[55,.7,'sawtooth',.09],win:[740,.35,'triangle',.05],lose:[150,.45,'triangle',.05],teleport:[880,.2,'sine',.035]};
-    const [freq,duration,type,volume]=settings[kind]||settings.shot;
-    osc.type=type;osc.frequency.setValueAtTime(freq,now);
-    if(kind==='explosion')osc.frequency.exponentialRampToValueAtTime(35,now+duration);
-    gain.gain.setValueAtTime(volume,now);gain.gain.exponentialRampToValueAtTime(.001,now+duration);
-    osc.connect(gain);gain.connect(audioContext.destination);osc.start(now);osc.stop(now+duration);
-  }catch(e){}
+ try{
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return;
+  audioContext ||= new AudioCtx();if(audioContext.state==='suspended')audioContext.resume();
+  const now=audioContext.currentTime;
+  const tone=(freq,endFreq,duration,type='sine',volume=.04,delay=0)=>{
+   const o=audioContext.createOscillator(),g=audioContext.createGain();
+   o.type=type;o.frequency.setValueAtTime(Math.max(1,freq),now+delay);
+   if(endFreq)o.frequency.exponentialRampToValueAtTime(Math.max(1,endFreq),now+delay+duration);
+   g.gain.setValueAtTime(.0001,now+delay);g.gain.exponentialRampToValueAtTime(volume,now+delay+.008);
+   g.gain.exponentialRampToValueAtTime(.0001,now+delay+duration);
+   o.connect(g);g.connect(audioContext.destination);o.start(now+delay);o.stop(now+delay+duration+.02);
+  };
+  const noise=(duration,volume=.035,filter=1200)=>{
+   const count=Math.max(1,Math.floor(audioContext.sampleRate*duration)),buffer=audioContext.createBuffer(1,count,audioContext.sampleRate),data=buffer.getChannelData(0);
+   for(let i=0;i<count;i++)data[i]=(Math.random()*2-1)*(1-i/count);
+   const src=audioContext.createBufferSource(),f=audioContext.createBiquadFilter(),g=audioContext.createGain();
+   src.buffer=buffer;f.type='lowpass';f.frequency.value=filter;g.gain.setValueAtTime(volume,now);g.gain.exponentialRampToValueAtTime(.0001,now+duration);
+   src.connect(f);f.connect(g);g.connect(audioContext.destination);src.start(now);src.stop(now+duration);
+  };
+  switch(kind){
+   case 'shot':noise(.095,.11,2600);tone(115,42,.12,'sawtooth',.075);tone(1250,420,.045,'square',.018);break;
+   case 'step':noise(.055,.018,480);tone(68,42,.065,'triangle',.025);break;
+   case 'reload':tone(680,430,.075,'square',.025);tone(310,180,.12,'triangle',.035,.13);tone(900,620,.055,'square',.02,.31);break;
+   case 'ladder':tone(520,240,.13,'triangle',.035);tone(780,420,.09,'triangle',.025,.12);break;
+   case 'land':tone(95,48,.16,'triangle',.07);noise(.07,.035,350);break;
+   case 'hit':tone(190,70,.14,'sawtooth',.055);break;
+   case 'pickup':tone(520,880,.18,'sine',.045);tone(780,1100,.12,'sine',.025,.08);break;
+   case 'plant':tone(180,95,.35,'square',.05);tone(740,520,.12,'square',.025,.35);break;
+   case 'defuse':tone(440,760,.3,'sine',.035);tone(660,920,.25,'sine',.025,.18);break;
+   case 'explosion':noise(.72,.19,850);tone(75,28,.7,'sawtooth',.12);break;
+   case 'win':tone(520,1040,.24,'triangle',.045);tone(780,1300,.28,'sine',.035,.18);break;
+   case 'lose':tone(260,90,.42,'triangle',.055);break;
+   case 'teleport':noise(.18,.035,2200);tone(260,1100,.24,'sine',.045);break;
+   default:tone(100,45,.08,'sawtooth',.04);
+  }
+ }catch(e){}
 }
 function showRoundResult(won,detail,final=false){
   const title=document.getElementById('resultTitle');
@@ -1099,9 +1121,9 @@ function keydown(e){
  if(!game)return;
 
  if (e.code === 'KeyE' && !e.repeat) {
-  const ladder=climbPoints.find(p=>Math.hypot(player.position.x-p.x,player.position.z-p.z)<2.4);
-  if(climbing){climbing=false;return;}
-  if(ladder){player.position.x=ladder.x;player.position.z=ladder.z;climbing=true;msg.textContent='MERDİVEN: W / S İLE TIRMAN • E İLE BIRAK';return;}
+  if(climbing){climbing=false;msg.textContent='MERDİVENDEN İNDİN';return;}
+  const ladder=climbPoints.find(p=>Math.hypot(player.position.x-p.x,player.position.z-p.z)<3.2);
+  if(ladder){player.position.x=ladder.x;player.position.z=ladder.z;player.position.y=0;climbing=true;playSfx('ladder');msg.textContent='TIRMANIYORSUN: W / S • E: BIRAK';return;}
  }
  if (e.code === 'KeyE' && !e.repeat && online && selectedGameMode === 'bomb') {
   const sites = [
@@ -1339,6 +1361,7 @@ const hit = botHit;
 function damagePlayer(d,serverApplied=false){
  if(Date.now()<shieldUntil&&!serverApplied)d=Math.ceil(d*.5);
  hp=Math.max(0,hp-d);
+ if(d>0)playSfx('hit');
  hpEl.textContent=hp;
  if(hp<=0){
   if(online && selectedGameMode==='bomb'){
@@ -1394,7 +1417,7 @@ function updateBots(dt){
 
 function update(dt){
  if(!game)return;
- if(!climbing&&player.position.y>0){const onDeck=watchtowerDecks.some(t=>Math.abs(player.position.x-t.x)<1.65&&Math.abs(player.position.z-t.z)<1.65);if(onDeck)player.position.y=5.35;else player.position.y=Math.max(0,player.position.y-10*dt);}
+ if(!climbing&&player.position.y>0){const onDeck=watchtowerDecks.some(t=>Math.abs(player.position.x-t.x)<1.65&&Math.abs(player.position.z-t.z)<1.65);if(onDeck)player.position.y=5.85;else player.position.y=Math.max(0,player.position.y-10*dt);}
  if(reloading&&reloadMag&&reloadMagBase){const p=Math.min(1,(performance.now()-reloadAnimStart)/1050);const swing=Math.sin(p*Math.PI);reloadMag.position.y=reloadMagBase.position.y-swing*.62;reloadMag.rotation.x=reloadMagBase.rotation.x+swing*.75;if(weaponGroup)weaponGroup.rotation.z=swing*.12;}
  shootCd=Math.max(0,shootCd-dt);
  if(abilityCooldowns.Q>0)abilityCooldowns.Q=Math.max(0,abilityCooldowns.Q-dt);
@@ -1420,12 +1443,12 @@ if (jumping) {
  if((lastMouseDown||touchFire)&&specs[weaponName].auto)shoot();
 
  let f=0,s=0;
- if(climbing){let climbDir=(keys.KeyW?1:0)-(keys.KeyS?1:0);if(Math.abs(touchMove.y)>.15)climbDir=-Math.sign(touchMove.y);player.position.y=Math.max(0,Math.min(5.35,player.position.y+climbDir*3.2*dt));if(player.position.y>=5.35||player.position.y<=0)climbing=false;}
+ if(climbing){let climbDir=(keys.KeyW?1:0)-(keys.KeyS?1:0);if(Math.abs(touchMove.y)>.15)climbDir=-Math.sign(touchMove.y);const ladder=climbPoints.find(p=>Math.abs(player.position.x-p.x)<1&&Math.abs(player.position.z-p.z)<1);const top=ladder?.top||5.85;player.position.y=Math.max(0,Math.min(top,player.position.y+climbDir*3.4*dt));if(player.position.y>=top){player.position.y=top;player.position.z=ladder.deckZ;climbing=false;playSfx('land');msg.textContent='KULEYE ÇIKTIN';}if(player.position.y<=0&&climbDir<0){climbing=false;playSfx('land');}}
  if(!climbing&&keys.KeyW)f-=1;
  if(!climbing&&keys.KeyS)f+=1;
  if(!climbing&&keys.KeyA)s-=1;
  if(!climbing&&keys.KeyD)s+=1;
- f += touchMove.y; s += touchMove.x;
+ if(!climbing){f += touchMove.y; s += touchMove.x;}
 
  let len=Math.hypot(f,s)||1;
 
@@ -1553,8 +1576,8 @@ function drawMinimap(){
  const canvas=document.getElementById('miniMap');if(!canvas||!player||!game)return;
  const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=1.05;
  ctx.clearRect(0,0,w,h);ctx.save();ctx.beginPath();ctx.arc(cx,cy,105,0,Math.PI*2);ctx.clip();ctx.fillStyle='#14212b';ctx.fillRect(0,0,w,h);
- const ca=Math.cos(player.rotation.y),sa=Math.sin(player.rotation.y),radius=98;
- const toMap=(x,z)=>{const dx=x-player.position.x,dz=z-player.position.z;return{x:cx+(dx*ca+dz*sa)*scale,y:cy+(-dx*sa+dz*ca)*scale};};
+ const radius=98;
+ const toMap=(x,z)=>{const dx=x-player.position.x,dz=z-player.position.z;return{x:cx+dx*scale,y:cy+dz*scale};};
  // Actual houses, walls and cover from the selected 3D map.
  ctx.fillStyle='#607783';ctx.strokeStyle='#a8bdc7';ctx.lineWidth=1;
  for(const obj of mapObjects){
@@ -1570,7 +1593,7 @@ function drawMinimap(){
  }
  for(const [id,p] of remotePlayers){const q=toMap(Number(p.x)||0,Number(p.z)||0);if(Math.hypot(q.x-cx,q.y-cy)<radius){ctx.fillStyle=p.team===myTeam?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(q.x,q.y,Date.now()<scanUntil?7:4.5,0,Math.PI*2);ctx.fill();}}
  // Player arrow follows the direction the camera faces.
- ctx.save();ctx.translate(cx,cy);ctx.fillStyle='#f5f8ff';ctx.strokeStyle='#07131d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(8,9);ctx.lineTo(0,5);ctx.lineTo(-8,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ ctx.save();ctx.translate(cx,cy);ctx.rotate(player.rotation.y);ctx.fillStyle='#f5f8ff';ctx.strokeStyle='#07131d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
  ctx.restore();
 }
 
