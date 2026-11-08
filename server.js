@@ -747,7 +747,7 @@ io.on('connection', socket => {
     player.rx = finiteClamped(state.rx, -1.5, 1.5, player.rx);
     player.name = cleanName(state.name || player.name);
 
-    player.weapon = ['Vandal', 'Şerif', 'AWM'].includes(state.weapon)
+    player.weapon = ['Vandal','Phantom','Bulldog','Guardian','Operator','Marshal','Classic','Ghost','Frenzy','Şerif','Spectre','Stinger','Judge','Bucky','Ares','Odin','M416','AKM','SCAR-L','UMP45','Vector','Kar98k','M24','AWM','DP-28','S12K'].includes(state.weapon)
       ? state.weapon
       : player.weapon;
 
