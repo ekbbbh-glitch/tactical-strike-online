@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.11">
+<meta name="app-version" content="2026.11.08.12">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -1453,34 +1453,33 @@ buildMap();
 }
 
  function returnToMenu(){
- game=false;currentRankedMatch=false;
- if (bombPrepInterval) {
-   clearInterval(bombPrepInterval);
-   bombPrepInterval = null;
- }
- stopBombClock();
- document.exitPointerLock();
- hud.style.display='none';
- end.style.display='none';
- menu.style.display='flex';
+  // Tek çıkış noktası: çevrimdışı ve çevrimiçi maçlardan güvenli şekilde menüye dön.
+  game=false;
+  currentRankedMatch=false;
+  online=false;
+  try{Object.keys(keys||{}).forEach(k=>keys[k]=false);}catch(e){}
+  try{touchMove={x:0,y:0};}catch(e){}
+  try{if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}}catch(e){}
+  if(bombPrepInterval){clearInterval(bombPrepInterval);bombPrepInterval=null;}
+  stopBombClock();
+  try{document.exitPointerLock?.();}catch(e){}
+  try{hud.style.display='none';}catch(e){}
+  try{end.style.display='none';}catch(e){}
+  try{lobby.style.display='none';}catch(e){}
+  try{document.getElementById('settingsPanel').style.display='none';}catch(e){}
+  try{hideLoading();}catch(e){}
+  // Menü katmanını diğer oyun ekranlarının üstüne al.
+  menu.style.display='flex';
+  menu.style.visibility='visible';
+  menu.style.pointerEvents='auto';
+  menu.style.zIndex='50';
+  try{remotePlayers.clear();}catch(e){}
+  try{remoteMeshes.forEach(mesh=>scene&&scene.remove(mesh));remoteMeshes.clear();}catch(e){}
+  // Sunucudan odadan ayrıl; soketi açık tut ki yeniden oda kurulabilsin.
+  try{if(socket?.connected)socket.emit('leaveRoom');}catch(e){}
 }
 function exitOnlineMatchToMenu(){
- game=false;currentRankedMatch=false;
- online=false;
- if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}
- if(bombPrepInterval){clearInterval(bombPrepInterval);bombPrepInterval=null;}
- stopBombClock();
- document.exitPointerLock?.();
- document.getElementById('settingsPanel').style.display='none';
- hud.style.display='none';
- end.style.display='none';
- lobby.style.display='none';
- menu.style.display='flex';
- remotePlayers.clear();
- remoteMeshes.forEach(mesh=>scene&&scene.remove(mesh));
- remoteMeshes.clear();
- // Leave the room explicitly; keep the socket alive until the next connection attempt.
- if(socket && socket.connected) socket.emit('leaveRoom');
+  returnToMenu();
 }
 function updateHud(){
  hpEl.textContent=hp;
