@@ -1669,10 +1669,10 @@ document.getElementById('weaponTouch').addEventListener('click',cycleWeapon);doc
 
 function drawMinimap(){
  const canvas=document.getElementById('miniMap');if(!canvas||!player||!game)return;
- const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=.9;
+ const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,radius=99,scale=radius/97;
  ctx.clearRect(0,0,w,h);ctx.save();ctx.beginPath();ctx.arc(cx,cy,105,0,Math.PI*2);ctx.clip();ctx.fillStyle='#14212b';ctx.fillRect(0,0,w,h);
- const radius=99;
- const toMap=(x,z)=>({x:cx+(x-player.position.x)*scale,y:cy+(z-player.position.z)*scale});
+ // Fixed world coordinates keep the entire arena visible and map every position consistently.
+ const toMap=(x,z)=>({x:cx+x*scale,y:cy+z*scale});
  // Draw map geometry using transformed world-space corners, including rotated cover.
  ctx.fillStyle='#607783';ctx.strokeStyle='#a8bdc7';ctx.lineWidth=1;
  for(const obj of mapObjects){
@@ -1709,7 +1709,8 @@ function drawMinimap(){
   }
  }
  // Direction pointer rotates with the player's facing direction.
- ctx.save();ctx.translate(cx,cy);ctx.rotate(player.rotation.y);ctx.fillStyle='#f5f8ff';ctx.strokeStyle='#07131d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ const selfMap=toMap(player.position.x,player.position.z);
+ ctx.save();ctx.translate(selfMap.x,selfMap.y);ctx.rotate(player.rotation.y);ctx.fillStyle='#f5f8ff';ctx.strokeStyle='#07131d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
  ctx.restore();
 }
 
