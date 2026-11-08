@@ -94,7 +94,9 @@ const p = {
     rx: 0,
     hp: 100,
     weapon: 'Vandal',
-team: room.players.size % 2 === 0 ? 'attack' : 'defense'
+team: [...room.players.values()].filter(p => p.team === 'attack').length < 5
+  ? 'attack'
+  : 'defense'
   
   };
 
@@ -166,6 +168,12 @@ io.on('connection', socket => {
     const room = rooms.get(socket.data.roomCode);
     if (!room || room.started || room.hostId !== socket.id) return;
 
+    if (data.gameMode === 'bomb' && room.players.size !== 10) {
+  socket.emit('roomError', {
+    message: 'Bomba İmha modu için 10 oyuncu (5e 5) gereklidir!'
+  });
+  return;
+}
     room.started = true;
 room.gameMode = ['deathmatch', 'ffa', 'bomb', 'domination'].includes(data.gameMode)
   ? data.gameMode
@@ -174,6 +182,36 @@ room.gameMode = ['deathmatch', 'ffa', 'bomb', 'domination'].includes(data.gameMo
     room.map = ['desert', 'snow', 'factory', 'city'].includes(data.map)
   ? data.map
   : 'desert';
+    if (room.gameMode === 'bomb') {
+  const attackSpawns = [
+    [-50, -50], [-46, -50], [-50, -46],
+    [-42, -50], [-50, -42]
+  ];
+
+  const defenseSpawns = [
+    [50, 50], [46, 50], [50, 46],
+    [42, 50], [50, 42]
+  ];
+
+  let attackIndex = 0;
+  let defenseIndex = 0;
+
+  room.players.forEach(player => {
+    if (player.team === 'attack') {
+      const spawn = attackSpawns[attackIndex++];
+      player.x = spawn[0];
+      player.z = spawn[1];
+      player.ry = Math.PI / 4;
+    } else {
+      const spawn = defenseSpawns[defenseIndex++];
+      player.x = spawn[0];
+      player.z = spawn[1];
+      player.ry = -3 * Math.PI / 4;
+    }
+
+    player.y = 0;
+  });
+}
 room.bomb = {
   planted: false,
   site: null,
@@ -183,12 +221,14 @@ room.bomb = {
 
 room.round = 1;
 room.roundOver = false;
-    room.bots = room.botsEnabled
+    room.bots = room.gameMode === 'bomb'
+  ? []
+  : (room.botsEnabled
       ? Array.from({ length: BOT_COUNT }, () => ({
           hp: 100,
           dead: false
         }))
-      : [];
+      : []);
 
     io.to(room.code).emit('gameStarted', {
   botsEnabled: room.botsEnabled,
@@ -337,6 +377,7 @@ socket.on('plantBomb', data => {
     const target = room.players.get(String(data?.targetId || ''));
 
     if (!attacker || !target || attacker.id === target.id) return;
+      if (attacker.team === target.team) return;
     if (target.hp <= 0) return;
 
     const damage = Math.max(0, Math.min(100, Number(data?.damage) || 0));
