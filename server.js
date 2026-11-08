@@ -468,6 +468,19 @@ app.post('/api/device/visit', async (req, res) => {
     res.status(500).json({ error: 'Cihaz ziyareti kaydedilemedi.' });
   }
 });
+app.post('/api/device/revoke', async (req, res) => {
+  const deviceId = readDeviceCookie(req);
+  res.setHeader('Set-Cookie', 'ragex_device=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax');
+  if (!deviceId || !accountDb || !(await accountDbReady)) return res.json({ ok: true });
+  try {
+    await accountDb.query('DELETE FROM ip_visit_logs WHERE device_id=$1', [deviceId]);
+    await accountDb.query('DELETE FROM device_accounts WHERE device_id=$1', [deviceId]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Device data deletion failed:', error.message);
+    res.status(500).json({ error: 'Cihaz kayıtları silinemedi.' });
+  }
+});
 app.post('/api/device/name', async (req, res) => {
   if (!accountDb || !(await accountDbReady)) return res.status(503).json({ error: 'Kalıcı hesap veritabanı yapılandırılmamış.' });
   const deviceId = readDeviceCookie(req);
