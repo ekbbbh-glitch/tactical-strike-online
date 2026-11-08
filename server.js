@@ -505,7 +505,7 @@ const adminLoginAttempts = new Map();
 const ADMIN_SESSION_MS = 2 * 60 * 60 * 1000;
 function adminCookieToken(req) {
   const raw=String(req.headers.cookie||'');
-  const match=raw.match(/(?:^|;\\s*)ragex_admin=([a-f0-9]{64})(?:;|$)/i);
+  const match=raw.match(/(?:^|;\s*)ragex_admin=([a-f0-9]{64})(?:;|$)/i);
   return match?match[1]:null;
 }
 function requireAdmin(req,res,next) {
