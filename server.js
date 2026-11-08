@@ -51,6 +51,7 @@ function createRoom(code) {
     botsEnabled: true,
 bots: [],
 gameMode: 'deathmatch',
+    map: 'desert',
 bomb: {
   planted: false,
   site: null,
@@ -169,6 +170,9 @@ room.gameMode = ['deathmatch', 'ffa', 'bomb', 'domination'].includes(data.gameMo
   ? data.gameMode
   : 'deathmatch';
 
+    room.map = ['desert', 'snow', 'factory', 'city'].includes(data.map)
+  ? data.map
+  : 'desert';
 room.bomb = {
   planted: false,
   site: null,
@@ -189,6 +193,7 @@ room.roundOver = false;
   botsEnabled: room.botsEnabled,
   bots: room.bots,
   gameMode: room.gameMode,
+      map: room.map,
   players: roomPlayers(room),
   bomb: room.bomb,
   round: room.round
