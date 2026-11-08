@@ -776,7 +776,8 @@ io.on('connection', socket => {
     io.to(room.code).emit('botUpdate', {
       botId: id,
       hp: bot.hp,
-      dead: bot.dead
+      dead: bot.dead,
+      killerId: bot.dead ? socket.id : null
     });
     if(bot.dead){
       const attacker=room.players.get(socket.id);
