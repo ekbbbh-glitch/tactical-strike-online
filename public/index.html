@@ -185,6 +185,13 @@ body{overscroll-behavior:none}
    <option value="Şerif">Sheriff</option>
    <option>AWM</option>
   </select></p>
+  <p><label for="rankedMode">MATCH TYPE</label><br><select id="rankedMode"><option value="unranked">UNRANKED MATCH</option><option value="ranked">RANKED MATCH</option></select></p>
+  <section id="rankPanel" class="online-box" style="border-color:#d5a64c;background:linear-gradient(135deg,#101b2c,#273342)">
+   <h3>RANKED SEASON • RAGE LEAGUE</h3>
+   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div id="rankEmblem" style="width:72px;height:72px;border:3px solid #b98242;border-radius:50%;display:grid;place-items:center;font-size:25px;font-weight:900;color:#f6cf82;background:radial-gradient(circle,#46566b,#111b28)">B</div><div style="flex:1;min-width:160px"><div id="rankName" style="font-size:22px;font-weight:900;color:#f6cf82">BRONZE</div><div id="rankPoints" style="font-size:13px;color:#d8e2eb;margin-top:5px">0 RANK POINTS</div><div style="height:9px;background:#101820;border-radius:9px;margin-top:10px;overflow:hidden"><div id="rankProgress" style="height:100%;width:0%;background:linear-gradient(90deg,#a96b35,#ffd47a)"></div></div><small id="rankNext" style="display:block;color:#aebdca;margin-top:5px">300 points to Silver</small></div></div>
+   <button id="rankDetailsButton" type="button">RANK & POINTS DETAILS</button>
+   <div id="rankDetails" style="display:none;margin-top:10px;color:#d4e0e8;font-size:12px;line-height:1.7"><b>RANK LADDER</b><br>Bronze: 0–299 • Silver: 300–599 • Gold: 600–899<br>Platinum: 900–1199 • Diamond: 1200–1499 • Crown: 1500–1799<br>Ace: 1800–2199 • Conqueror: 2200+<hr style="border-color:#526574"><b>POINTS</b><br>Victory: +35 • Defeat: −15 • Draw: +5<br>Each elimination: +3 (maximum +15 per match). Ranked points are saved on this device.</div>
+  </section>
   <button id="start">START MATCH</button>
   <section id="appInstallArea">
    <h3 id="installHeading">GET RAGE X</h3>
@@ -259,6 +266,7 @@ body{overscroll-behavior:none}
  <div>
   <h2 id="resultTitle">YOU LOST</h2>
   <p id="endtxt">You were eliminated.</p>
+  <div id="rankReward" style="display:none;min-width:min(88vw,360px);margin:14px auto;padding:14px;background:#102331;border:1px solid #d5a64c;text-align:left"><div style="color:#f6cf82;font-weight:900;letter-spacing:2px">RANK POINTS EARNED</div><div id="rankRewardValue" style="font-size:30px;font-weight:900;margin:7px 0">+0 RP</div><div id="rankRewardBreakdown" style="font-size:12px;color:#d2dde5;line-height:1.7"></div><div id="rankRewardRank" style="margin-top:8px;color:#f6cf82;font-weight:800"></div></div>
   <button id="again">PLAY AGAIN</button>
   <button id="back">MAIN MENU</button>
  </div>
@@ -469,6 +477,16 @@ let touchFire = false;
 const gameModeSelect = document.getElementById('gameMode');
 const mapSelect = document.getElementById('mapSelect');
 const characterSelect = document.getElementById('characterSelect');
+const rankedModeSelect=document.getElementById('rankedMode');
+let currentRankedMatch=false;
+const RANKS=[{name:'Bronze',min:0,max:299,emblem:'B',color:'#b98252'},{name:'Silver',min:300,max:599,emblem:'S',color:'#b9c7d4'},{name:'Gold',min:600,max:899,emblem:'G',color:'#f2c14e'},{name:'Platinum',min:900,max:1199,emblem:'P',color:'#5bd0c4'},{name:'Diamond',min:1200,max:1499,emblem:'D',color:'#6db8ff'},{name:'Crown',min:1500,max:1799,emblem:'C',color:'#c18cff'},{name:'Ace',min:1800,max:2199,emblem:'A',color:'#ff9b54'},{name:'Conqueror',min:2200,max:Infinity,emblem:'★',color:'#ff5252'}];
+let rankProfile={points:0,matches:0,wins:0};
+try{const v=JSON.parse(localStorage.getItem('rageXRankProfile')||'null');if(v&&Number.isFinite(v.points))rankProfile={points:Math.max(0,Math.floor(v.points)),matches:Math.max(0,Number(v.matches)||0),wins:Math.max(0,Number(v.wins)||0)};}catch(e){}
+function getRank(points=rankProfile.points){return [...RANKS].reverse().find(r=>points>=r.min)||RANKS[0];}
+function renderRank(){const r=getRank(),idx=RANKS.indexOf(r),next=RANKS[idx+1],span=next?next.min-r.min:1;const pct=next?Math.max(0,Math.min(100,(rankProfile.points-r.min)/span*100)):100;const emblem=document.getElementById('rankEmblem');emblem.textContent=r.emblem;emblem.style.borderColor=r.color;emblem.style.color=r.color;const name=document.getElementById('rankName');name.textContent=r.name.toUpperCase();name.style.color=r.color;document.getElementById('rankPoints').textContent=rankProfile.points+' RANK POINTS • '+rankProfile.matches+' MATCHES • '+rankProfile.wins+' WINS';document.getElementById('rankProgress').style.width=pct+'%';document.getElementById('rankProgress').style.background=r.color;document.getElementById('rankNext').textContent=next?(next.min-rankProfile.points)+' points to '+next.name:'TOP RANK • CONQUEROR';}
+function awardRankPoints(won,kills=0){if(!currentRankedMatch)return;const old=getRank();const base=won===true?35:won===false?-15:5;const bonus=Math.min(15,Math.max(0,Number(kills)||0)*3);const change=base+bonus;rankProfile.points=Math.max(0,rankProfile.points+change);rankProfile.matches++;if(won===true)rankProfile.wins++;try{localStorage.setItem('rageXRankProfile',JSON.stringify(rankProfile));}catch(e){}renderRank();document.getElementById('rankReward').style.display='block';document.getElementById('rankRewardValue').textContent=(change>=0?'+':'')+change+' RP';document.getElementById('rankRewardValue').style.color=change>=0?'#6be0a0':'#ff7777';document.getElementById('rankRewardBreakdown').textContent=(won===true?'Victory +35 RP':won===false?'Defeat −15 RP':'Draw +5 RP')+' • Eliminations +'+bonus+' RP';const now=getRank();document.getElementById('rankRewardRank').textContent=old.name!==now.name?'RANK PROMOTION: '+old.name.toUpperCase()+' → '+now.name.toUpperCase():now.name.toUpperCase()+' • '+rankProfile.points+' RP';}
+renderRank();
+document.getElementById('rankDetailsButton').addEventListener('click',()=>{const d=document.getElementById('rankDetails');d.style.display=d.style.display==='none'?'block':'none';});
 characterSelect.addEventListener('change',()=>{ selectedCharacter=characterSelect.value; });
 
 gameModeSelect.addEventListener('change', () => {
@@ -1079,6 +1097,7 @@ function playSfx(kind='shot'){
 function showRoundResult(won,detail,final=false){
   const title=document.getElementById('resultTitle');
   title.textContent=won===null?'DRAW':(won?'YOU WON':'YOU LOST');
+  if(!currentRankedMatch)document.getElementById('rankReward').style.display='none';
   title.style.color=won===null?'#f4d36b':(won?'#62e59a':'#ff6464');
   document.getElementById('endtxt').textContent=detail||'';
   document.getElementById('again').style.display=(final&&!online)?'inline-block':'none';
@@ -1289,7 +1308,7 @@ buildMap();
 }
 
  function returnToMenu(){
- game=false;
+ game=false;currentRankedMatch=false;
  if (bombPrepInterval) {
    clearInterval(bombPrepInterval);
    bombPrepInterval = null;
@@ -1301,7 +1320,7 @@ buildMap();
  menu.style.display='flex';
 }
 function exitOnlineMatchToMenu(){
- game=false;
+ game=false;currentRankedMatch=false;
  online=false;
  if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}
  if(bombPrepInterval){clearInterval(bombPrepInterval);bombPrepInterval=null;}
@@ -2048,6 +2067,7 @@ function updateRemotePlayers(){
 
   
 socket.on('gameStarted', async data => {
+  currentRankedMatch=data.ranked===true;
   const me = (data.players || []).find(p => p.id === socket.id);
 
   myTeam = me ? me.team : null;
@@ -2180,6 +2200,7 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
     game=false;document.exitPointerLock?.();
     const won=data.winner==='draw'?null:(selectedGameMode==='ffa'?data.winner===socket.id:data.winner===myTeam);
     const score=data.score||{};
+    if(data.ranked===true)currentRankedMatch=true;const me=(data.players||[]).find(p=>p.id===socket.id);awardRankPoints(won,me?.kills||0);
     const detail=selectedGameMode==='ffa'?'MATCH COMPLETE • '+(data.players||[]).sort((a,b)=>(b.kills||0)-(a.kills||0)).slice(0,3).map((p,i)=>(i+1)+'. '+p.name+' '+(p.kills||0)).join('  '):'MATCH COMPLETE • '+(score.attack||0)+' - '+(score.defense||0);
     showRoundResult(won,detail,true);
   });
@@ -2376,6 +2397,7 @@ socket.on('roundOver', data => {
 socket.on('gameEnded', data => {
   game=false;
   const won = data.winner === 'draw' ? null : data.winner === myTeam;
+  if(data.ranked===true)currentRankedMatch=true;awardRankPoints(won,0);
   showRoundResult(won, `MATCH COMPLETE  •  ${data.attackWins}-${data.defenseWins}`, true);
 });
 
@@ -2438,7 +2460,7 @@ function resize(){
  renderer.setSize(innerWidth,innerHeight);
 }
 
-document.getElementById('start').onclick=()=>{online=false;selectedCharacter=characterSelect.value;startGame();};
+document.getElementById('start').onclick=()=>{online=false;currentRankedMatch=false;selectedCharacter=characterSelect.value;startGame();};
 document.getElementById('createRoom').onclick=()=>connectRoom('create');
  document.getElementById('botsYes').onclick = () => {
   if (isRoomHost && socket) {
@@ -2456,7 +2478,8 @@ document.getElementById('launchGame').onclick = () => {
   if (isRoomHost && socket) {
    socket.emit('startMatch', {
   gameMode: gameModeSelect.value,
-  map: mapSelect.value
+  map: mapSelect.value,
+  ranked: rankedModeSelect.value === 'ranked'
 }); 
   
 
