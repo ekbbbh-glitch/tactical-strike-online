@@ -26,24 +26,15 @@ const MAX_ROUNDS = 12;
 const ROUND_PREP_TIME = 5000;
 const BOMB_TIME = 45000;
 const DEFUSE_TIME = 5000;
+const BOT_COUNT = 8;
 
 const VALID_MAPS = [
-  'desert',
-  'snow',
-  'factory',
-  'city',
-  'icebox',
-  'bind'
+  'desert', 'snow', 'factory', 'city', 'icebox', 'bind'
 ];
 
 const VALID_CHARACTERS = [
-  'soldier',
-  'heavy',
-  'special',
-  'jett',
-  'viper',
-  'steve',
-  'roblox'
+  'soldier', 'heavy', 'special', 'jett',
+  'viper', 'steve', 'roblox'
 ];
 
 const BOMB_SITES = {
@@ -52,7 +43,11 @@ const BOMB_SITES = {
 };
 
 function makeCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  let code;
+  do {
+    code = Math.random().toString(36).slice(2, 8).toUpperCase();
+  } while (rooms.has(code));
+  return code;
 }
 
 function cleanName(value) {
@@ -71,7 +66,7 @@ function cleanMap(value) {
 }
 
 function cleanTeam(value) {
-  return value === 'defender' ? 'defender' : 'attacker';
+  return value === 'defense' ? 'defense' : 'attack';
 }
 
 function cleanNumber(value, fallback = 0) {
@@ -79,23 +74,31 @@ function cleanNumber(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
-function makePlayer(socket, data = {}) {
+function makePlayer(socket, data = {}, team = 'attack') {
   return {
     id: socket.id,
     name: cleanName(data.name),
-    team: cleanTeam(data.team),
+    team,
     character: cleanCharacter(data.character),
-    x: 0,
+    x: team === 'attack' ? -82 : 82,
     y: 0,
-    z: 0,
+    z: team === 'attack' ? -82 : 82,
     ry: 0,
     hp: 100,
     alive: true,
-    weapon: 'rifle',
+    weapon: 'Vandal',
     kills: 0,
     deaths: 0,
     isBot: false
   };
+}
+
+function makeBots() {
+  return Array.from({ length: BOT_COUNT }, (_, id) => ({
+    id,
+    hp: 100,
+    dead: false
+  }));
 }
 
 function getRoomBySocket(socketId) {
@@ -134,37 +137,53 @@ function publicPlayers(room) {
   }));
 }
 
+function publicBots(room) {
+  return room.bots.map(bot => ({
+    id: bot.id,
+    hp: bot.hp,
+    dead: bot.dead
+  }));
+}
+
 function sendLobby(room) {
-  const data = {
+  io.to(room.code).emit('lobbyUpdate', {
     code: room.code,
     hostId: room.hostId,
     players: publicPlayers(room),
     map: room.map,
-    mode: room.mode,
+    gameMode: room.gameMode,
+    botsEnabled: room.botsEnabled,
     started: room.started
-  };
+  });
 
-  io.to(room.code).emit('lobbyUpdate', data);
-  io.to(room.code).emit('playersUpdate', data);
+  sendPlayers(room);
 }
 
 function sendPlayers(room) {
-  io.to(room.code).emit('playersUpdate', {
-    code: room.code,
-    hostId: room.hostId,
-    players: publicPlayers(room)
-  });
+  io.to(room.code).emit('playersUpdate', publicPlayers(room));
 }
 
 function resetPlayers(room) {
   for (const player of room.players.values()) {
     player.hp = 100;
     player.alive = true;
-    player.x = player.team === 'attacker' ? -82 : 82;
-    player.z = player.team === 'attacker' ? -82 : 82;
+    player.x = player.team === 'attack' ? -82 : 82;
+    player.z = player.team === 'attack' ? -82 : 82;
     player.y = 0;
     player.ry = 0;
   }
+}
+
+function resetBomb(room) {
+  room.bomb = {
+    carrierId: null,
+    planted: false,
+    site: null,
+    x: -78,
+    z: -78,
+    active: true,
+    endsAt: null
+  };
 }
 
 function clearRoomTimers(room) {
@@ -178,107 +197,99 @@ function clearRoomTimers(room) {
 }
 
 function createRoom(socket, data = {}) {
-  const code = makeCode();
-
   const room = {
-    code,
+    code: makeCode(),
     hostId: socket.id,
     players: new Map(),
     map: cleanMap(data.map),
-    mode: data.mode || 'bomb',
+    gameMode: 'deathmatch',
+    botsEnabled: true,
     started: false,
     round: 0,
     maxRounds: MAX_ROUNDS,
-    attackerScore: 0,
-    defenderScore: 0,
+    attackWins: 0,
+    defenseWins: 0,
+    bots: makeBots(),
     bomb: {
       carrierId: null,
       planted: false,
       site: null,
       x: -78,
       z: -78,
-      active: false
+      active: true,
+      endsAt: null
     },
     prepTimer: null,
     bombTimer: null,
     defuseTimer: null
   };
 
-  rooms.set(code, room);
+  rooms.set(room.code, room);
   return room;
 }
 
 function joinRoom(socket, room, data = {}) {
   if (!room) {
-    socket.emit('roomError', 'Room not found.');
-    return;
+    return { ok: false, error: 'ROOM NOT FOUND.' };
   }
 
   if (room.players.size >= MAX_PLAYERS) {
-    socket.emit('roomError', 'Room is full.');
-    return;
+    return { ok: false, error: 'ROOM IS FULL.' };
   }
 
   if (room.started) {
-    socket.emit('roomError', 'Match already started.');
-    return;
+    return { ok: false, error: 'MATCH ALREADY STARTED.' };
   }
 
-  const player = makePlayer(socket, data);
+  const attackCount = [...room.players.values()]
+    .filter(p => p.team === 'attack').length;
 
-  const attackers = [...room.players.values()].filter(
-    p => p.team === 'attacker'
-  ).length;
+  const defenseCount = [...room.players.values()]
+    .filter(p => p.team === 'defense').length;
 
-  const defenders = [...room.players.values()].filter(
-    p => p.team === 'defender'
-  ).length;
-
-  if (data.team !== 'attacker' && data.team !== 'defender') {
-    player.team = attackers <= defenders ? 'attacker' : 'defender';
-  }
+  const team = attackCount <= defenseCount ? 'attack' : 'defense';
+  const player = makePlayer(socket, data, team);
 
   room.players.set(socket.id, player);
 
   socket.join(room.code);
   socket.data.roomCode = room.code;
 
-  socket.emit('roomJoined', {
+  sendLobby(room);
+
+  return {
+    ok: true,
     code: room.code,
     hostId: room.hostId,
-    playerId: socket.id,
+    players: publicPlayers(room),
+    spawn: { x: player.x, z: player.z },
     map: room.map,
-    mode: room.mode,
-    players: publicPlayers(room)
-  });
-
-  sendLobby(room);
+    gameMode: room.gameMode,
+    botsEnabled: room.botsEnabled
+  };
 }
 
 function endRound(room, winner, reason) {
-  if (!room.started) return;
+  if (!room.started || room.roundEnding) return;
 
+  room.roundEnding = true;
   clearRoomTimers(room);
 
-  if (winner === 'attacker') {
-    room.attackerScore++;
-  } else if (winner === 'defender') {
-    room.defenderScore++;
-  }
+  if (winner === 'attack') room.attackWins++;
+  if (winner === 'defense') room.defenseWins++;
 
   room.bomb.active = false;
   room.bomb.planted = false;
   room.bomb.carrierId = null;
   room.bomb.site = null;
-  room.bomb.x = -78;
-  room.bomb.z = -78;
+  room.bomb.endsAt = null;
 
   io.to(room.code).emit('roundOver', {
     winner,
     reason,
     round: room.round,
-    attackerScore: room.attackerScore,
-    defenderScore: room.defenderScore
+    attackWins: room.attackWins,
+    defenseWins: room.defenseWins
   });
 
   if (room.round >= room.maxRounds) {
@@ -287,7 +298,7 @@ function endRound(room, winner, reason) {
   }
 
   room.prepTimer = setTimeout(() => {
-    if (!rooms.has(room.code)) return;
+    if (!rooms.has(room.code) || !room.started) return;
     startNextRound(room);
   }, 4000);
 }
@@ -296,107 +307,129 @@ function finishMatch(room) {
   clearRoomTimers(room);
 
   room.started = false;
+  room.roundEnding = false;
 
   let winner = 'draw';
 
-  if (room.attackerScore > room.defenderScore) {
-    winner = 'attacker';
-  } else if (room.defenderScore > room.attackerScore) {
-    winner = 'defender';
-  }
+  if (room.attackWins > room.defenseWins) winner = 'attack';
+  if (room.defenseWins > room.attackWins) winner = 'defense';
 
   io.to(room.code).emit('gameEnded', {
     winner,
-    attackerScore: room.attackerScore,
-    defenderScore: room.defenderScore
+    attackWins: room.attackWins,
+    defenseWins: room.defenseWins
   });
 
   sendLobby(room);
 }
 
 function startNextRound(room) {
+  if (!room.started) return;
+
+  room.roundEnding = false;
   room.round++;
 
   resetPlayers(room);
+  room.bots = makeBots();
+  resetBomb(room);
 
-  room.bomb.active = true;
-  room.bomb.planted = false;
-  room.bomb.carrierId = null;
-  room.bomb.site = null;
-  room.bomb.x = -78;
-  room.bomb.z = -78;
+  io.to(room.code).emit('bombReset', {
+    bomb: {
+      planted: false,
+      pickedUp: false,
+      carrierId: null,
+      site: null,
+      endsAt: null
+    }
+  });
 
   io.to(room.code).emit('roundStarting', {
     round: room.round,
     maxRounds: room.maxRounds,
-    attackerScore: room.attackerScore,
-    defenderScore: room.defenderScore
+    attackWins: room.attackWins,
+    defenseWins: room.defenseWins,
+    prepareSeconds: ROUND_PREP_TIME / 1000
   });
 
   sendPlayers(room);
 
-  io.to(room.code).emit('roundStarted', {
-    round: room.round,
-    bomb: room.bomb,
-    sites: BOMB_SITES
-  });
-
   room.prepTimer = setTimeout(() => {
-    if (!room.started) return;
+    if (!room.started || room.roundEnding) return;
 
-    room.bombTimer = setTimeout(() => {
-      if (!room.started || room.bomb.planted) return;
-      endRound(room, 'defender', 'TIME OUT');
-    }, BOMB_TIME);
+    io.to(room.code).emit('roundStarted', {
+      round: room.round,
+      bomb: room.bomb,
+      sites: BOMB_SITES
+    });
+
+    if (!room.bomb.planted) {
+      room.bombTimer = setTimeout(() => {
+        if (!room.started || room.roundEnding || room.bomb.planted) return;
+        endRound(room, 'defense', 'TIME OUT');
+      }, BOMB_TIME);
+    }
   }, ROUND_PREP_TIME);
 }
 
-function startMatch(room) {
+function startMatch(room, data = {}) {
   if (room.started) return;
 
+  room.gameMode = ['deathmatch', 'ffa', 'bomb', 'domination']
+    .includes(data.gameMode) ? data.gameMode : 'deathmatch';
+
+  room.map = cleanMap(data.map);
   room.started = true;
   room.round = 0;
-  room.attackerScore = 0;
-  room.defenderScore = 0;
+  room.attackWins = 0;
+  room.defenseWins = 0;
+  room.roundEnding = false;
 
   clearRoomTimers(room);
-  startNextRound(room);
 
   io.to(room.code).emit('gameStarted', {
     map: room.map,
-    mode: room.mode,
+    gameMode: room.gameMode,
+    players: publicPlayers(room),
+    bots: room.gameMode === 'bomb' || !room.botsEnabled ? [] : publicBots(room),
+    botsEnabled: room.botsEnabled,
     maxRounds: room.maxRounds
   });
+
+  if (room.gameMode === 'bomb') {
+    startNextRound(room);
+  } else {
+    resetPlayers(room);
+    room.bots = makeBots();
+    sendPlayers(room);
+  }
 
   sendLobby(room);
 }
 
 function checkElimination(room) {
-  const attackers = getTeamPlayers(room, 'attacker');
-  const defenders = getTeamPlayers(room, 'defender');
+  if (!room.started || room.gameMode !== 'bomb' || room.roundEnding) return;
+
+  const attackers = getTeamPlayers(room, 'attack');
+  const defenders = getTeamPlayers(room, 'defense');
 
   if (attackers.length === 0) {
-    endRound(room, 'defender', 'ATTACKERS ELIMINATED');
+    endRound(room, 'defense', 'ATTACKERS ELIMINATED');
   } else if (defenders.length === 0) {
-    if (room.bomb.planted) {
-      endRound(room, 'attacker', 'DEFENDERS ELIMINATED');
-    } else {
-      endRound(room, 'attacker', 'DEFENDERS ELIMINATED');
-    }
+    endRound(room, 'attack', 'DEFENDERS ELIMINATED');
   }
 }
 
 function plantBomb(socket, data = {}) {
   const room = getRoomBySocket(socket.id);
-  if (!room || !room.started) return;
+  if (!room || !room.started || room.gameMode !== 'bomb') return;
 
   const player = getPlayer(room, socket.id);
-  if (!player || !player.alive || player.team !== 'attacker') return;
-
+  if (!player || !player.alive || player.team !== 'attack') return;
   if (room.bomb.planted || !room.bomb.active) return;
+  if (room.bomb.carrierId !== socket.id) return;
 
-  const site = data.site === 'B' ? 'B' : 'A';
-  const target = BOMB_SITES[site];
+  const siteName = data.site === 'B' ? 'B' : 'A';
+  const target = BOMB_SITES[siteName];
 
   const distance = Math.hypot(
     player.x - target.x,
@@ -408,34 +441,41 @@ function plantBomb(socket, data = {}) {
   room.bomb.planted = true;
   room.bomb.active = false;
   room.bomb.carrierId = null;
-  room.bomb.site = site;
+  room.bomb.site = siteName;
   room.bomb.x = target.x;
   room.bomb.z = target.z;
+  room.bomb.endsAt = Date.now() + BOMB_TIME;
 
   if (room.bombTimer) clearTimeout(room.bombTimer);
+  if (room.defuseTimer) clearTimeout(room.defuseTimer);
 
   io.to(room.code).emit('bombPlanted', {
-    site,
+    site: siteName,
     x: target.x,
     z: target.z,
-    time: DEFUSE_TIME
+    endsAt: room.bomb.endsAt,
+    time: BOMB_TIME
   });
 
   room.bombTimer = setTimeout(() => {
-    if (room.bomb.planted) {
-      endRound(room, 'attacker', 'BOMB EXPLODED');
+    if (room.bomb.planted && room.started) {
+      io.to(room.code).emit('bombExploded');
+      endRound(room, 'attack', 'BOMB EXPLODED');
     }
   }, BOMB_TIME);
 }
 
 function defuseBomb(socket) {
   const room = getRoomBySocket(socket.id);
-  if (!room || !room.started || !room.bomb.planted) return;
+  if (!room || !room.started || room.gameMode !== 'bomb') return;
+  if (!room.bomb.planted || room.defuseTimer) return;
 
   const player = getPlayer(room, socket.id);
-  if (!player || !player.alive || player.team !== 'defender') return;
+  if (!player || !player.alive || player.team !== 'defense') return;
 
   const site = BOMB_SITES[room.bomb.site];
+  if (!site) return;
+
   const distance = Math.hypot(
     player.x - site.x,
     player.z - site.z
@@ -451,16 +491,23 @@ function defuseBomb(socket) {
   });
 
   room.defuseTimer = setTimeout(() => {
-    if (room.bomb.planted) {
-      room.bomb.planted = false;
-      endRound(room, 'defender', 'BOMB DEFUSED');
-    }
+    if (!room.bomb.planted || !room.started) return;
+
+    room.bomb.planted = false;
+    io.to(room.code).emit('bombDefused');
+    endRound(room, 'defense', 'BOMB DEFUSED');
   }, DEFUSE_TIME);
 }
 
 function removePlayer(socket) {
   const room = getRoomBySocket(socket.id);
   if (!room) return;
+
+  const player = getPlayer(room, socket.id);
+  if (player && player.alive && room.started && room.gameMode === 'bomb') {
+    player.alive = false;
+    player.hp = 0;
+  }
 
   room.players.delete(socket.id);
   socket.leave(room.code);
@@ -488,113 +535,55 @@ function removePlayer(socket) {
 io.on('connection', socket => {
   console.log('Player connected:', socket.id);
 
-  socket.on('createRoom', (data, callback) => {
-  try {
-    const room = createRoom(socket, data || {});
-    if (!room) {
-      if (typeof callback === 'function') {
-        callback({ ok: false, error: 'COULD NOT CREATE ROOM.' });
-      }
-      return;
-    }
-
-    joinRoom(socket, room, data || {});
-
-    if (typeof callback === 'function') {
-      callback({
-        ok: true,
-        code: room.code,
-        hostId: room.hostId,
-        players: Array.from(room.players.values()),
-        spawn: { x: -8, z: 37 }
-      });
-    }
-  } catch (error) {
-    console.error('Create room error:', error);
-    if (typeof callback === 'function') {
-      callback({ ok: false, error: 'ROOM CREATION FAILED.' });
-    }
-  }
-});
-
-socket.on('joinRoom', (data, callback) => {
-  try {
-    const code = String(data?.code || data?.roomCode || '')
-      .trim()
-      .toUpperCase();
-
-    const room = rooms.get(code);
-
-    if (!room) {
-      if (typeof callback === 'function') {
-        callback({ ok: false, error: 'ROOM NOT FOUND.' });
-      }
-      return;
-    }
-
-    joinRoom(socket, room, data || {});
-
-    if (typeof callback === 'function') {
-      callback({
-        ok: true,
-        code: room.code,
-        hostId: room.hostId,
-        players: Array.from(room.players.values()),
-        spawn: { x: -8, z: 37 }
-      });
-    }
-  } catch (error) {
-    console.error('Join room error:', error);
-    if (typeof callback === 'function') {
-      callback({ ok: false, error: 'COULD NOT JOIN ROOM.' });
-    }
-  }
-});
-
-  socket.on('join', data => {
-    const code = String(data.code || data.roomCode || '')
-      .trim()
-      .toUpperCase();
-
-    if (data.action === 'create' || data.create === true) {
+  socket.on('createRoom', (data = {}, callback) => {
+    try {
       const room = createRoom(socket, data);
-      joinRoom(socket, room, data);
-    } else {
-      joinRoom(socket, rooms.get(code), data);
+      const result = joinRoom(socket, room, data);
+
+      if (typeof callback === 'function') {
+        callback(result);
+      }
+    } catch (error) {
+      console.error('Create room error:', error);
+      if (typeof callback === 'function') {
+        callback({ ok: false, error: 'ROOM CREATION FAILED.' });
+      }
     }
   });
 
-  socket.on('startMatch', () => {
+  socket.on('joinRoom', (data = {}, callback) => {
+    try {
+      const code = String(data.code || data.roomCode || '')
+        .trim()
+        .toUpperCase();
+
+      const room = rooms.get(code);
+      const result = joinRoom(socket, room, data);
+
+      if (typeof callback === 'function') {
+        callback(result);
+      }
+    } catch (error) {
+      console.error('Join room error:', error);
+      if (typeof callback === 'function') {
+        callback({ ok: false, error: 'COULD NOT JOIN ROOM.' });
+      }
+    }
+  });
+
+  socket.on('setBotMode', enabled => {
+    const room = getRoomBySocket(socket.id);
+    if (!room || room.started || room.hostId !== socket.id) return;
+
+    room.botsEnabled = enabled === true;
+    sendLobby(room);
+  });
+
+  socket.on('startMatch', data => {
     const room = getRoomBySocket(socket.id);
     if (!room || room.hostId !== socket.id) return;
-    startMatch(room);
+    startMatch(room, data || {});
   });
-
-  socket.on('pickBomb', () => {
-    const room = getRoomBySocket(socket.id);
-    if (!room || !room.started || room.bomb.planted) return;
-
-    const player = getPlayer(room, socket.id);
-    if (!player || !player.alive || player.team !== 'attacker') return;
-
-    const distance = Math.hypot(
-      player.x - room.bomb.x,
-      player.z - room.bomb.z
-    );
-
-    if (distance > 10) return;
-
-    room.bomb.carrierId = socket.id;
-    room.bomb.active = false;
-
-    io.to(room.code).emit('bombPicked', {
-      carrierId: socket.id,
-      playerName: player.name
-    });
-  });
-
-  socket.on('plantBomb', data => plantBomb(socket, data || {}));
-  socket.on('defuseBomb', () => defuseBomb(socket));
 
   socket.on('playerState', data => {
     const room = getRoomBySocket(socket.id);
@@ -607,7 +596,7 @@ socket.on('joinRoom', (data, callback) => {
     player.y = Math.max(0, Math.min(10, cleanNumber(data.y)));
     player.z = Math.max(-97, Math.min(97, cleanNumber(data.z)));
     player.ry = cleanNumber(data.ry);
-    player.weapon = String(data.weapon || 'rifle').slice(0, 20);
+    player.weapon = String(data.weapon || 'Vandal').slice(0, 20);
 
     if (data.character) {
       player.character = cleanCharacter(data.character);
@@ -621,27 +610,30 @@ socket.on('joinRoom', (data, callback) => {
     if (!room || !room.started) return;
 
     const attacker = getPlayer(room, socket.id);
-    const target = room.players.get(String(data.targetId || data.id || ''));
+    const target = room.players.get(String(data?.targetId || data?.id || ''));
 
-    if (!attacker || !target || !target.alive) return;
+    if (!attacker || !attacker.alive || !target || !target.alive) return;
     if (attacker.id === target.id) return;
-
     if (attacker.team === target.team) return;
 
     const damage = Math.max(
       1,
-      Math.min(100, cleanNumber(data.damage, 25))
+      Math.min(100, cleanNumber(data?.damage, 25))
     );
 
-    target.hp -= damage;
+    target.hp = Math.max(0, target.hp - damage);
+
+    io.to(target.id).emit('playerDamaged', {
+      damage,
+      attacker: attacker.name
+    });
 
     if (target.hp <= 0) {
-      target.hp = 0;
       target.alive = false;
       target.deaths++;
       attacker.kills++;
 
-      io.to(room.code).emit('playerDied', {
+      io.to(room.code).emit('playerEliminated', {
         playerId: target.id,
         killerId: attacker.id,
         killerName: attacker.name
@@ -655,14 +647,58 @@ socket.on('joinRoom', (data, callback) => {
 
   socket.on('botHit', data => {
     const room = getRoomBySocket(socket.id);
-    if (!room) return;
+    if (!room || !room.started || room.gameMode === 'bomb' || !room.botsEnabled) return;
 
-    io.to(room.code).emit('botHit', {
-      botId: data.botId,
-      damage: Math.max(1, Math.min(100, cleanNumber(data.damage, 25))),
+    const botId = Math.floor(cleanNumber(data?.botId, -1));
+    const bot = room.bots[botId];
+
+    if (!bot || bot.dead) return;
+
+    const damage = Math.max(
+      1,
+      Math.min(100, cleanNumber(data?.damage, 25))
+    );
+
+    bot.hp = Math.max(0, bot.hp - damage);
+
+    if (bot.hp <= 0) {
+      bot.dead = true;
+    }
+
+    io.to(room.code).emit('botUpdate', {
+      botId: bot.id,
+      hp: bot.hp,
+      dead: bot.dead,
       attackerId: socket.id
     });
   });
+
+  socket.on('pickBomb', () => {
+    const room = getRoomBySocket(socket.id);
+    if (!room || !room.started || room.gameMode !== 'bomb') return;
+
+    const player = getPlayer(room, socket.id);
+    if (!player || !player.alive || player.team !== 'attack') return;
+    if (!room.bomb.active || room.bomb.planted || room.bomb.carrierId) return;
+
+    const distance = Math.hypot(
+      player.x - room.bomb.x,
+      player.z - room.bomb.z
+    );
+
+    if (distance > 10) return;
+
+    room.bomb.carrierId = socket.id;
+    room.bomb.active = false;
+
+    io.to(room.code).emit('bombPickedUp', {
+      carrierId: socket.id,
+      playerName: player.name
+    });
+  });
+
+  socket.on('plantBomb', data => plantBomb(socket, data || {}));
+  socket.on('defuseBomb', () => defuseBomb(socket));
 
   socket.on('disconnect', () => {
     console.log('Player disconnected:', socket.id);
