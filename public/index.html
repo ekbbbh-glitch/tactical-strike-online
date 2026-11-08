@@ -493,6 +493,7 @@ let weaponName='Vandal',ammo=25,reserve=Infinity,hp=100;
  let selectedGameMode = 'deathmatch';
  let myTeam = null;
  let bombMesh = null;
+let localBombEndsAt = null;
 let bombState = {
   planted: false,
   pickedUp: false,
@@ -1430,8 +1431,9 @@ buildMap();
  bots=[];
 
  setWeapon(document.getElementById('weapon').value);
+ if(!online && selectedGameMode==='bomb'){myTeam='attack';localBombEndsAt=null;document.getElementById('bombStatus').textContent='🔵 SALDIRI TAKIMI • E: BOMBA AL / KUR';}
 
- if (!['bomb','swiftplay','spike'].includes(selectedGameMode) && (!online || options.bots !== false)) {
+ if ((!['bomb','swiftplay','spike'].includes(selectedGameMode) || (!online && selectedGameMode === 'bomb')) && (!online || options.bots !== false)) {
   [
     [-25,-22],
     [25,-22],
@@ -1531,7 +1533,21 @@ function keydown(e){
   const ladder=climbPoints.find(p=>Math.hypot(player.position.x-p.x,player.position.z-p.z)<3.2);
   if(ladder){player.position.x=ladder.x;player.position.z=ladder.z;player.position.y=0;climbing=true;playSfx('ladder');msg.textContent='TIRMANIYORSUN: W / S • E: BIRAK';return;}
  }
- if (e.code === 'KeyE' && !e.repeat && online && ['bomb','swiftplay','spike'].includes(selectedGameMode)) {
+ if (e.code === 'KeyE' && !e.repeat && ['bomb','swiftplay','spike'].includes(selectedGameMode)) {
+  if(!online && selectedGameMode==='bomb'){
+   const spawn=getClientBombSpawn(),sites=getClientBombSites();
+   if(!bombState.pickedUp&&!bombState.planted&&Math.hypot(player.position.x-spawn.x,player.position.z-spawn.z)<=7){
+    bombState.pickedUp=true;bombState.carrierId='local-player';if(bombMesh)bombMesh.visible=false;
+    document.getElementById('bombStatus').textContent='BOMBA ALINDI • A veya B BÖLGESİNE GİT VE E BAS';playSfx('pickup');
+   }else if(bombState.pickedUp&&!bombState.planted){
+    const site=sites.find(s=>Math.hypot(player.position.x-s.x,player.position.z-s.z)<=9);
+    if(site){bombState.pickedUp=false;bombState.planted=true;bombState.site=site.name;localBombEndsAt=Date.now()+35000;
+     if(bombMesh){bombMesh.visible=true;bombMesh.position.set(site.x,0,site.z);}
+     document.getElementById('bombStatus').textContent='BOMBA KURULDU: '+site.name+' • 35s';playSfx('plant');
+    }else{document.getElementById('bombStatus').textContent='BOMBA KURMAK İÇİN A VEYA B BÖLGESİNE YAKLAŞ';}
+   }
+   return;
+  }
   const sites=getClientBombSites();
   const bombSpawn=getClientBombSpawn();
   const bombSpawnDistance=Math.hypot(player.position.x-bombSpawn.x,player.position.z-bombSpawn.z);
@@ -1829,6 +1845,11 @@ function updateBots(dt){
 
 function update(dt){
  if(!game)return;
+ if(!online&&selectedGameMode==='bomb'&&bombState.planted&&localBombEndsAt){
+  const left=Math.max(0,Math.ceil((localBombEndsAt-Date.now())/1000));
+  document.getElementById('bombStatus').textContent='BOMBA KURULDU: '+bombState.site+' • '+left+'s';
+  if(left<=0){localBombEndsAt=null;bombState.planted=false;game=false;showRoundResult(true,'BOMBA PATLADI • SALDIRI TAKIMI KAZANDI',true);if(bombMesh)bombMesh.visible=false;}
+ }
  if(!climbing&&player.position.y>0){const onDeck=watchtowerDecks.some(t=>Math.abs(player.position.x-t.x)<1.65&&Math.abs(player.position.z-t.z)<1.65);if(onDeck)player.position.y=5.85;else player.position.y=Math.max(0,player.position.y-10*dt);}
  if(reloading&&reloadMag&&reloadMagBase){const p=Math.min(1,(performance.now()-reloadAnimStart)/1050);const swing=Math.sin(p*Math.PI);reloadMag.position.y=reloadMagBase.position.y-swing*.62;reloadMag.rotation.x=reloadMagBase.rotation.x+swing*.75;if(weaponGroup)weaponGroup.rotation.z=swing*.12;}
  // Smooth network snapshots instead of teleporting remote players between 20 Hz updates.
