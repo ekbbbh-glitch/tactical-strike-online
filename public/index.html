@@ -185,9 +185,32 @@ body{overscroll-behavior:none}
   </select></p>
   <p><label for="weapon">STARTING WEAPON</label><br>
   <select id="weapon">
-   <option>Vandal</option>
-   <option value="Şerif">Sheriff</option>
-   <option>AWM</option>
+   <option value="Vandal">Vandal</option>
+   <option value="Phantom">Phantom</option>
+   <option value="Bulldog">Bulldog</option>
+   <option value="Guardian">Guardian</option>
+   <option value="Operator">Operator</option>
+   <option value="Marshal">Marshal</option>
+   <option value="Classic">Classic</option>
+   <option value="Ghost">Ghost</option>
+   <option value="Frenzy">Frenzy</option>
+   <option value="Şerif">Şerif</option>
+   <option value="Spectre">Spectre</option>
+   <option value="Stinger">Stinger</option>
+   <option value="Judge">Judge</option>
+   <option value="Bucky">Bucky</option>
+   <option value="Ares">Ares</option>
+   <option value="Odin">Odin</option>
+   <option value="M416">M416</option>
+   <option value="AKM">AKM</option>
+   <option value="SCAR-L">SCAR-L</option>
+   <option value="UMP45">UMP45</option>
+   <option value="Vector">Vector</option>
+   <option value="Kar98k">Kar98k</option>
+   <option value="M24">M24</option>
+   <option value="AWM">AWM</option>
+   <option value="DP-28">DP-28</option>
+   <option value="S12K">S12K</option>
   </select></p>
   <p><label for="rankedMode">MATCH TYPE</label><br><select id="rankedMode"><option value="unranked">UNRANKED MATCH</option><option value="ranked">RANKED MATCH</option></select></p>
   <section id="rankPanel" class="online-box" style="border-color:#d5a64c;background:linear-gradient(135deg,#101b2c,#273342)">
@@ -260,6 +283,11 @@ body{overscroll-behavior:none}
  <b>OYUN AYARLARI</b>
  <label for="mouseSensitivity">PC fare hassasiyeti</label><input id="mouseSensitivity" type="range" min="0.5" max="3.5" step="0.1" value="2.2">
  <label for="touchSensitivity">Mobil bakış hassasiyeti</label><input id="touchSensitivity" type="range" min="0.5" max="3.5" step="0.1" value="2.2">
+ <div class="setting-note" style="margin-top:12px;font-weight:800;color:#f2c56d">SİLAHA ÖZEL DÜRBÜN HASSASİYETİ</div>
+ <label for="scopeWeaponSelect">Hassasiyeti ayarlanacak silah</label>
+ <select id="scopeWeaponSelect" style="width:100%"><option value="Vandal">Vandal</option><option value="Phantom">Phantom</option><option value="Bulldog">Bulldog</option><option value="Guardian">Guardian</option><option value="Operator">Operator</option><option value="Marshal">Marshal</option><option value="Classic">Classic</option><option value="Ghost">Ghost</option><option value="Frenzy">Frenzy</option><option value="Şerif">Şerif</option><option value="Spectre">Spectre</option><option value="Stinger">Stinger</option><option value="Judge">Judge</option><option value="Bucky">Bucky</option><option value="Ares">Ares</option><option value="Odin">Odin</option><option value="M416">M416</option><option value="AKM">AKM</option><option value="SCAR-L">SCAR-L</option><option value="UMP45">UMP45</option><option value="Vector">Vector</option><option value="Kar98k">Kar98k</option><option value="M24">M24</option><option value="AWM">AWM</option><option value="DP-28">DP-28</option><option value="S12K">S12K</option></select>
+ <label for="weaponScopeSensitivity">Bu silahın dürbün hassasiyeti: <span id="weaponScopeValue">1.00x</span></label>
+ <input id="weaponScopeSensitivity" type="range" min="0.25" max="3" step="0.05" value="1">
  <label for="mobileButtonSize">Mobil tuş boyutu</label><input id="mobileButtonSize" type="range" min="48" max="88" step="2" value="64">
  <button id="layoutEditButton" type="button">TUŞ YERLERİNİ DÜZENLE</button><p class="setting-note">Düzenle modunda tuşları taşı ve kaydet. Maç sırasında yanlışlıkla yerleri değişmez.</p><label for="renderQuality">Görüntü kalitesi</label><select id="renderQuality"><option value="auto">Otomatik / Dengeli</option><option value="high">Yüksek</option><option value="low">Performans</option></select>
  <button type="button" id="returnMenuSettings" style="width:100%;margin-top:12px;background:#b94a43;color:white;">MENÜYE DÖN</button>
@@ -501,7 +529,7 @@ mapSelect.addEventListener('change', () => {
   selectedMap = mapSelect.value;
 });
 let bots=[],keys={},locked=false,scoped=false,reloading=false;
-let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
+let shootCd=0,kills=0,game=false,moveBob=0,recoil=0,recoilPitchOffset=0,recoilYawOffset=0;
 let thirdPerson=false,mobileLayoutEdit=false,renderQuality='auto',localAvatar=null;
 let climbPoints=[],watchtowerDecks=[],climbing=false,reloadMag=null,reloadMagBase=null,reloadAnimStart=0;
 let jumping=false,jumpVelocity=0,jumpHeight=0;
@@ -515,10 +543,40 @@ let shieldUntil=0,nextShotDamage=0,scanUntil=0,abilityCooldowns={Q:0,F:0},abilit
  let mySpawn = { x: -8, z: 37 };
 
 const specs={
- Vandal:{mag:25,reserve:75,damage:34,rate:.105,range:85,auto:true},
- Şerif:{mag:6,reserve:36,damage:72,rate:.34,range:75,auto:false},
- AWM:{mag:5,reserve:20,damage:100,rate:1.05,range:150,auto:false}
+ Vandal:{mag:25,reserve:100,damage:34,rate:.105,range:85,auto:true,recoil:.014,side:.005,spread:.004,scope:true,zoom:1.35,reload:1.8,kind:'rifle',color:0x303a3d},
+ Phantom:{mag:30,reserve:120,damage:31,rate:.095,range:82,auto:true,recoil:.010,side:.004,spread:.003,scope:true,zoom:1.3,reload:1.75,kind:'rifle',color:0x263b42,silenced:true},
+ Bulldog:{mag:24,reserve:96,damage:35,rate:.19,range:76,auto:true,recoil:.012,side:.006,spread:.005,scope:true,zoom:1.4,reload:1.8,kind:'rifle',burst:true,color:0x665b48},
+ Guardian:{mag:12,reserve:60,damage:65,rate:.32,range:105,auto:false,recoil:.018,side:.006,spread:.002,scope:true,zoom:1.55,reload:1.9,kind:'rifle',color:0x59636a},
+ Operator:{mag:5,reserve:25,damage:150,rate:1.25,range:180,auto:false,recoil:.052,side:.012,spread:0,scope:true,zoom:2.5,reload:2.4,kind:'sniper',color:0x333c49},
+ Marshal:{mag:5,reserve:30,damage:95,rate:.85,range:155,auto:false,recoil:.035,side:.009,spread:0,scope:true,zoom:2.0,reload:2.1,kind:'sniper',color:0x8a765a},
+ Classic:{mag:12,reserve:72,damage:26,rate:.22,range:48,auto:false,recoil:.018,side:.009,spread:.012,scope:false,zoom:1,reload:1.35,kind:'pistol',color:0x30343a},
+ Ghost:{mag:15,reserve:75,damage:32,rate:.18,range:58,auto:false,recoil:.014,side:.006,spread:.008,scope:false,zoom:1,reload:1.4,kind:'pistol',color:0x343c40,silenced:true},
+ Frenzy:{mag:13,reserve:78,damage:25,rate:.075,range:42,auto:true,recoil:.026,side:.014,spread:.018,scope:false,zoom:1,reload:1.45,kind:'pistol',color:0x574c3d},
+ Şerif:{mag:6,reserve:36,damage:72,rate:.34,range:75,auto:false,recoil:.045,side:.012,spread:.006,scope:false,zoom:1,reload:1.65,kind:'pistol',color:0x5c5147},
+ Spectre:{mag:30,reserve:120,damage:26,rate:.075,range:55,auto:true,recoil:.012,side:.008,spread:.012,scope:false,zoom:1,reload:1.7,kind:'smg',color:0x344b4c},
+ Stinger:{mag:20,reserve:100,damage:27,rate:.055,range:48,auto:true,recoil:.019,side:.014,spread:.018,scope:false,zoom:1,reload:1.6,kind:'smg',color:0x5b594e},
+ Judge:{mag:7,reserve:35,damage:12,rate:.42,range:24,auto:true,recoil:.06,side:.018,spread:.095,scope:false,zoom:1,reload:2.1,kind:'shotgun',color:0x4c4640},
+ Bucky:{mag:5,reserve:30,damage:16,rate:.65,range:20,auto:false,recoil:.07,side:.02,spread:.11,scope:false,zoom:1,reload:2.2,kind:'shotgun',color:0x6a573e},
+ Ares:{mag:50,reserve:150,damage:30,rate:.085,range:88,auto:true,recoil:.022,side:.009,spread:.012,scope:true,zoom:1.4,reload:3.0,kind:'lmg',color:0x4d5548},
+ Odin:{mag:100,reserve:200,damage:38,rate:.075,range:92,auto:true,recoil:.03,side:.012,spread:.016,scope:true,zoom:1.35,reload:4.0,kind:'lmg',color:0x454b50},
+ M416:{mag:30,reserve:120,damage:36,rate:.095,range:90,auto:true,recoil:.013,side:.006,spread:.006,scope:true,zoom:1.55,reload:1.8,kind:'rifle',color:0x3d4b3e},
+ AKM:{mag:30,reserve:120,damage:43,rate:.13,range:82,auto:true,recoil:.028,side:.013,spread:.012,scope:true,zoom:1.45,reload:2.0,kind:'rifle',color:0x66513a},
+ 'SCAR-L':{mag:30,reserve:120,damage:38,rate:.11,range:88,auto:true,recoil:.016,side:.007,spread:.007,scope:true,zoom:1.5,reload:1.9,kind:'rifle',color:0x4c594c},
+ UMP45:{mag:25,reserve:125,damage:39,rate:.12,range:60,auto:true,recoil:.011,side:.006,spread:.009,scope:true,zoom:1.3,reload:1.8,kind:'smg',color:0x444c50},
+ Vector:{mag:25,reserve:150,damage:28,rate:.055,range:45,auto:true,recoil:.018,side:.012,spread:.018,scope:false,zoom:1,reload:1.65,kind:'smg',color:0x343a42},
+ Kar98k:{mag:5,reserve:30,damage:95,rate:1.05,range:160,auto:false,recoil:.045,side:.012,spread:0,scope:true,zoom:2.1,reload:2.3,kind:'sniper',color:0x765b3d},
+ M24:{mag:5,reserve:30,damage:110,rate:1.1,range:170,auto:false,recoil:.05,side:.012,spread:0,scope:true,zoom:2.2,reload:2.4,kind:'sniper',color:0x414c4d},
+ AWM:{mag:5,reserve:20,damage:100,rate:1.05,range:150,auto:false,recoil:.055,side:.014,spread:0,scope:true,zoom:2.35,reload:2.5,kind:'sniper',color:0x303b42},
+ 'DP-28':{mag:47,reserve:141,damage:45,rate:.11,range:95,auto:true,recoil:.025,side:.009,spread:.014,scope:true,zoom:1.3,reload:3.6,kind:'lmg',color:0x5a5947},
+ 'S12K':{mag:5,reserve:35,damage:15,rate:.32,range:25,auto:true,recoil:.065,side:.022,spread:.10,scope:false,zoom:1,reload:2.0,kind:'shotgun',color:0x564a3b}
 };
+const WEAPON_NAMES=Object.keys(specs);
+const weaponScopeSettings={};
+try{Object.assign(weaponScopeSettings,JSON.parse(localStorage.getItem('rageXWeaponScopeSettings')||'{}'));}catch(e){}
+function getWeaponScopeSensitivity(name=weaponName){const n=Number(weaponScopeSettings[name]);return Number.isFinite(n)?Math.max(.25,Math.min(3,n)):1;}
+function saveWeaponScopeSensitivity(name,value){weaponScopeSettings[name]=Math.max(.25,Math.min(3,Number(value)||1));try{localStorage.setItem('rageXWeaponScopeSettings',JSON.stringify(weaponScopeSettings));}catch(e){}}
+function refreshWeaponScopeSetting(){const name=document.getElementById('scopeWeaponSelect')?.value||weaponName;const slider=document.getElementById('weaponScopeSensitivity');const value=document.getElementById('weaponScopeValue');if(slider)slider.value=getWeaponScopeSensitivity(name);if(value)value.textContent=getWeaponScopeSensitivity(name).toFixed(2)+'x';}
+
 
 const mat=(c,rough=.8,metal=0)=>new THREE.MeshStandardMaterial({
  color:c,roughness:rough,metalness:metal
@@ -742,8 +800,9 @@ function init(){
   if(!game||e.pointerType!=='touch'||e.pointerId!==touchLookId)return;
   const dx=e.clientX-touchLookX,dy=e.clientY-touchLookY;
   touchLookX=e.clientX;touchLookY=e.clientY;
-  player.rotation.y-=dx*.004;
-  camera.rotation.x=Math.max(-1.35,Math.min(1.35,camera.rotation.x-dy*.004));
+  const scopeMultiplier=scoped?getWeaponScopeSensitivity():1;
+  player.rotation.y-=dx*.004*scopeMultiplier;
+  camera.rotation.x=Math.max(-1.35,Math.min(1.35,camera.rotation.x-dy*.004*scopeMultiplier));
  });
  const endTouchLook=()=>{touchLookId=null;};
  renderer.domElement.addEventListener('pointerup',endTouchLook);
@@ -1176,7 +1235,7 @@ function buildWeapon(){
   box(weaponGroup,.26,-.34,-.75,.04,.1,.3,trim);
   reloadMag=cylinder(weaponGroup,.49,-.43,-.75,.105,.105,.22,black,Math.PI/2);
 
- }else{
+ }else if(weaponName==='AWM'){
 
   // Ağır silah gövdesi
   box(weaponGroup,.38,-.34,-.88,.24,.22,1,gunMetal);
@@ -1202,7 +1261,37 @@ function buildWeapon(){
 
   // Ön tutacak
   box(weaponGroup,.38,-.52,-1.15,.15,.3,.2,dark);
+ }else{
+  const profile=specs[weaponName];
+  const bodyMat=mat(profile.color||0x303a3d,.38,.62),accent=mat(0x171e23,.32,.72),detail=mat(0x8b8065,.5,.55);
+  const isPistol=profile.kind==='pistol',isSniper=profile.kind==='sniper',isShotgun=profile.kind==='shotgun',isLMG=profile.kind==='lmg';
+  const length=isPistol?.48:isSniper?1.32:isShotgun?1.0:isLMG?1.08:.88;
+  box(weaponGroup,.38,-.34,-.82,.22,.22,length,bodyMat);
+  cylinder(weaponGroup,.38,-.31,-.82-length*.72,isShotgun?.075:.045,isShotgun?.075:.045,isShotgun?.18:.48,accent,Math.PI/2);
+  box(weaponGroup,.38,-.48,-.48,.17,.3,.2,accent);
+  if(!isPistol)box(weaponGroup,.38,-.37,-.25,.18,.2,.42,bodyMat);
+  if(isLMG){cylinder(weaponGroup,.38,-.55,-.8,.23,.23,.22,accent,Math.PI/2);box(weaponGroup,.38,-.63,-.8,.22,.28,.24,detail);}
+  else if(isShotgun){box(weaponGroup,.38,-.52,-.8,.19,.28,.32,accent);box(weaponGroup,.38,-.36,-.15,.17,.16,.4,detail);}
+  else if(isPistol){reloadMag=box(weaponGroup,.38,-.53,-.7,.13,.25,.17,accent);}
+  else if(profile.kind==='smg'){reloadMag=box(weaponGroup,.38,-.56,-.78,.15,.32,.2,accent);box(weaponGroup,.38,-.2,-.38,.16,.12,.3,detail);}
+  else {reloadMag=box(weaponGroup,.38,-.57,-.82,.16,.36,.22,accent);box(weaponGroup,.38,-.51,-1.02,.14,.22,.18,detail);}
+  box(weaponGroup,.38,-.2,-.82,.13,.06,length*.82,accent);
+  if(profile.scope){
+    const opticRadius=isSniper?.105:isLMG?.075:.065;
+    box(weaponGroup,.38,-.11,-.82,.12,.08,.28,detail);
+    cylinder(weaponGroup,.38,-.105,-.82,.09,.09,isSniper?.42:.25,accent,Math.PI/2);
+    cylinder(weaponGroup,.38,-.105,-.82-(isSniper?.23:.14),opticRadius,opticRadius,.035,mats.glass,Math.PI/2);
+    cylinder(weaponGroup,.38,-.105,-.82+(isSniper?.23:.14),opticRadius*1.18,opticRadius*1.18,.035,detail,Math.PI/2);
+  }else{
+    box(weaponGroup,.38,-.12,-.82,.08,.12,.12,detail);
+    box(weaponGroup,.38,-.12,-.82-length*.42,.08,.12,.1,detail);
+  }
+  if(profile.silenced)cylinder(weaponGroup,.38,-.31,-.82-length*.78,.075,.075,.32,accent,Math.PI/2);
+  box(weaponGroup,.25,-.34,-.82,.035,.09,length*.55,detail);
+  if(!isPistol)box(weaponGroup,.51,-.34,-.82,.035,.09,length*.55,accent);
  }
+
+ // El ve tutuş
 
  // El ve tutuş
  box(weaponGroup,.18,-.48,-.52,.14,.1,.22,mats.skin);
@@ -1217,6 +1306,7 @@ function updateAmmo(){
 }
 
 function setWeapon(n){
+ if(!specs[n])n='Vandal';
  weaponName=n;
  ammo=specs[n].mag;
  reserve=specs[n].reserve;
@@ -1224,6 +1314,10 @@ function setWeapon(n){
  scoped=false;
  scopeEl.style.display='none';
  cross.style.display='block';
+ if(camera){camera.fov=76;camera.updateProjectionMatrix();}
+ const scopeSelect=document.getElementById('scopeWeaponSelect');
+ if(scopeSelect)scopeSelect.value=n;
+ refreshWeaponScopeSetting();
  buildWeapon();
  if(weaponGroup)weaponGroup.visible=!thirdPerson;
  updateAmmo();
@@ -1424,18 +1518,16 @@ function keydown(e){
 
  if(e.code==='KeyC'&&!e.repeat){toggleCameraView();return;}
  if(e.code==='KeyR')reload();
- if(e.code==='Digit1')setWeapon('Vandal');
- if(e.code==='Digit2')setWeapon('Şerif');
- if(e.code==='Digit3')setWeapon('AWM');
+ if(/^Digit[1-9]$/.test(e.code)){const slot=Number(e.code.slice(5))-1;if(WEAPON_NAMES[slot])setWeapon(WEAPON_NAMES[slot]);}
 }
 
 let lastMouseDown=false;
 
 function mouseMove(e){
  if(!game||!locked)return;
-
- player.rotation.y-=e.movementX*.0022*(mouseSensitivity/2.2);
- camera.rotation.x-=e.movementY*.0022*(mouseSensitivity/2.2);
+ const scopeMultiplier=scoped?getWeaponScopeSensitivity():1;
+ player.rotation.y-=e.movementX*.0022*(mouseSensitivity/2.2)*scopeMultiplier;
+ camera.rotation.x-=e.movementY*.0022*(mouseSensitivity/2.2)*scopeMultiplier;
 
  camera.rotation.x=Math.max(
   -1.48,
@@ -1451,11 +1543,11 @@ function mouseDown(e){
   shoot();
  }
 
- if(e.button===2&&weaponName==='AWM'){
+ if(e.button===2&&specs[weaponName]?.scope){
   scoped=true;
   scopeEl.style.display='block';
   cross.style.display='none';
-  camera.fov=27;
+  camera.fov=Math.max(18,76/(specs[weaponName].zoom||1.5));
   camera.updateProjectionMatrix();
  }
 }
@@ -1500,7 +1592,7 @@ function reload(){
   if(reloadMag&&reloadMagBase){reloadMag.position.copy(reloadMagBase.position);reloadMag.rotation.copy(reloadMagBase.rotation);}
   updateAmmo();
 
- },weaponName==='AWM'?1900:1450);
+ },(specs[weaponName].reload||1.5)*1000);
 }
 
 function shoot(){
@@ -1517,7 +1609,14 @@ function shoot(){
  playSfx('shot');
  if(online&&socket?.connected)socket.emit('weaponFired');
  shootCd=specs[weaponName].rate*(rapidFireUntil>Date.now()?.55:1);
- recoil=.09;
+ const profile=specs[weaponName];
+ recoil=Math.min(.34,recoil+(profile.recoil||.015)*3.2);
+ const kick=(profile.recoil||.015)*(scoped?.55:1);
+ const yawKick=(Math.random()-.5)*(profile.side||.006)*(scoped?.55:1);
+ recoilPitchOffset+=kick;
+ recoilYawOffset+=yawKick;
+ camera.rotation.x=Math.max(-1.48,Math.min(1.48,camera.rotation.x-kick));
+ player.rotation.y+=yawKick;
  // Ateş efekti
 if (weaponGroup) {
   weaponGroup.position.z = 0.12;
@@ -1556,8 +1655,9 @@ if (weaponGroup) {
  updateAmmo();
 
  const ray=new THREE.Raycaster();
- ray.setFromCamera(new THREE.Vector2(0,0),camera);
- ray.far=specs[weaponName].range;
+ const shotSpread=(profile.spread||0)*(scoped?.22:1);
+ ray.setFromCamera(new THREE.Vector2((Math.random()-.5)*shotSpread,(Math.random()-.5)*shotSpread),camera);
+ ray.far=profile.range;
 
  let targets=[];
 
@@ -1781,6 +1881,12 @@ if (jumping) {
   weaponGroup.position.y = -recoil;
 }
  recoil=Math.max(0,recoil-dt*.6);
+ const pitchRecovery=Math.min(recoilPitchOffset,dt*1.15);
+ const yawRecovery=Math.min(Math.abs(recoilYawOffset),dt*.035)*Math.sign(recoilYawOffset);
+ camera.rotation.x=Math.min(1.48,Math.max(-1.48,camera.rotation.x+pitchRecovery));
+ player.rotation.y-=yawRecovery;
+ recoilPitchOffset=Math.max(0,recoilPitchOffset-pitchRecovery);
+ recoilYawOffset-=yawRecovery;
  weaponGroup.position.y=-recoil;
  weaponGroup.rotation.x=recoil*.8;
 weaponGroup.rotation.z =
@@ -1835,7 +1941,7 @@ function collides(x,z){
 }
 
 function toggleCameraView(){thirdPerson=!thirdPerson;if(weaponGroup)weaponGroup.visible=!thirdPerson;if(localAvatar)localAvatar.visible=thirdPerson;camera.position.set(0,thirdPerson?2.55:1.65,thirdPerson?5:0);camera.rotation.x=thirdPerson?-0.12:0;const b=document.getElementById('cameraTouch');if(b)b.innerHTML='<span class="sym">◉</span>'+(thirdPerson?'DIŞ':'İÇ');}
-function cycleWeapon(){const a=['Vandal','Şerif','AWM'];setWeapon(a[(a.indexOf(weaponName)+1)%a.length]);}
+function cycleWeapon(){setWeapon(WEAPON_NAMES[(WEAPON_NAMES.indexOf(weaponName)+1)%WEAPON_NAMES.length]);}
 function setupTouchControls(){
  const pad=document.getElementById('movePad'), stick=document.getElementById('moveStick');
  if(!pad||!stick)return;
@@ -2198,7 +2304,7 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
     if(selectedGameMode==='domination'&&data.domination)document.getElementById('bombStatus').textContent='CONTROL POINT: '+data.domination.owner.toUpperCase()+' • '+data.domination.progress+'%';
   });
   socket.on('escalationUpdate', data => {
-    if(data?.team===myTeam){const arsenal=['Şerif','Vandal','AWM'];setWeapon(arsenal[(data.level-1)%arsenal.length]);msg.textContent='WEAPON LEVEL '+data.level+' / 12';}
+    if(data?.team===myTeam){const arsenal=['Classic','Spectre','Bulldog','Guardian','Vandal','Phantom','M416','AKM','Ares','Odin','Marshal','AWM'];setWeapon(arsenal[(data.level-1)%arsenal.length]);msg.textContent='WEAPON LEVEL '+data.level+' / 12';}
   });
   socket.on('matchEnded', data => {
     game=false;document.exitPointerLock?.();
@@ -2505,6 +2611,14 @@ document.getElementById('returnMenuSettings').addEventListener('click',e=>{e.pre
 document.getElementById('closeSettings').addEventListener('click',()=>{if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}document.getElementById('settingsPanel').style.display='none';});
 document.getElementById('mouseSensitivity').addEventListener('input',e=>mouseSensitivity=Number(e.target.value));
 document.getElementById('touchSensitivity').addEventListener('input',e=>touchSensitivity=Number(e.target.value));
+document.getElementById('scopeWeaponSelect').addEventListener('change',refreshWeaponScopeSetting);
+document.getElementById('weaponScopeSensitivity').addEventListener('input',e=>{
+ const name=document.getElementById('scopeWeaponSelect').value;
+ saveWeaponScopeSensitivity(name,e.target.value);
+ refreshWeaponScopeSetting();
+});
+refreshWeaponScopeSetting();
+
 document.getElementById('mobileButtonSize').addEventListener('input',e=>document.querySelectorAll('#mobileActions button').forEach(b=>{b.style.width=e.target.value+'px';b.style.height=e.target.value+'px';b.style.minWidth=e.target.value+'px';const icon=b.querySelector('.sym');if(icon)icon.style.fontSize=Math.round(Number(e.target.value)*.34)+'px';}));
 const mobileButtons=[...document.querySelectorAll('#mobileActions button')];
 function saveMobileLayout(){const o={};mobileButtons.forEach(b=>{if(b.dataset.customPosition==='1')o[b.id]={x:b.dataset.moveX||'0px',y:b.dataset.moveY||'0px'};});try{localStorage.setItem('rageXMobileLayout',JSON.stringify(o));}catch(e){}}
@@ -2515,11 +2629,11 @@ document.getElementById('mobileButtonSize').addEventListener('input',e=>mobileBu
 mobileButtons.forEach(b=>{let d=null,m=false;b.addEventListener('pointerdown',e=>{if(!mobileLayoutEdit)return;d={x:e.clientX,y:e.clientY,baseX:parseFloat(b.dataset.moveX)||0,baseY:parseFloat(b.dataset.moveY)||0};m=false;b.setPointerCapture(e.pointerId);e.preventDefault();});b.addEventListener('pointermove',e=>{if(!d)return;const x=e.clientX-d.x,y=e.clientY-d.y;if(Math.hypot(x,y)>3)m=true;if(m){const mx=Math.max(-innerWidth*.8,Math.min(innerWidth*.8,d.baseX+x)),my=Math.max(-innerHeight*.8,Math.min(innerHeight*.8,d.baseY+y));b.dataset.moveX=mx+'px';b.dataset.moveY=my+'px';b.style.transform='translate('+b.dataset.moveX+','+b.dataset.moveY+')';b.dataset.customPosition='1';}});b.addEventListener('pointerup',()=>{if(d&&m)saveMobileLayout();d=null;});b.addEventListener('pointercancel',()=>d=null);b.addEventListener('click',e=>{if(mobileLayoutEdit){e.preventDefault();e.stopImmediatePropagation();}});});
 loadMobileLayout();
 document.getElementById('renderQuality').addEventListener('change',e=>{renderQuality=e.target.value;if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,renderQuality==='high'?2:renderQuality==='low'?1:1.65));renderer.setSize(innerWidth,innerHeight);}});
-document.getElementById('scopeTouch').addEventListener('pointerdown',()=>{if(weaponName==='AWM'){scoped=true;scopeEl.style.display='block';cross.style.display='none';camera.fov=27;camera.updateProjectionMatrix();}});
+document.getElementById('scopeTouch').addEventListener('pointerdown',()=>{if(specs[weaponName]?.scope){scoped=true;scopeEl.style.display='block';cross.style.display='none';camera.fov=Math.max(18,76/(specs[weaponName].zoom||1.5));camera.updateProjectionMatrix();}});
 document.getElementById('scopeTouch').addEventListener('pointerup',unScope);document.getElementById('scopeTouch').addEventListener('pointercancel',unScope);
 const lookPad=document.getElementById('lookPad');let lookPointer=null,lastLookX=0,lastLookY=0;
 lookPad.addEventListener('pointerdown',e=>{lookPointer=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;lookPad.setPointerCapture(e.pointerId);});
-lookPad.addEventListener('pointermove',e=>{if(lookPointer!==e.pointerId||!game)return;const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;lastLookX=e.clientX;lastLookY=e.clientY;player.rotation.y-=dx*.004*(touchSensitivity/2.2);camera.rotation.x=Math.max(-1.48,Math.min(1.48,camera.rotation.x-dy*.004*(touchSensitivity/2.2)));});
+lookPad.addEventListener('pointermove',e=>{if(lookPointer!==e.pointerId||!game)return;const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;lastLookX=e.clientX;lastLookY=e.clientY;const scopeMultiplier=scoped?getWeaponScopeSensitivity():1;player.rotation.y-=dx*.004*(touchSensitivity/2.2)*scopeMultiplier;camera.rotation.x=Math.max(-1.48,Math.min(1.48,camera.rotation.x-dy*.004*(touchSensitivity/2.2)*scopeMultiplier));});
 lookPad.addEventListener('pointerup',()=>lookPointer=null);lookPad.addEventListener('pointercancel',()=>lookPointer=null);
 document.getElementById('jumpTouch').addEventListener('pointerdown',()=>keys.Space=true);document.getElementById('jumpTouch').addEventListener('pointerup',()=>keys.Space=false);document.getElementById('jumpTouch').addEventListener('pointercancel',()=>keys.Space=false);
 // YouTube menu soundtrack. The official player is used; playback loops continuously.
