@@ -268,10 +268,13 @@ function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
  return m;
 }
 
- function makeBlockCharacter(isBot = false) {
+ function makeBlockCharacter(isBot = false, team = null) {
   const character = new THREE.Group();
 
-  const bodyMaterial = isBot ? mats.red : mats.blue;
+  const bodyMaterial = selectedGameMode === 'bomb'
+  ? (team === myTeam ? mats.blue : mats.red)
+  : (isBot ? mats.red : mats.blue);
+  
 
   box(character, 0, 1.05, 0, 0.65, 0.8, 0.35, bodyMaterial);
   box(character, 0, 1.65, 0, 0.42, 0.42, 0.42, mats.skin);
@@ -1284,12 +1287,14 @@ function updateRemotePlayers(){
    selectedMap = data.map || 'desert';
 mapSelect.value = selectedMap;
     currentBotsEnabled = data.botsEnabled;
-    lobby.style.display = 'none';
-    startGame({ bots: currentBotsEnabled });
+    lobby.style.display = 'none';: currentBotsEnabled
+});
 
     (data.bots || []).forEach((state, i) => {
       const b = bots[i];
       if (b) {
+    startGame({
+  bots: selectedGameMode === 'bomb' ? false 
         b.userData.hp = state.hp;
         b.userData.dead = state.dead;
         b.userData.alive = !state.dead;
