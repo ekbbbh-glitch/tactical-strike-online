@@ -2,8 +2,14 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const crypto = require('crypto');
+const { Pool } = require('pg');
 
 const app = express();
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '16kb' }));
+const accountDb = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }) : null;
+const accountDbReady = accountDb ? accountDb.query(`CREATE TABLE IF NOT EXISTS device_accounts (device_id TEXT PRIMARY KEY, player_name VARCHAR(16), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()); CREATE TABLE IF NOT EXISTS ip_visit_logs (id BIGSERIAL PRIMARY KEY, device_id TEXT NOT NULL, ip_address TEXT NOT NULL, user_agent TEXT, visited_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`).then(() => true).catch(error => { console.error('Account database initialization failed:', error.message); return false; }) : Promise.resolve(false);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' },
@@ -431,6 +437,54 @@ function checkTeamElimination(room) {
     finishBombRound(room, 'attack', 'elimination');
   }
 }
+
+
+function readDeviceCookie(req) {
+  const raw = String(req.headers.cookie || '');
+  const match = raw.match(/(?:^|;\\s*)ragex_device=([a-f0-9-]{36})(?:;|$)/i);
+  return match ? match[1] : null;
+}
+function setDeviceCookie(res, id) {
+  res.setHeader('Set-Cookie', `ragex_device=${id}; Max-Age=31536000; Path=/; HttpOnly; Secure; SameSite=Lax`);
+}
+function cleanAccountName(value) {
+  return String(value || '').replace(/[<>]/g, '').trim().slice(0, 16);
+}
+app.post('/api/device/visit', async (req, res) => {
+  if (req.body?.consent !== true) return res.status(400).json({ error: 'Açık izin gerekli.' });
+  if (!accountDb || !(await accountDbReady)) return res.status(503).json({ error: 'Kalıcı hesap veritabanı yapılandırılmamış.' });
+  try {
+    let deviceId = readDeviceCookie(req);
+    if (!deviceId) { deviceId = crypto.randomUUID(); setDeviceCookie(res, deviceId); }
+    const ip = String(req.ip || req.socket.remoteAddress || '').slice(0, 100);
+    const agent = String(req.get('user-agent') || '').slice(0, 500);
+    await accountDb.query('INSERT INTO device_accounts(device_id) VALUES($1) ON CONFLICT(device_id) DO UPDATE SET last_seen_at=NOW()', [deviceId]);
+    await accountDb.query('INSERT INTO ip_visit_logs(device_id,ip_address,user_agent) VALUES($1,$2,$3)', [deviceId, ip, agent]);
+    await accountDb.query("DELETE FROM ip_visit_logs WHERE visited_at < NOW() - INTERVAL '90 days'");
+    const result = await accountDb.query('SELECT player_name FROM device_accounts WHERE device_id=$1', [deviceId]);
+    res.json({ ok: true, name: result.rows[0]?.player_name || null, ipLogRetentionDays: 90 });
+  } catch (error) {
+    console.error('Device visit logging failed:', error.message);
+    res.status(500).json({ error: 'Cihaz ziyareti kaydedilemedi.' });
+  }
+});
+app.post('/api/device/name', async (req, res) => {
+  if (!accountDb || !(await accountDbReady)) return res.status(503).json({ error: 'Kalıcı hesap veritabanı yapılandırılmamış.' });
+  const deviceId = readDeviceCookie(req);
+  const name = cleanAccountName(req.body?.name);
+  if (!deviceId) return res.status(401).json({ error: 'Cihaz hesabı bulunamadı; çerez iznini yenile.' });
+  if (name.length < 2) return res.status(400).json({ error: 'Oyuncu adı en az 2 karakter olmalı.' });
+  try {
+    const result = await accountDb.query("UPDATE device_accounts SET player_name=$2 WHERE device_id=$1 AND (player_name IS NULL OR player_name='') RETURNING player_name", [deviceId, name]);
+    if (result.rowCount) return res.json({ ok: true, name: result.rows[0].player_name });
+    const existing = await accountDb.query('SELECT player_name FROM device_accounts WHERE device_id=$1', [deviceId]);
+    if (!existing.rowCount) return res.status(404).json({ error: 'Cihaz hesabı bulunamadı.' });
+    return res.status(409).json({ error: 'Bu cihazda oyuncu adı zaten seçilmiş.', name: existing.rows[0].player_name });
+  } catch (error) {
+    console.error('Player name save failed:', error.message);
+    res.status(500).json({ error: 'Oyuncu adı kaydedilemedi.' });
+  }
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
