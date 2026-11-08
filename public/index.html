@@ -1310,7 +1310,11 @@ function updateRemotePlayers(){
    selectedMap = data.map || 'desert';
 mapSelect.value = selectedMap;
     currentBotsEnabled = data.botsEnabled;
-    lobby.style.display = 'none';: currentBotsEnabled
+    lobby.style.display = 'none';
+
+startGame({
+  bots: selectedGameMode === 'bomb' ? false : currentBotsEnabled
+});
 });
 
     (data.bots || []).forEach((state, i) => {
@@ -1391,6 +1395,15 @@ socket.on('bombPlanted', data => {
   socket.on('bombDefusing', data => {
   document.getElementById('bombStatus').textContent =
     'BOMBA ETKİSİZLEŞTİRİLİYOR...';
+});
+ socket.on('bombExploded', data => {
+  document.getElementById('bombStatus').textContent =
+    'BOMBA PATLADI! SALDIRI TAKIMI KAZANDI!';
+});
+
+socket.on('bombDefused', data => {
+  document.getElementById('bombStatus').textContent =
+    'BOMBA ETKİSİZLEŞTİRİLDİ! SAVUNMA TAKIMI KAZANDI!';
 });
   socket.on('bombExploded', data => {
   document.getElementById('bombStatus').textContent =
