@@ -2124,6 +2124,7 @@ socket.on('bombReset', data => {
 });
 
 socket.on('roundStarting', data => {
+  if(data.weapon && specs[data.weapon]) setWeapon(data.weapon);
   game=true;
   end.style.display='none';
   hud.style.display='block';
