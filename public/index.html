@@ -42,11 +42,28 @@ select{background:#e8edf0;min-width:190px}
 #onlineStatus{color:#a9c1cf;font-size:13px;margin-top:5px;min-height:18px}
 #players{position:absolute;top:58px;right:18px;background:#08131ccc;padding:9px 12px;font-size:12px;line-height:1.6;max-width:190px}
  #menu {
-  max-height: 85vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 25px;
-  box-sizing: border-box;
+  max-height:100dvh;min-height:0;overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;
+  align-items:flex-start;padding:24px 6vw 34px;box-sizing:border-box;
+}
+#menu .panel{margin:auto 0;min-height:min-content}
+body{overscroll-behavior:none}
+#settingsButton{position:fixed;top:12px;left:12px;z-index:12;width:48px;height:48px;border-radius:50%;padding:0;background:#243b4b;color:#fff;border:2px solid #a9c1cf;font-size:22px;pointer-events:auto}
+#settingsPanel{display:none;position:fixed;top:68px;left:12px;z-index:13;width:min(300px,calc(100vw - 24px));padding:14px;background:#102330;border:1px solid #8299a7;border-radius:14px;box-shadow:0 8px 28px #000b;pointer-events:auto}
+#settingsPanel label{display:block;margin:10px 0 4px;font-size:12px}#settingsPanel input{width:100%}
+#chatPanel{position:absolute;left:14px;top:105px;width:min(290px,42vw);pointer-events:auto;background:#07131dcc;border:1px solid #8299a766;border-radius:10px;padding:8px}
+#chatLog{height:112px;overflow:auto;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+#chatForm{display:flex;gap:5px;margin-top:6px}#chatInput{min-width:0;width:100%;padding:8px;border:0;border-radius:6px}
+#chatForm button{margin:0;padding:7px 10px;border-radius:6px}
+#mobileActions button{width:64px;height:64px;min-width:64px;padding:5px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
+#mobileActions button .sym{font-size:21px;line-height:1}
+@media (pointer:coarse),(max-width:800px){
+ #menu{align-items:flex-start;padding:16px 18px 28px}#menu .panel{margin:0 auto}
+ #mobileControls{display:block}#hint{display:none}
+ #miniMap{width:140px;height:140px;right:10px;top:72px}
+ #players{top:220px;right:10px;font-size:10px}
+ #ammo{bottom:18px;right:12px;font-size:18px}#health{bottom:18px;left:12px}
+ #chatPanel{top:auto;bottom:94px;left:10px;width:min(230px,48vw)}#chatLog{height:66px}
 }
 
 #miniMap{position:absolute;right:18px;top:105px;width:190px;height:190px;border-radius:50%;border:3px solid #dce8ef;background:rgba(5,12,20,.78);box-shadow:0 3px 18px #000;pointer-events:none}
@@ -154,9 +171,25 @@ select{background:#e8edf0;min-width:190px}
  <canvas id="miniMap" width="220" height="220" aria-label="Minimap"></canvas>
  <div id="mobileControls">
   <div id="movePad"><div id="moveStick"></div></div>
-  <div id="mobileActions"><button id="fireTouch">FIRE</button><button id="sprintTouch">SPRINT</button><button id="interactTouch">USE</button></div>
+  <div id="mobileActions">
+   <button id="fireTouch"><span class="sym">✹</span>ATEŞ</button>
+   <button id="sprintTouch"><span class="sym">🏃</span>KOŞ</button>
+   <button id="scopeTouch"><span class="sym">◎</span>DÜRBÜN</button>
+   <button id="jumpTouch"><span class="sym">⬆</span>ZIPLA</button>
+   <button id="voiceTouch"><span class="sym">🎙</span>KONUŞ</button>
+   <button id="interactTouch"><span class="sym">E</span>KULLAN</button>
+  </div>
  </div>
+ <div id="chatPanel"><div id="chatLog" aria-live="polite"></div><form id="chatForm"><input id="chatInput" maxlength="120" placeholder="Mesaj yaz..." autocomplete="off"><button type="submit">GÖNDER</button></form></div>
  <div id="bombStatus" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:20px;font-weight:bold;z-index:20;"></div>
+</div>
+<button id="settingsButton" title="Ayarlar">⚙</button>
+<div id="settingsPanel">
+ <b>OYUN AYARLARI</b>
+ <label for="mouseSensitivity">PC fare hassasiyeti</label><input id="mouseSensitivity" type="range" min="0.5" max="3.5" step="0.1" value="2.2">
+ <label for="mobileButtonSize">Mobil tuş boyutu</label><input id="mobileButtonSize" type="range" min="48" max="88" step="2" value="64">
+ <p style="font-size:11px;color:#b9cbd5">Mobil tuşları sürükleyerek yerlerini değiştirebilirsin.</p>
+ <button id="closeSettings">KAPAT</button>
 </div>
 
 <div id="end">
@@ -343,7 +376,8 @@ function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
 
   const torso=box(character, 0, 1.05, 0, 0.65, 0.8, 0.35, outfitMaterial);
   torso.material=bodyMaterial;
-  box(character, 0, 1.65, 0, 0.42, 0.42, 0.42, mats.skin);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.235,18,14),mats.skin);
+  head.position.set(0,1.65,0);head.castShadow=true;character.add(head);
   // Large, recognizable character-specific gear for other players.
   // Team colors remain visible on the body while each agent has a distinct silhouette.
   if(characterType==='jett'){
@@ -1028,8 +1062,8 @@ let lastMouseDown=false;
 function mouseMove(e){
  if(!game||!locked)return;
 
- player.rotation.y-=e.movementX*.0022;
- camera.rotation.x-=e.movementY*.0022;
+ player.rotation.y-=e.movementX*.0022*(mouseSensitivity/2.2);
+ camera.rotation.x-=e.movementY*.0022*(mouseSensitivity/2.2);
 
  camera.rotation.x=Math.max(
   -1.48,
@@ -1071,6 +1105,7 @@ function unScope(){
 }
 
 document.addEventListener('contextmenu',e=>e.preventDefault());
+let mouseSensitivity=2.2;
 
 function reload(){
  if(reloading||ammo===specs[weaponName].mag||reserve<=0)return;
@@ -1410,13 +1445,27 @@ function setupTouchControls(){
 }
 
 function drawMinimap(){
- const canvas=document.getElementById('miniMap'); if(!canvas||!player||!game)return;
- const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=1.35;
+ const canvas=document.getElementById('miniMap');if(!canvas||!player||!game)return;
+ const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=1.05;
  ctx.clearRect(0,0,w,h);ctx.save();ctx.beginPath();ctx.arc(cx,cy,105,0,Math.PI*2);ctx.clip();ctx.fillStyle='#14212b';ctx.fillRect(0,0,w,h);
- ctx.strokeStyle='#8195a2';ctx.lineWidth=2;ctx.strokeRect(cx-84,cy-84,168,168);
- const px=cx,py=cy;ctx.fillStyle='#e9eef2';ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
- for(const [id,p] of remotePlayers){const dx=(Number(p.x)-player.position.x)*scale, dz=(Number(p.z)-player.position.z)*scale;const x=cx+dx,y=cy+dz;if(Math.hypot(dx,dz)<98){ctx.fillStyle=(p.team===myTeam)?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.fill();}}
- if(selectedGameMode==='bomb'&&bombState.carrierId===socket?.id&&!bombState.planted){ctx.fillStyle='#ffd52a';for(const [x,z,label] of [[-42,4,'A'],[42,-4,'B']]){const sx=cx+(x-player.position.x)*scale,sy=cy+(z-player.position.z)*scale;ctx.beginPath();ctx.arc(sx,sy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';ctx.font='bold 9px Arial';ctx.fillText(label,sx-3,sy+3);ctx.fillStyle='#ffd52a';}}
+ const ca=Math.cos(player.rotation.y),sa=Math.sin(player.rotation.y),radius=98;
+ const toMap=(x,z)=>{const dx=x-player.position.x,dz=z-player.position.z;return{x:cx+(dx*ca+dz*sa)*scale,y:cy+(-dx*sa+dz*ca)*scale};};
+ // Actual houses, walls and cover from the selected 3D map.
+ ctx.fillStyle='#607783';ctx.strokeStyle='#a8bdc7';ctx.lineWidth=1;
+ for(const obj of mapObjects){
+  const p=obj.geometry?.parameters;if(!obj.isMesh||obj.position.y<.55||!p)continue;
+  const bw=p.width||0,bd=p.depth||0;if(bw<1||bd<1)continue;
+  const a=toMap(obj.position.x-bw/2,obj.position.z-bd/2),b=toMap(obj.position.x+bw/2,obj.position.z+bd/2);
+  const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),rw=Math.max(2,Math.abs(b.x-a.x)),rh=Math.max(2,Math.abs(b.y-a.y));
+  if(x<cx+radius&&x+rw>cx-radius&&y<cy+radius&&y+rh>cy-radius){ctx.fillRect(x,y,rw,rh);ctx.strokeRect(x,y,rw,rh);}
+ }
+ if(selectedGameMode==='bomb')for(const [x,z,label] of [[-42,4,'A'],[42,-4,'B']]){
+  const p=toMap(x,z);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);ctx.fillStyle='#ffd52a';ctx.fillRect(-6,-6,12,12);ctx.restore();
+  ctx.fillStyle='#fff2b0';ctx.font='bold 10px Arial';ctx.fillText(label+' SITE',p.x+8,p.y-7);
+ }
+ for(const [id,p] of remotePlayers){const q=toMap(Number(p.x)||0,Number(p.z)||0);if(Math.hypot(q.x-cx,q.y-cy)<radius){ctx.fillStyle=p.team===myTeam?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(q.x,q.y,4.5,0,Math.PI*2);ctx.fill();}}
+ // Player arrow follows the direction the camera faces.
+ ctx.save();ctx.translate(cx,cy);ctx.fillStyle='#f5f8ff';ctx.strokeStyle='#07131d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(8,9);ctx.lineTo(0,5);ctx.lineTo(-8,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
  ctx.restore();
 }
 
@@ -1868,6 +1917,20 @@ document.getElementById('back').onclick=()=>{
  document.exitPointerLock?.();
 };
 
+document.getElementById('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=document.getElementById('chatInput');const text=input.value.trim();if(text&&socket?.connected){socket.emit('chatMessage',text.slice(0,120));input.value='';}});
+document.getElementById('settingsButton').addEventListener('click',()=>{const p=document.getElementById('settingsPanel');p.style.display=p.style.display==='block'?'none':'block';});
+document.getElementById('closeSettings').addEventListener('click',()=>document.getElementById('settingsPanel').style.display='none');
+document.getElementById('mouseSensitivity').addEventListener('input',e=>mouseSensitivity=Number(e.target.value));
+document.getElementById('mobileButtonSize').addEventListener('input',e=>document.querySelectorAll('#mobileActions button').forEach(b=>{b.style.width=e.target.value+'px';b.style.height=e.target.value+'px';b.style.minWidth=e.target.value+'px';}));
+document.querySelectorAll('#mobileActions button').forEach(btn=>{
+ let drag=null;
+ btn.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,left:btn.offsetLeft,top:btn.offsetTop};btn.setPointerCapture(e.pointerId);});
+ btn.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>8){btn.style.position='absolute';btn.style.left=Math.max(0,drag.left+dx)+'px';btn.style.top=Math.max(0,drag.top+dy)+'px';btn.style.right='auto';btn.style.bottom='auto';}});
+ btn.addEventListener('pointerup',()=>drag=null);btn.addEventListener('pointercancel',()=>drag=null);
+});
+document.getElementById('scopeTouch').addEventListener('pointerdown',()=>{if(weaponName==='AWM'){scoped=true;scopeEl.style.display='block';cross.style.display='none';camera.fov=27;camera.updateProjectionMatrix();}});
+document.getElementById('scopeTouch').addEventListener('pointerup',unScope);document.getElementById('scopeTouch').addEventListener('pointercancel',unScope);
+document.getElementById('jumpTouch').addEventListener('pointerdown',()=>keys.Space=true);document.getElementById('jumpTouch').addEventListener('pointerup',()=>keys.Space=false);document.getElementById('jumpTouch').addEventListener('pointercancel',()=>keys.Space=false);
 setupTouchControls();
 init();
 
