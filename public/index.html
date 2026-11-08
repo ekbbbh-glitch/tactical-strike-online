@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.18">
+<meta name="app-version" content="2026.11.09.01">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -73,7 +73,24 @@ select{background:#e8edf0;min-width:190px}
 .online-box{border:1px solid #688394;background:#07131dcc;padding:14px;margin:14px 0;max-width:570px}
 .online-box h3{margin:0 0 10px;color:#ffc45c;letter-spacing:2px;font-size:14px}
 .online-box input{background:#e8edf0;border:0;padding:12px;margin:5px 8px 8px 0;min-width:190px;max-width:100%;font-size:14px}
-.online-actions{display:flex;align-items:center;flex-wrap:wrap}
+.online-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}
+#menu .online-box{max-width:620px;margin:24px auto;padding:22px;border:1px solid #688fa6aa;border-radius:16px;background:linear-gradient(145deg,rgba(8,22,34,.96),rgba(15,35,49,.92));box-shadow:0 18px 55px #0008,inset 0 1px #ffffff12;text-align:left}
+#menu .online-box h3{font-size:13px;color:#ffc45c;letter-spacing:2.5px;margin:0 0 18px;padding-bottom:12px;border-bottom:1px solid #7796a633}
+#menu .online-box label{display:inline-block;color:#c7d7e1;font-size:11px;font-weight:800;letter-spacing:1.4px;margin:5px 0}
+#menu .online-box input{width:min(100%,300px);min-width:0;margin:7px 8px 8px 0;padding:13px 14px;border:1px solid #7892a466;border-radius:9px;background:#eaf0f4;color:#12212c;font-weight:600;outline:none}
+#menu .online-box input:focus{border-color:#ffc45c;box-shadow:0 0 0 3px #ffc45c22}
+#menu #savePlayerName{border-radius:9px;padding:12px 15px;margin:7px 0 8px;font-size:12px;background:#31566d;color:#fff;border:1px solid #7ca4bb}
+#menu #privacySettings{display:block;margin:0 0 12px;padding:5px 0;font-size:11px}
+#menu .online-actions{margin-top:12px}
+#menu .online-actions button{width:100%;min-height:48px;margin:0;border-radius:9px;font-size:13px;transition:transform .16s ease,filter .16s ease}
+#menu #createRoom{grid-column:1/-1;background:linear-gradient(135deg,#e7a83e,#ffc45c);color:#14202a;box-shadow:0 5px 18px #e7a83e25}
+#menu #joinRoom{background:#28485c;color:#fff;border:1px solid #789bb0}
+#menu #roomCode{width:100%;min-width:0;margin:0;min-height:48px;border-radius:9px;letter-spacing:2px}
+#menu .online-actions button:hover{transform:translateY(-2px);filter:brightness(1.08)}
+#onlineStatus{padding:10px 12px;margin-top:12px;border-radius:8px;background:#020a1099;border:1px solid #6d899b44;font-size:12px}
+#menu #start{display:block;width:min(100%,420px);margin:22px auto;padding:17px 24px;border-radius:10px;background:linear-gradient(135deg,#d98b2e,#ffc45c);color:#101820;font-size:16px;letter-spacing:2px;box-shadow:0 9px 28px #e7a83e33}
+#menu #start:hover{transform:translateY(-2px);filter:brightness(1.08)}
+@media(max-width:520px){#menu .online-box{padding:16px;margin:18px auto}#menu .online-box input{width:100%;margin-right:0}#menu #savePlayerName{width:100%}#menu .online-actions{grid-template-columns:1fr}#menu #createRoom{grid-column:auto}}
 #onlineStatus{color:#a9c1cf;font-size:13px;margin-top:5px;min-height:18px}
 #players{position:absolute;top:58px;right:18px;background:#08131ccc;padding:9px 12px;font-size:12px;line-height:1.6;max-width:190px}
  #menu {
@@ -179,8 +196,6 @@ body{overscroll-behavior:none}
    <h3>ONLINE CO-OP • 10 PLAYERS</h3>
    <label for="playerName">PLAYER NAME</label><br>
    <input id="playerName" maxlength="16" placeholder="İlk girişte adını seç" value="" /><button id="savePlayerName" type="button">İSMİMİ KAYDET</button><div id="accountStatus">İsmini bir kez kaydet; bu cihazda sonraki girişlerde korunur.</div><button id="privacySettings" type="button">Çerez / gizlilik ayarları</button>
-   <label for="serverUrl">SERVER URL</label><br>
-   <input id="serverUrl" placeholder="Server URL" value="https://tactical-strike-online.onrender.com" readonly />
    <div class="online-actions">
     <button id="createRoom">CREATE ROOM</button>
     <input id="roomCode" maxlength="8" placeholder="ROOM CODE" />
@@ -397,7 +412,7 @@ const TEXT={
 "Original fan-made prototype. No official Riot Games or Valorant assets are used.":["Original fan-made prototype. No official Riot Games or Valorant assets are used.","Hayran yapımı prototip. Resmî Riot Games veya Valorant varlıkları kullanılmamıştır.","Prototipo creado por fans. No se utilizan recursos oficiales de Riot Games ni Valorant.","Prototype créé par des fans. Aucun élément officiel de Riot Games ou Valorant n’est utilisé.","Fan-erstellter Prototyp. Es werden keine offiziellen Riot-Games- oder Valorant-Assets verwendet.","Protótipo feito por fãs. Nenhum recurso oficial da Riot Games ou Valorant é utilizado.","Фанатский прототип. Официальные материалы Riot Games и Valorant не используются.","نموذج أولي من صنع المعجبين. لا تُستخدم أصول رسمية من Riot Games أو Valorant.","ファン制作のプロトタイプです。Riot GamesやValorantの公式素材は使用していません。","팬 제작 프로토타입입니다. Riot Games 또는 Valorant의 공식 에셋은 사용하지 않습니다."]
 };
 const targets=[
-['#languageLabel','LANGUAGE'],['.tag','ONLINE FPS • TACTICAL COMBAT • 3D'],['.sub','ROUND ZERO // TACTICAL OPERATIONS'],['#menu .panel > .small','Fight across tactical arenas with bots or online players. Choose your agent, weapon and battlefield.'],['.online-box h3','ONLINE CO-OP • 10 PLAYERS'],['label[for="playerName"]','PLAYER NAME'],['#playerName','Your name','placeholder'],['label[for="serverUrl"]','SERVER URL'],['#roomCode','ROOM CODE','placeholder'],['#createRoom','CREATE ROOM'],['#joinRoom','JOIN ROOM'],['#onlineStatus','Create a room or join with a room code.'],['label[for="gameMode"]','GAME MODE'],
+['#languageLabel','LANGUAGE'],['.tag','ONLINE FPS • TACTICAL COMBAT • 3D'],['.sub','ROUND ZERO // TACTICAL OPERATIONS'],['#menu .panel > .small','Fight across tactical arenas with bots or online players. Choose your agent, weapon and battlefield.'],['.online-box h3','ONLINE CO-OP • 10 PLAYERS'],['label[for="playerName"]','PLAYER NAME'],['#playerName','Your name','placeholder'],['#roomCode','ROOM CODE','placeholder'],['#createRoom','CREATE ROOM'],['#joinRoom','JOIN ROOM'],['#onlineStatus','Create a room or join with a room code.'],['label[for="gameMode"]','GAME MODE'],
 ...['Team Deathmatch — 100 Kills','Free For All — 40 Kills','Bomb Defusal — 12 Rounds','Domination — Control Point','Swiftplay — First to 5','Spike Rush — First to 4','Escalation — Weapon Race'].map(k=>['#gameMode option',k,'option']),
 ['label[for="mapSelect"]','SELECT MAP'],...['Desert Town','Snow Base','Factory','City'].map(k=>['#mapSelect option',k,'option']),
 ['label[for="characterSelect"]','CHOOSE YOUR AGENT'],...['Tactical Soldier','Heavy Soldier','Special Forces','Jett-inspired Agent','Viper-inspired Agent','Block Adventurer','Classic Block Avatar'].map(k=>['#characterSelect option',k,'option']),
@@ -2408,7 +2423,7 @@ function updateRemotePlayers(){
 }
 
  function connectRoom(action) {
-  const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+  const url = window.location.origin.replace(/\/$/, '');
   const name = (document.getElementById('playerName').value.trim() || '').slice(0, 16);
   if(!deviceAccountSaved){setOnlineStatus('ÖNCE OYUNCU ADINI KAYDET.');return;}
   const code = document.getElementById('roomCode').value.trim().toUpperCase();
