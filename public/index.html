@@ -91,6 +91,7 @@ body{overscroll-behavior:none}
 
 <div id="menu">
  <div class="panel">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px"><label for="languageSelect" id="languageLabel">LANGUAGE</label><select id="languageSelect" style="width:auto;min-width:140px"><option value="en">English</option><option value="tr">Türkçe</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="ja">日本語</option><option value="ko">한국어</option></select></div>
   <div class="tag">ONLINE FPS • TACTICAL COMBAT • 3D</div>
   <h1>RAGE X</h1>
   <div class="sub">ROUND ZERO // TACTICAL OPERATIONS</div>
@@ -221,6 +222,67 @@ body{overscroll-behavior:none}
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+
+const languageSelect=document.getElementById('languageSelect');
+const LANGS=['en','tr','es','fr','de','pt','ru','ar','ja','ko'];
+const TEXT={
+"LANGUAGE":["LANGUAGE","DİL","IDIOMA","LANGUE","SPRACHE","IDIOMA","ЯЗЫК","اللغة","言語","언어"],
+"ONLINE FPS • TACTICAL COMBAT • 3D":["ONLINE FPS • TACTICAL COMBAT • 3D","ÇEVRİM İÇİ FPS • TAKTİKSEL SAVAŞ • 3D","FPS EN LÍNEA • COMBATE TÁCTICO • 3D","FPS EN LIGNE • COMBAT TACTIQUE • 3D","ONLINE-FPS • TAKTISCHER KAMPF • 3D","FPS ONLINE • COMBATE TÁTICO • 3D","ОНЛАЙН FPS • ТАКТИЧЕСКИЙ БОЙ • 3D","تصويب عبر الإنترنت • قتال تكتيكي • 3D","オンラインFPS • 戦術バトル • 3D","온라인 FPS • 전술 전투 • 3D"],
+"ROUND ZERO // TACTICAL OPERATIONS":["ROUND ZERO // TACTICAL OPERATIONS","SIFIRINCI TUR // TAKTİK OPERASYONLAR","RONDA CERO // OPERACIONES TÁCTICAS","MANCHE ZÉRO // OPÉRATIONS TACTIQUES","RUNDE NULL // TAKTISCHE OPERATIONEN","RODADA ZERO // OPERAÇÕES TÁTICAS","РАУНД НОЛЬ // ТАКТИЧЕСКИЕ ОПЕРАЦИИ","الجولة صفر // عمليات تكتيكية","ラウンドゼロ // 戦術作戦","라운드 제로 // 전술 작전"],
+"Fight across tactical arenas with bots or online players. Choose your agent, weapon and battlefield.":["Fight across tactical arenas with bots or online players. Choose your agent, weapon and battlefield.","Botlara veya çevrim içi oyunculara karşı savaş. Ajanını, silahını ve haritanı seç.","Lucha contra bots o jugadores en línea. Elige agente, arma y mapa.","Combattez des bots ou joueurs en ligne. Choisissez agent, arme et carte.","Kämpfe gegen Bots oder Online-Spieler. Wähle Agent, Waffe und Karte.","Lute contra bots ou jogadores online. Escolha agente, arma e mapa.","Сражайтесь с ботами или игроками онлайн. Выберите агента, оружие и карту.","قاتل الروبوتات أو اللاعبين عبر الإنترنت. اختر العميل والسلاح والخريطة.","ボットやオンラインプレイヤーと戦おう。エージェント、武器、マップを選択。","봇 또는 온라인 플레이어와 싸우세요. 요원, 무기, 맵을 선택하세요."],
+"ONLINE CO-OP • 10 PLAYERS":["ONLINE CO-OP • 10 PLAYERS","ÇEVRİM İÇİ TAKIM • 10 OYUNCU","COOPERATIVO EN LÍNEA • 10 JUGADORES","COOP EN LIGNE • 10 JOUEURS","ONLINE-KOOP • 10 SPIELER","COOPERATIVO ONLINE • 10 JOGADORES","СЕТЕВАЯ ИГРА • 10 ИГРОКОВ","لعب جماعي عبر الإنترنت • 10 لاعبين","オンライン協力プレイ • 10人","온라인 협동 • 10명"],
+"PLAYER NAME":["PLAYER NAME","OYUNCU ADI","NOMBRE DEL JUGADOR","NOM DU JOUEUR","SPIELERNAME","NOME DO JOGADOR","ИМЯ ИГРОКА","اسم اللاعب","プレイヤー名","플레이어 이름"],
+"Your name":["Your name","Adınız","Tu nombre","Votre nom","Dein Name","Seu nome","Ваше имя","اسمك","名前","이름"],
+"SERVER URL":["SERVER URL","SUNUCU URL'Sİ","URL DEL SERVIDOR","URL DU SERVEUR","SERVER-URL","URL DO SERVIDOR","АДРЕС СЕРВЕРА","عنوان الخادم","サーバーURL","서버 URL"],
+"ROOM CODE":["ROOM CODE","ODA KODU","CÓDIGO DE SALA","CODE DE SALON","RAUMCODE","CÓDIGO DA SALA","КОД КОМНАТЫ","رمز الغرفة","ルームコード","방 코드"],
+"CREATE ROOM":["CREATE ROOM","ODA OLUŞTUR","CREAR SALA","CRÉER UN SALON","RAUM ERSTELLEN","CRIAR SALA","СОЗДАТЬ КОМНАТУ","إنشاء غرفة","ルームを作成","방 만들기"],
+"JOIN ROOM":["JOIN ROOM","ODAYA KATIL","UNIRSE A LA SALA","REJOINDRE","BEITRETEN","ENTRAR NA SALA","ВОЙТИ В КОМНАТУ","انضم إلى الغرفة","参加する","방 참가"],
+"Create a room or join with a room code.":["Create a room or join with a room code.","Oda oluştur veya oda koduyla katıl.","Crea una sala o únete con un código.","Créez un salon ou rejoignez-le avec un code.","Erstelle einen Raum oder tritt mit einem Code bei.","Crie uma sala ou entre usando um código.","Создайте комнату или войдите по коду.","أنشئ غرفة أو انضم باستخدام رمز.","ルームを作成するか、コードで参加してください。","방을 만들거나 코드로 참가하세요."],
+"GAME MODE":["GAME MODE","OYUN MODU","MODO DE JUEGO","MODE DE JEU","SPIELMODUS","MODO DE JOGO","РЕЖИМ ИГРЫ","وضع اللعب","ゲームモード","게임 모드"],
+"Team Deathmatch — 100 Kills":["Team Deathmatch — 100 Kills","Takım Ölüm Maçı — 100 Skor","Combate por equipos — 100 bajas","Combat en équipe — 100 éliminations","Team-Deathmatch — 100 Kills","Mata-mata em equipe — 100 eliminações","Командный бой — 100 убийств","مباراة فرق — 100 قتلة","チームデスマッチ — 100キル","팀 데스매치 — 100킬"],
+"Free For All — 40 Kills":["Free For All — 40 Kills","Herkes Tek — 40 Skor","Todos contra todos — 40 bajas","Chacun pour soi — 40 éliminations","Jeder gegen jeden — 40 Kills","Todos contra todos — 40 eliminações","Каждый сам за себя — 40 убийств","كل لاعب لنفسه — 40 قتلة","フリーフォーオール — 40キル","개인전 — 40킬"],
+"Bomb Defusal — 12 Rounds":["Bomb Defusal — 12 Rounds","Bomba İmha — 12 Tur","Desactivar bomba — 12 rondas","Désamorçage — 12 manches","Bombenentschärfung — 12 Runden","Desarmar bomba — 12 rodadas","Обезвреживание — 12 раундов","تفكيك القنبلة — 12 جولة","爆弾解除 — 12ラウンド","폭탄 해체 — 12라운드"],
+"Domination — Control Point":["Domination — Control Point","Bölge Hakimiyeti — Kontrol Noktası","Dominación — Punto de control","Conquête — Point de contrôle","Herrschaft — Kontrollpunkt","Dominação — Ponto de controle","Господство — контрольная точка","السيطرة — نقطة تحكم","ドミネーション — 制圧地点","점령전 — 거점"],
+"Swiftplay — First to 5":["Swiftplay — First to 5","Swiftplay — 5 Tura İlk Ulaşan","Swiftplay — Primero a 5","Swiftplay — Premier à 5","Swiftplay — Bis 5 Siege","Swiftplay — Primeiro a 5","Swiftplay — до 5 побед","Swiftplay — أول من يصل إلى 5","Swiftplay — 5勝先取","스위프트플레이 — 5승 선취"],
+"Spike Rush — First to 4":["Spike Rush — First to 4","Spike Rush — 4 Tura İlk Ulaşan","Spike Rush — Primero a 4","Spike Rush — Premier à 4","Spike Rush — Bis 4 Siege","Spike Rush — Primeiro a 4","Spike Rush — до 4 побед","Spike Rush — أول من يصل إلى 4","Spike Rush — 4勝先取","스파이크 러시 — 4승 선취"],
+"Escalation — Weapon Race":["Escalation — Weapon Race","Yükseliş — Silah Yarışı","Escalada — Carrera de armas","Escalade — Course aux armes","Eskalation — Waffenrennen","Escalada — Corrida de armas","Эскалация — гонка оружия","التصعيد — سباق الأسلحة","エスカレーション — 武器レース","에스컬레이션 — 무기 레이스"],
+"SELECT MAP":["SELECT MAP","HARİTA SEÇ","ELEGIR MAPA","CHOISIR LA CARTE","KARTE WÄHLEN","SELECIONAR MAPA","ВЫБРАТЬ КАРТУ","اختر الخريطة","マップを選択","맵 선택"],
+"Desert Town":["Desert Town","Çöl Kasabası","Ciudad del desierto","Ville du désert","Wüstenstadt","Cidade do deserto","Пустынный город","مدينة الصحراء","砂漠の街","사막 마을"],
+"Snow Base":["Snow Base","Kar Üssü","Base nevada","Base enneigée","Schneebasis","Base de neve","Снежная база","قاعدة الثلج","雪の基地","설원 기지"],
+"Factory":["Factory","Fabrika","Fábrica","Usine","Fabrik","Fábrica","Фабрика","المصنع","工場","공장"],
+"City":["City","Şehir","Ciudad","Ville","Stadt","Cidade","Город","المدينة","都市","도시"],
+"CHOOSE YOUR AGENT":["CHOOSE YOUR AGENT","AJANINI SEÇ","ELIGE TU AGENTE","CHOISISSEZ VOTRE AGENT","AGENT WÄHLEN","ESCOLHA SEU AGENTE","ВЫБЕРИТЕ АГЕНТА","اختر العميل","エージェントを選択","요원 선택"],
+"Tactical Soldier":["Tactical Soldier","Taktik Asker","Soldado táctico","Soldat tactique","Taktischer Soldat","Soldado tático","Тактический солдат","جندي تكتيكي","タクティカルソルジャー","전술 병사"],
+"Heavy Soldier":["Heavy Soldier","Ağır Asker","Soldado pesado","Soldat lourd","Schwerer Soldat","Soldado pesado","Тяжёлый солдат","جندي ثقيل","ヘビーソルジャー","중무장 병사"],
+"Special Forces":["Special Forces","Özel Kuvvetler","Fuerzas especiales","Forces spéciales","Spezialeinheiten","Forças especiais","Спецназ","القوات الخاصة","特殊部隊","특수 부대"],
+"Jett-inspired Agent":["Jett-inspired Agent","Jett Benzeri Ajan","Agente inspirado en Jett","Agent inspiré de Jett","Von Jett inspirierter Agent","Agente inspirado em Jett","Агент в стиле Jett","عميل مستوحى من Jett","Jett風エージェント","제트 스타일 요원"],
+"Viper-inspired Agent":["Viper-inspired Agent","Viper Benzeri Ajan","Agente inspirado en Viper","Agent inspiré de Viper","Von Viper inspirierter Agent","Agente inspirado em Viper","Агент в стиле Viper","عميل مستوحى من Viper","Viper風エージェント","바이퍼 스타일 요원"],
+"Block Adventurer":["Block Adventurer","Blok Maceracı","Aventurero de bloques","Aventurier cubique","Block-Abenteurer","Aventureiro de blocos","Блочный искатель приключений","مغامر المكعبات","ブロックアドベンチャー","블록 모험가"],
+"Classic Block Avatar":["Classic Block Avatar","Klasik Blok Avatar","Avatar clásico de bloques","Avatar cubique classique","Klassischer Block-Avatar","Avatar clássico de blocos","Классический блочный аватар","شخصية مكعبات كلاسيكية","クラシックブロックアバター","클래식 블록 아바타"],
+"STARTING WEAPON":["STARTING WEAPON","BAŞLANGIÇ SİLAHI","ARMA INICIAL","ARME DE DÉPART","STARTWAFFE","ARMA INICIAL","СТАРТОВОЕ ОРУЖИЕ","السلاح الابتدائي","初期武器","시작 무기"],
+"START MATCH":["START MATCH","MAÇA BAŞLA","INICIAR PARTIDA","LANCER LA PARTIE","MATCH STARTEN","INICIAR PARTIDA","НАЧАТЬ МАТЧ","ابدأ المباراة","マッチ開始","매치 시작"],
+"CONTROLS:":["CONTROLS:","KONTROLLER:","CONTROLES:","COMMANDES :","STEUERUNG:","CONTROLES:","УПРАВЛЕНИЕ:","عناصر التحكم:","操作方法:","조작법:"],
+"Original fan-made prototype. No official Riot Games or Valorant assets are used.":["Original fan-made prototype. No official Riot Games or Valorant assets are used.","Hayran yapımı prototip. Resmî Riot Games veya Valorant varlıkları kullanılmamıştır.","Prototipo creado por fans. No se utilizan recursos oficiales de Riot Games ni Valorant.","Prototype créé par des fans. Aucun élément officiel de Riot Games ou Valorant n’est utilisé.","Fan-erstellter Prototyp. Es werden keine offiziellen Riot-Games- oder Valorant-Assets verwendet.","Protótipo feito por fãs. Nenhum recurso oficial da Riot Games ou Valorant é utilizado.","Фанатский прототип. Официальные материалы Riot Games и Valorant не используются.","نموذج أولي من صنع المعجبين. لا تُستخدم أصول رسمية من Riot Games أو Valorant.","ファン制作のプロトタイプです。Riot GamesやValorantの公式素材は使用していません。","팬 제작 프로토타입입니다. Riot Games 또는 Valorant의 공식 에셋은 사용하지 않습니다."]
+};
+const targets=[
+['#languageLabel','LANGUAGE'],['.tag','ONLINE FPS • TACTICAL COMBAT • 3D'],['.sub','ROUND ZERO // TACTICAL OPERATIONS'],['#menu .panel > .small','Fight across tactical arenas with bots or online players. Choose your agent, weapon and battlefield.'],['.online-box h3','ONLINE CO-OP • 10 PLAYERS'],['label[for="playerName"]','PLAYER NAME'],['#playerName','Your name','placeholder'],['label[for="serverUrl"]','SERVER URL'],['#roomCode','ROOM CODE','placeholder'],['#createRoom','CREATE ROOM'],['#joinRoom','JOIN ROOM'],['#onlineStatus','Create a room or join with a room code.'],['label[for="gameMode"]','GAME MODE'],
+...['Team Deathmatch — 100 Kills','Free For All — 40 Kills','Bomb Defusal — 12 Rounds','Domination — Control Point','Swiftplay — First to 5','Spike Rush — First to 4','Escalation — Weapon Race'].map(k=>['#gameMode option',k,'option']),
+['label[for="mapSelect"]','SELECT MAP'],...['Desert Town','Snow Base','Factory','City'].map(k=>['#mapSelect option',k,'option']),
+['label[for="characterSelect"]','CHOOSE YOUR AGENT'],...['Tactical Soldier','Heavy Soldier','Special Forces','Jett-inspired Agent','Viper-inspired Agent','Block Adventurer','Classic Block Avatar'].map(k=>['#characterSelect option',k,'option']),
+['label[for="weapon"]','STARTING WEAPON'],['#start','START MATCH'],['#menu .small b','CONTROLS:'],['#menu .small:last-of-type','Original fan-made prototype. No official Riot Games or Valorant assets are used.']
+];
+function applyMenuLanguage(lang){
+ const idx=Math.max(0,LANGS.indexOf(lang));
+ for(const [selector,key,kind] of targets){
+  const els=kind==='option'?[...document.querySelectorAll(selector)].filter(e=>e.textContent.trim()===key):[document.querySelector(selector)];
+  for(const el of els){if(!el||!TEXT[key])continue;const value=TEXT[key][idx]||TEXT[key][0];if(kind==='placeholder')el.placeholder=value;else el.textContent=value;}
+ }
+ document.documentElement.lang=lang;document.getElementById('menu').dir=lang==='ar'?'rtl':'ltr';
+ try{localStorage.setItem('rageXLanguage',lang);}catch(e){}
+}
+try{languageSelect.value=localStorage.getItem('rageXLanguage')||'en';}catch(e){languageSelect.value='en';}
+languageSelect.addEventListener('change',()=>applyMenuLanguage(languageSelect.value));applyMenuLanguage(languageSelect.value);
 
 const menu=document.getElementById('menu');
  const lobby = document.getElementById('lobby');
