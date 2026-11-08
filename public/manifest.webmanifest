@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "RAGE X - Tactical Strike Online",
+  "short_name": "RAGE X",
+  "description": "Online tactical 3D FPS game",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#08131c",
+  "theme_color": "#101820",
+  "icons": [
+    {
+      "src": "/icons/rage-x.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
