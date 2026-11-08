@@ -2221,7 +2221,7 @@ socket.on('gameEnded', data => {
       b.userData.dead = true;
       b.userData.alive = false;
       b.visible = false;
-      kills++;
+      if(!online || data.killerId===socket.id)kills++;
       msg.textContent = 'TARGET ELIMINATED';
       setTimeout(() => msg.textContent = '', 700);
       updateHud();
