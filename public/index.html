@@ -895,7 +895,8 @@ function buildDesertMap() {
   box(scene,x,3,z,13,6,12,concrete);
   box(scene,x,6.1,z,14,.5,13,metal);
 
-  for(const wx of [-4,0,4]){addWoodenWindow(x+wx,3.8,z-6.18,0);addWoodenWindow(x+wx,3.8,z+6.18,Math.PI);}\n  for(const wz of [-2.7,2.7]){addWoodenWindow(x+6.68,3.8,z+wz,Math.PI/2);addWoodenWindow(x-6.68,3.8,z+wz,-Math.PI/2);}
+  for(const wx of [-4,0,4]){addWoodenWindow(x+wx,3.8,z-6.18,0);addWoodenWindow(x+wx,3.8,z+6.18,Math.PI);}
+  for(const wz of [-2.7,2.7]){addWoodenWindow(x+6.68,3.8,z+wz,Math.PI/2);addWoodenWindow(x-6.68,3.8,z+wz,-Math.PI/2);}
 
   box(scene,x,1.5,z-6.2,2.5,3,.15,metal);
   box(scene,x,6.5,z,1,.5,1,yellow);
