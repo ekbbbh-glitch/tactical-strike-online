@@ -747,7 +747,9 @@ function addWatchtower(x,z){
 function addMapDetails(){climbPoints=[];watchtowerDecks=[];const stone=mat(0x77766e),sand=mat(0xb69a70),green=mat(0x425d45),metal=mat(0x3c4c55,.5,.65);addWatchtower(-12,74);addWatchtower(12,-74);
  for(const [x,z] of [[-82,0],[82,0],[0,-82],[0,82]]){const rock=new THREE.Mesh(new THREE.SphereGeometry(2.1,16,12),stone);rock.position.set(x,1.15,z);rock.scale.set(1.5,.65,1);scene.add(rock);const shrub=new THREE.Mesh(new THREE.SphereGeometry(1.3,12,10),green);shrub.position.set(x+(x>0?-5:5),.85,z+(z>0?-4:4));shrub.scale.set(1.4,.7,1.1);scene.add(shrub);}
  for(const [x,z] of [[-72,-20],[72,20],[-20,72],[20,-72]]){cylinder(scene,x,.9,z,.48,.55,1.8,metal);const cap=new THREE.Mesh(new THREE.SphereGeometry(.5,14,10),sand);cap.position.set(x,1.85,z);scene.add(cap);}
- for(const [x,z] of [[-48,-58],[48,58],[-58,48],[58,-48]]){cylinder(scene,x,2.1,z,1.5,1.5,3.8,metal);const cap=new THREE.Mesh(new THREE.SphereGeometry(1.5,18,12,0,Math.PI*2,0,Math.PI/2),sand);cap.position.set(x,4,z);scene.add(cap);}}
+ for(const [x,z] of [[-48,-58],[48,58],[-58,48],[58,-48]]){cylinder(scene,x,2.1,z,1.5,1.5,3.8,metal);const cap=new THREE.Mesh(new THREE.SphereGeometry(1.5,18,12,0,Math.PI*2,0,Math.PI/2),sand);cap.position.set(x,4,z);scene.add(cap);}
+ // Round concrete bunkers with curved roofs, doors, portholes and rooftop vents.
+ for(const [x,z] of [[-78,28],[78,-28]]){const bunker=mat(selectedMap==='snow'?0xb8d0d8:0x827c6d,.82,.12),dark=mat(0x263640,.4,.5);cylinder(scene,x,2.8,z,4.4,4.4,5.6,bunker);const roof=new THREE.Mesh(new THREE.SphereGeometry(4.4,24,16,0,Math.PI*2,0,Math.PI/2),bunker);roof.position.set(x,5.6,z);scene.add(roof);box(scene,x,1.35,z+4.35,1.5,2.7,.18,dark);for(const dx of [-2,2]){const port=new THREE.Mesh(new THREE.SphereGeometry(.38,14,10),mat(0x5a9db1,.2,.5));port.position.set(x+dx,3.7,z+4.12);port.scale.set(1,.7,.25);scene.add(port);}cylinder(scene,x,8.5,z,.22,.22,1.4,metal);}}
 
 function buildIceboxMap(){
   const ice=mat(0xb9e4f2), blue=mat(0x5d91a8), metal=mat(0x455a67,.45,.65), orange=mat(0xd17b35), snow=mat(0xeaf4fa);
@@ -1418,7 +1420,7 @@ if (jumping) {
  if((lastMouseDown||touchFire)&&specs[weaponName].auto)shoot();
 
  let f=0,s=0;
- if(climbing){const climbDir=(keys.KeyW?1:0)-(keys.KeyS?1:0);player.position.y=Math.max(0,Math.min(5.35,player.position.y+climbDir*3.2*dt));if(player.position.y>=5.35||player.position.y<=0)climbing=false;}
+ if(climbing){let climbDir=(keys.KeyW?1:0)-(keys.KeyS?1:0);if(Math.abs(touchMove.y)>.15)climbDir=-Math.sign(touchMove.y);player.position.y=Math.max(0,Math.min(5.35,player.position.y+climbDir*3.2*dt));if(player.position.y>=5.35||player.position.y<=0)climbing=false;}
  if(!climbing&&keys.KeyW)f-=1;
  if(!climbing&&keys.KeyS)f+=1;
  if(!climbing&&keys.KeyA)s-=1;
@@ -1505,7 +1507,7 @@ if (keys.ShiftLeft && (f || s)) {
 
 function collides(x,z){
   const r=.48;
-  if(player&&player.position.y<5.1){for(const t of watchtowerDecks){const dx=Math.abs(x-t.x),dz=Math.abs(z-t.z);const ladderLane=dx<.72&&z>t.z+1.0&&z<t.z+2.5;if(dx<1.8&&dz<1.8&&!ladderLane)return true;}}
+  if(player&&player.position.y<5.1){for(const [bx,bz] of [[-78,28],[78,-28]])if(Math.abs(x-bx)<4.9&&Math.abs(z-bz)<4.9)return true;for(const t of watchtowerDecks){const dx=Math.abs(x-t.x),dz=Math.abs(z-t.z);const ladderLane=dx<.72&&z>t.z+1.0&&z<t.z+2.5;if(dx<1.8&&dz<1.8&&!ladderLane)return true;}}
   if(x < -97+r || x > 97-r || z < -97+r || z > 97-r) return true;
   const common=[];
   if(selectedMap==='desert'){
