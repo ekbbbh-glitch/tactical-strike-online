@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rage-x-shell-v1';
+const CACHE_NAME = 'rage-x-shell-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/rage-x.svg'];
 
 self.addEventListener('install', event => {
