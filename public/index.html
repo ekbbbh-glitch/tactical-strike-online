@@ -494,6 +494,7 @@ let weaponName='Vandal',ammo=25,reserve=Infinity,hp=100;
  let myTeam = null;
  let bombMesh = null;
 let localBombEndsAt = null;
+let localBombDefuseProgress = 0;
 let bombState = {
   planted: false,
   pickedUp: false,
@@ -1431,7 +1432,7 @@ buildMap();
  bots=[];
 
  setWeapon(document.getElementById('weapon').value);
- if(!online && selectedGameMode==='bomb'){myTeam='attack';localBombEndsAt=null;document.getElementById('bombStatus').textContent='🔵 SALDIRI TAKIMI • E: BOMBA AL / KUR';}
+ if(!online && selectedGameMode==='bomb'){myTeam='attack';localBombEndsAt=null;localBombDefuseProgress=0;document.getElementById('bombStatus').textContent='🔵 SALDIRI TAKIMI • E: BOMBA AL / KUR';}
 
  if ((!['bomb','swiftplay','spike'].includes(selectedGameMode) || (!online && selectedGameMode === 'bomb')) && (!online || options.bots !== false)) {
   [
@@ -1812,6 +1813,12 @@ function updateBots(dt){
   if(!b.userData.alive)return;
   const dx=player.position.x-b.position.x,dz=player.position.z-b.position.z,dist=Math.hypot(dx,dz);
   b.userData.walk+=dt*7;
+  if(!online&&selectedGameMode==='bomb'&&bombState.planted){
+   const site=getClientBombSites().find(s=>s.name===bombState.site)||getClientBombSites()[0];
+   const sx=site.x-b.position.x,sz=site.z-b.position.z,sd=Math.hypot(sx,sz);
+   if(sd<=7){localBombDefuseProgress+=dt;if(localBombDefuseProgress>=6){localBombEndsAt=null;bombState.planted=false;game=false;if(bombMesh)bombMesh.visible=false;showRoundResult(false,'BOTLAR BOMBAYI ÇÖZDÜ • SAVUNMA TAKIMI KAZANDI',true);}return;}
+   moveBotWithCollision(b,sx/(sd||1)*dt*1.35,sz/(sd||1)*dt*1.35);b.rotation.y=Math.atan2(-sx,-sz);return;
+  }
   if(b.userData.parts){const swing=Math.sin(b.userData.walk)*.5;b.userData.parts.leftLeg.rotation.x=swing;b.userData.parts.rightLeg.rotation.x=-swing;b.userData.parts.leftArm.rotation.x=-swing*.6;b.userData.parts.rightArm.rotation.x=swing*.6;}
   // Patrol randomly; only fire when the player is in line of sight.
   if(b.userData.targetTimer<=0||Math.hypot(b.userData.targetX-b.position.x,b.userData.targetZ-b.position.z)<2){
