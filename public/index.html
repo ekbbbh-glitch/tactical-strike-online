@@ -1869,7 +1869,7 @@ function updateBots(dt){
  bots.forEach(b=>{
   const u=b.userData;if(!u.alive)return;
   u.walk+=dt*7;
-  if(u.parts){const swing=Math.sin(u.walk)*.5;u.parts.leftLeg.rotation.x=swing;u.parts.rightLeg.rotation.x=-swing;u.parts.leftArm.rotation.x=-swing*.6;u.parts.rightArm.rotation.x=swing*.6;}
+  if(b.userData.parts){const parts=b.userData.parts,swing=Math.sin(u.walk)*.5;parts.leftLeg.rotation.x=swing;parts.rightLeg.rotation.x=-swing;parts.leftArm.rotation.x=-swing*.6;parts.rightArm.rotation.x=swing*.6;}
   const dx=player.position.x-b.position.x,dz=player.position.z-b.position.z,dist=Math.hypot(dx,dz);
   const origin=new THREE.Vector3(b.position.x,1.35,b.position.z);
   const rayDir=new THREE.Vector3(dx,0,dz);
