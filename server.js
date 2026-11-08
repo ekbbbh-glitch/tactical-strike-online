@@ -25,7 +25,7 @@ const DEFUSE_TIME = 5000;
 const WORLD_LIMIT = 97;
 
 const CHARACTERS = ['soldier', 'heavy', 'special', 'jett', 'viper', 'steve', 'roblox'];
-const ALLOWED_MODES = ['deathmatch', 'ffa', 'bomb', 'domination'];
+const ALLOWED_MODES = ['deathmatch', 'ffa', 'bomb', 'domination', 'swiftplay', 'spike', 'escalation'];
 const ALLOWED_MAPS = ['desert', 'snow', 'factory', 'city', 'icebox', 'bind'];
 
 const SPAWN_POINTS = [
@@ -111,7 +111,13 @@ function createRoom(code) {
     round: 1,
     roundOver: false,
     roundActive: false,
-    roundWins: { attack: 0, defense: 0 }
+    roundWins: { attack: 0, defense: 0 },
+    score: { attack: 0, defense: 0 },
+    matchTimer: null,
+    dominationTimer: null,
+    domination: { owner: 'neutral', progress: 0 },
+    escalationLevels: { attack: 0, defense: 0 },
+    respawnTimers: new Map()
   };
 }
 
@@ -125,7 +131,11 @@ function clearBombTimers(room) {
 function clearRoomTimers(room) {
   clearBombTimers(room);
   if (room.roundTimer) clearTimeout(room.roundTimer);
-  room.roundTimer = null;
+  if (room.matchTimer) clearTimeout(room.matchTimer);
+  if (room.dominationTimer) clearInterval(room.dominationTimer);
+  for (const timer of room.respawnTimers.values()) clearTimeout(timer);
+  room.respawnTimers.clear();
+  room.roundTimer = null; room.matchTimer = null; room.dominationTimer = null;
 }
 
 function resetBomb(room) {
@@ -209,6 +219,55 @@ function join(sock, room, name, character, cb) {
   io.to(room.code).emit('playersUpdate', roomPlayers(room));
 }
 
+function modeRoundLimit(room) {
+  if (room.gameMode === 'swiftplay') return 9;
+  if (room.gameMode === 'spike') return 7;
+  return TOTAL_ROUNDS;
+}
+function finishScoreMatch(room, winner, reason = 'score') {
+  if (!room.started || ['bomb','swiftplay','spike'].includes(room.gameMode)) return;
+  room.started = false; room.roundActive = false;
+  if (room.matchTimer) clearTimeout(room.matchTimer);
+  if (room.dominationTimer) clearInterval(room.dominationTimer);
+  room.matchTimer = null; room.dominationTimer = null;
+  io.to(room.code).emit('matchEnded',{gameMode:room.gameMode,winner,reason,score:room.score,players:roomPlayers(room)});
+  sendLobbyUpdate(room);
+}
+function publishScore(room) {
+  io.to(room.code).emit('matchScore',{gameMode:room.gameMode,score:room.score,players:roomPlayers(room),escalationLevels:room.escalationLevels,domination:room.domination});
+}
+function scheduleRespawn(room, player) {
+  const old=room.respawnTimers.get(player.id); if(old) clearTimeout(old);
+  const delay=room.gameMode==='ffa'?900:1500;
+  const timer=setTimeout(()=>{
+    room.respawnTimers.delete(player.id);
+    if(!room.started||!room.players.has(player.id))return;
+    const current=room.players.get(player.id); if(current.hp>0)return;
+    let spawn=SPAWN_POINTS[Math.floor(Math.random()*SPAWN_POINTS.length)];
+    if(['deathmatch','domination'].includes(room.gameMode)){
+      const list=current.team==='attack'?ATTACK_SPAWNS:DEFENSE_SPAWNS;
+      spawn=list[Math.floor(Math.random()*list.length)];
+    }
+    current.x=spawn.x;current.y=0;current.z=spawn.z;current.ry=0;current.rx=0;current.hp=100;
+    io.to(room.code).emit('playerRespawned',{player:{...current},delay});
+    io.to(room.code).emit('playersUpdate',roomPlayers(room));
+  },delay);
+  room.respawnTimers.set(player.id,timer);
+}
+function startDominationScoring(room) {
+  if(room.dominationTimer)clearInterval(room.dominationTimer);
+  room.dominationTimer=setInterval(()=>{
+    if(!room.started||room.gameMode!=='domination')return;
+    const inside=[...room.players.values()].filter(p=>p.hp>0&&Math.hypot(p.x,p.z)<=15);
+    const teams=new Set(inside.map(p=>p.team));
+    if(teams.size===1&&inside.length){
+      const team=inside[0].team;room.domination.owner=team;
+      room.domination.progress=Math.min(100,room.domination.progress+20);
+      room.score[team]+=1;if(room.score[team]>=100)finishScoreMatch(room,team,'domination');
+    }else if(teams.size>1)room.domination.progress=Math.max(0,room.domination.progress-5);
+    publishScore(room);
+  },1000);
+}
 function startBombRound(room, sendStartEvent = false) {
   if (!room.started || room.gameMode !== 'bomb') return;
 
@@ -249,7 +308,7 @@ function startBombRound(room, sendStartEvent = false) {
 
   io.to(room.code).emit('roundStarting', {
     round: room.round,
-    totalRounds: TOTAL_ROUNDS,
+    totalRounds: modeRoundLimit(room),
     prepareSeconds: 5,
     attackWins: room.roundWins.attack,
     defenseWins: room.roundWins.defense,
@@ -273,7 +332,7 @@ function startBombRound(room, sendStartEvent = false) {
 
     io.to(room.code).emit('roundStarted', {
       round: room.round,
-      totalRounds: TOTAL_ROUNDS
+      totalRounds: modeRoundLimit(room)
     });
 
     checkTeamElimination(room);
@@ -300,12 +359,13 @@ function finishBombRound(room, winner, reason) {
     winner,
     reason,
     round: room.round,
-    totalRounds: TOTAL_ROUNDS,
+    totalRounds: modeRoundLimit(room),
     attackWins: room.roundWins.attack,
     defenseWins: room.roundWins.defense
   });
 
-  if (room.round >= TOTAL_ROUNDS) {
+  const targetWins = room.gameMode === 'swiftplay' ? 5 : room.gameMode === 'spike' ? 4 : 7;
+  if (room.roundWins.attack >= targetWins || room.roundWins.defense >= targetWins || room.round >= modeRoundLimit(room)) {
     room.started = false;
 
     const finalWinner =
@@ -328,9 +388,10 @@ function finishBombRound(room, winner, reason) {
   room.roundTimer = setTimeout(() => {
     room.roundTimer = null;
 
-    if (!room.started || room.gameMode !== 'bomb') return;
-
+    if (!room.started || !['bomb','swiftplay','spike'].includes(room.gameMode)) return;
     room.round++;
+    const swapAt=room.gameMode==='swiftplay'?5:room.gameMode==='spike'?4:7;
+    if(room.round===swapAt)for(const p of room.players.values())p.team=p.team==='attack'?'defense':'attack';
     startBombRound(room);
   }, PREP_TIME);
 }
@@ -450,8 +511,10 @@ io.on('connection', socket => {
     room.roundOver = false;
     room.roundActive = false;
     room.roundWins = { attack: 0, defense: 0 };
+    room.score={attack:0,defense:0};room.escalationLevels={attack:0,defense:0};room.domination={owner:'neutral',progress:0};
+    if(room.matchTimer)clearTimeout(room.matchTimer);if(room.dominationTimer)clearInterval(room.dominationTimer);
 
-    if (room.gameMode === 'bomb') {
+    if (['bomb','swiftplay','spike'].includes(room.gameMode)) {
       room.bots = [];
     } else {
       room.bots = room.botsEnabled
@@ -465,7 +528,7 @@ io.on('connection', socket => {
     room.started = true;
     resetBomb(room);
 
-    if (room.gameMode === 'bomb') {
+    if (['bomb','swiftplay','spike'].includes(room.gameMode)) {
       startBombRound(room, true);
     } else {
       room.roundActive = true;
@@ -484,6 +547,12 @@ io.on('connection', socket => {
 
       sendGameStarted(room);
       io.to(room.code).emit('playersUpdate', roomPlayers(room));
+      const duration=room.gameMode==='deathmatch'?570000:room.gameMode==='ffa'?540000:room.gameMode==='escalation'?600000:480000;
+      room.matchTimer=setTimeout(()=>{
+        const winner=room.gameMode==='ffa'?[...room.players.values()].sort((a,b)=>(b.kills||0)-(a.kills||0))[0]?.id||'draw':room.score.attack===room.score.defense?'draw':room.score.attack>room.score.defense?'attack':'defense';
+        finishScoreMatch(room,winner,'time');
+      },duration);
+      if(room.gameMode==='domination')startDominationScoring(room);
     }
 
     sendLobbyUpdate(room);
@@ -717,8 +786,7 @@ io.on('connection', socket => {
     if (!attacker || !target || attacker.id === target.id ||
         attacker.hp <= 0 || target.hp <= 0) return;
 
-    if (['bomb', 'domination', 'deathmatch'].includes(room.gameMode) &&
-        attacker.team === target.team) return;
+    if (room.gameMode !== 'ffa' && attacker.team === target.team) return;
 
     const distance = Math.hypot(
       attacker.x - target.x,
@@ -739,6 +807,9 @@ io.on('connection', socket => {
     });
 
     if (target.hp <= 0) {
+      attacker.kills=(attacker.kills||0)+1;
+      if(room.gameMode==='deathmatch'||room.gameMode==='domination')room.score[attacker.team]+=1;
+      if(room.gameMode==='escalation')room.escalationLevels[attacker.team]=Math.min(12,room.escalationLevels[attacker.team]+1);
       io.to(room.code).emit('playerEliminated', {
         playerId: target.id,
         killerId: attacker.id,
@@ -758,6 +829,16 @@ io.on('connection', socket => {
         room.defuseTimer = null;
         room.bomb.defuserId = null;
       }
+      if(['deathmatch','ffa','domination'].includes(room.gameMode)&&room.started){
+        if(room.gameMode==='ffa'&&attacker.kills>=40)finishScoreMatch(room,attacker.id,'kills');
+        else if(room.gameMode!=='ffa'&&room.score[attacker.team]>=100)finishScoreMatch(room,attacker.team,'kills');
+      }
+      if(room.gameMode==='escalation'){
+        const level=room.escalationLevels[attacker.team];io.to(room.code).emit('escalationUpdate',{team:attacker.team,level,playerId:attacker.id});
+        if(level>=12)finishScoreMatch(room,attacker.team,'escalation');
+      }
+      if(['deathmatch','ffa','domination','escalation'].includes(room.gameMode)&&room.started)scheduleRespawn(room,target);
+      publishScore(room);
     }
 
     io.to(room.code).emit('playersUpdate', roomPlayers(room));
@@ -772,6 +853,7 @@ io.on('connection', socket => {
     if (!room) return;
     const pending = room.disconnectTimers.get(socket.id);
     if (pending) { clearTimeout(pending); room.disconnectTimers.delete(socket.id); }
+    const rt=room.respawnTimers.get(socket.id);if(rt)clearTimeout(rt);room.respawnTimers.delete(socket.id);
     room.players.delete(socket.id);
     socket.leave(code);
     if (room.bomb.carrierId === socket.id) {
@@ -805,6 +887,7 @@ io.on('connection', socket => {
     const timer = setTimeout(() => {
       room.disconnectTimers.delete(socket.id);
       if (socket.connected) return;
+      const rt=room.respawnTimers.get(socket.id);if(rt)clearTimeout(rt);room.respawnTimers.delete(socket.id);
       room.players.delete(socket.id);
 
       if (room.bomb.carrierId === socket.id) {
