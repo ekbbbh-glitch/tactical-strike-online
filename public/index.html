@@ -35,6 +35,25 @@ select{background:#e8edf0;min-width:190px}
 #message{position:absolute;top:30%;left:50%;transform:translateX(-50%);font-size:22px;font-weight:bold;letter-spacing:2px;color:#ffc45c}
 #end{display:none;position:fixed;inset:0;z-index:8;background:#07111eee;align-items:center;justify-content:center;text-align:center}
 #end h2{font-size:54px;margin:0 0 10px}
+
+#loadingScreen{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,rgba(34,76,94,.72),transparent 48%),linear-gradient(135deg,#050b12,#102331 48%,#080e17);text-align:center}
+#loadingScreen:before{content:"";position:absolute;inset:-50%;opacity:.18;background-image:linear-gradient(rgba(130,177,196,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(130,177,196,.2) 1px,transparent 1px);background-size:54px 54px;transform:perspective(420px) rotateX(58deg) scale(1.5);animation:loadGrid 9s linear infinite}
+#loadingScreen:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,190,82,.08),transparent);transform:translateX(-100%);animation:loadSweep 2.8s ease-in-out infinite}
+.loading-content{position:relative;z-index:1;width:min(90vw,520px);padding:34px 24px;border:1px solid #7796a655;background:rgba(5,14,22,.72);box-shadow:0 20px 80px #0009;backdrop-filter:blur(8px)}
+.loading-emblem{width:76px;height:76px;margin:0 auto 22px;border:2px solid #e7a83e;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 28px #e7a83e44;position:relative}
+.loading-emblem:before,.loading-emblem:after{content:"";position:absolute;border:1px solid #e7a83e88;border-radius:50%;inset:8px;animation:loadPulse 1.8s ease-out infinite}
+.loading-emblem:after{inset:-9px;animation-delay:.9s}
+.loading-emblem span{font-size:29px;font-weight:900;color:#ffc45c;letter-spacing:-3px}
+#loadingTitle{margin:0;color:#f4f7fa;font-size:clamp(23px,5vw,34px);letter-spacing:5px}
+#loadingSubtitle{margin:12px 0 24px;color:#9eb6c4;font-size:11px;letter-spacing:3px}
+.loading-track{height:4px;background:#253a48;overflow:hidden}
+.loading-track span{display:block;width:38%;height:100%;background:linear-gradient(90deg,#b66b24,#ffd078);box-shadow:0 0 14px #ffc45c;animation:loadBar 1.5s ease-in-out infinite}
+.loading-dots{margin-top:16px;color:#e7a83e;font-size:12px;letter-spacing:7px;animation:loadBlink 1s steps(2,end) infinite}
+@keyframes loadGrid{to{background-position:0 54px,54px 0}}@keyframes loadSweep{50%,100%{transform:translateX(100%)}}
+@keyframes loadPulse{0%{transform:scale(.75);opacity:.8}100%{transform:scale(1.35);opacity:0}}
+@keyframes loadBar{0%{transform:translateX(-120%)}100%{transform:translateX(300%)}}@keyframes loadBlink{50%{opacity:.25}}
+@media(prefers-reduced-motion:reduce){#loadingScreen:before,#loadingScreen:after,.loading-emblem:before,.loading-emblem:after,.loading-track span,.loading-dots{animation:none}}
+
 .online-box{border:1px solid #688394;background:#07131dcc;padding:14px;margin:14px 0;max-width:570px}
 .online-box h3{margin:0 0 10px;color:#ffc45c;letter-spacing:2px;font-size:14px}
 .online-box input{background:#e8edf0;border:0;padding:12px;margin:5px 8px 8px 0;min-width:190px;max-width:100%;font-size:14px}
@@ -173,6 +192,7 @@ body{overscroll-behavior:none}
  </div>
 </div>
 
+<div id="loadingScreen" role="status" aria-live="polite" aria-hidden="true"><div class="loading-content"><div class="loading-emblem"><span>RX</span></div><h2 id="loadingTitle">LOADING...</h2><p id="loadingSubtitle">PREPARING THE BATTLEFIELD</p><div class="loading-track"><span></span></div><div class="loading-dots">● ● ●</div></div></div>
 <div id="hud">
  <div id="top">RAGE X&nbsp; // &nbsp;<span id="round">BOT MATCH</span></div>
   <div id="players">PLAYERS: 1/10</div>
@@ -225,6 +245,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 
 
 const languageSelect=document.getElementById('languageSelect');
+const loadingScreen=document.getElementById('loadingScreen'),loadingTitle=document.getElementById('loadingTitle'),loadingSubtitle=document.getElementById('loadingSubtitle');
+const LOADING_TEXT={loading:['LOADING...','YÜKLENİYOR...','CARGANDO...','CHARGEMENT...','WIRD GELADEN...','CARREGANDO...','ЗАГРУЗКА...','جارٍ التحميل...','読み込み中...','로딩 중...'],preparing:['PREPARING THE BATTLEFIELD','SAVAŞ ALANI HAZIRLANIYOR','PREPARANDO EL CAMPO DE BATALLA','PRÉPARATION DU CHAMP DE BATAILLE','SCHLACHTFELD WIRD VORBEREITET','PREPARANDO O CAMPO DE BATALHA','ПОДГОТОВКА ПОЛЯ БОЯ','جارٍ تجهيز ساحة المعركة','戦場を準備しています','전장 준비 중'],connecting:['CONNECTING TO SERVER...','SUNUCUYA BAĞLANILIYOR...','CONECTANDO AL SERVIDOR...','CONNEXION AU SERVEUR...','VERBINDUNG ZUM SERVER...','CONECTANDO AO SERVIDOR...','ПОДКЛЮЧЕНИЕ К СЕРВЕРУ...','جارٍ الاتصال بالخادم...','サーバーに接続中...','서버에 연결 중...']};
+function showLoading(mode='loading'){const i=Math.max(0,LANGS.indexOf(languageSelect?.value||'en'));loadingTitle.textContent=LOADING_TEXT[mode]?.[i]||LOADING_TEXT.loading[i];loadingSubtitle.textContent=LOADING_TEXT.preparing[i];loadingScreen.style.display='flex';loadingScreen.setAttribute('aria-hidden','false');}
+function hideLoading(){loadingScreen.style.display='none';loadingScreen.setAttribute('aria-hidden','true');}
+
 const LANGS=['en','tr','es','fr','de','pt','ru','ar','ja','ko'];
 const TEXT={
 "LANGUAGE":["LANGUAGE","DİL","IDIOMA","LANGUE","SPRACHE","IDIOMA","ЯЗЫК","اللغة","言語","언어"],
@@ -1124,7 +1149,9 @@ function spawnBot(x,z){
  bots.push(bot);
 }
 
- function startGame(options = {}){
+ async function startGame(options = {}){
+ showLoading('loading');
+ await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
  if(!renderer)init();
  const abilityNames={
   jett:['IŞINLAN','TEK ATIŞ'],heavy:['ZIRH','PATLAYICI'],special:['İYİLEŞ','TARA'],
@@ -1188,6 +1215,7 @@ buildMap();
 
  msg.textContent='';
  updateHud();
+ hideLoading();
 }
 
  function returnToMenu(){
@@ -1900,6 +1928,7 @@ function updateRemotePlayers(){
   playerName = name;
   selectedCharacter = characterSelect.value;
   setOnlineStatus('CONNECTING TO SERVER...');
+  showLoading('connecting');
 
   socket = io(url, {
     transports: ['websocket', 'polling'],
@@ -1925,6 +1954,7 @@ function updateRemotePlayers(){
       res => {
         if (!res || !res.ok) {
           setOnlineStatus(res?.error || 'COULD NOT JOIN THE ROOM.');
+          hideLoading();
           return;
         }
 
@@ -1935,6 +1965,7 @@ function updateRemotePlayers(){
         hud.style.display = 'none';
         end.style.display = 'none';
         lobby.style.display = 'flex';
+        hideLoading();
 
         updateLobby(res);
         lobbyStatus.textContent = 'WAITING FOR PLAYERS...';
@@ -2008,6 +2039,7 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
 
 
   socket.on('connect_error', () => {
+    hideLoading();
     setOnlineStatus('COULD NOT CONNECT. CHECK THE SERVER URL AND STATUS.');
   });
 
