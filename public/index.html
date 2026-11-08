@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.6">
+<meta name="app-version" content="2026.11.08.7">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -1645,7 +1645,7 @@ function shoot(isBurstContinuation=false){
  if(!isBurstContinuation&&profile.burst)burstRemaining=2;
  const profile=specs[weaponName];
  recoil=Math.min(.34,recoil+(profile.recoil||.015)*3.2);
- const kick=(profile.recoil||.015)*(scoped?.55:1);
+ const kick=(profile.recoil||.015)*(scoped?1.65:1);
  const yawKick=(Math.random()-.5)*(profile.side||.006)*(scoped?.55:1);
  recoilPitchOffset+=kick;
  recoilYawOffset+=yawKick;
@@ -1888,7 +1888,7 @@ if (jumping) {
   weaponGroup.position.y = -recoil;
 }
  recoil=Math.max(0,recoil-dt*.6);
- const pitchRecovery=Math.min(recoilPitchOffset,dt*1.15);
+ const pitchRecovery=Math.min(recoilPitchOffset,dt*(scoped?0.32:1.15));
  const yawRecovery=Math.min(Math.abs(recoilYawOffset),dt*.035)*Math.sign(recoilYawOffset);
  camera.rotation.x=Math.min(1.48,Math.max(-1.48,camera.rotation.x+pitchRecovery));
  player.rotation.y-=yawRecovery;
@@ -2281,7 +2281,13 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
       player.rotation.set(0,Number(p.ry)||0,0);camera.rotation.set(Number(p.rx)||0,0,0);
       if(matchMedia('(pointer:fine)').matches&&renderer?.domElement?.requestPointerLock&&!locked)renderer.domElement.requestPointerLock();
       msg.textContent='READY — RESPAWNED';setTimeout(()=>{if(msg.textContent==='READY — RESPAWNED')msg.textContent='';},1000);
-    }else{remotePlayers.set(p.id,p);updateRemotePlayers();}
+    }else{
+      p.hp=100;p.alive=true;
+      const staleMesh=remoteMeshes.get(p.id);
+      if(staleMesh){scene.remove(staleMesh);remoteMeshes.delete(p.id);}
+      remotePlayers.set(p.id,p);
+      updateRemotePlayers();
+    }
     updateHud();
   });
   socket.on('playerEliminated', data => {
@@ -2340,6 +2346,7 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
         }
       }
     });
+    updateRemotePlayers();
     updatePlayerCount();
   });
  
@@ -2636,8 +2643,9 @@ document.getElementById('mobileButtonSize').addEventListener('input',e=>mobileBu
 mobileButtons.forEach(b=>{let d=null,m=false;b.addEventListener('pointerdown',e=>{if(!mobileLayoutEdit)return;d={x:e.clientX,y:e.clientY,baseX:parseFloat(b.dataset.moveX)||0,baseY:parseFloat(b.dataset.moveY)||0};m=false;b.setPointerCapture(e.pointerId);e.preventDefault();});b.addEventListener('pointermove',e=>{if(!d)return;const x=e.clientX-d.x,y=e.clientY-d.y;if(Math.hypot(x,y)>3)m=true;if(m){const mx=Math.max(-innerWidth*.8,Math.min(innerWidth*.8,d.baseX+x)),my=Math.max(-innerHeight*.8,Math.min(innerHeight*.8,d.baseY+y));b.dataset.moveX=mx+'px';b.dataset.moveY=my+'px';b.style.transform='translate('+b.dataset.moveX+','+b.dataset.moveY+')';b.dataset.customPosition='1';}});b.addEventListener('pointerup',()=>{if(d&&m)saveMobileLayout();d=null;});b.addEventListener('pointercancel',()=>d=null);b.addEventListener('click',e=>{if(mobileLayoutEdit){e.preventDefault();e.stopImmediatePropagation();}});});
 loadMobileLayout();
 document.getElementById('renderQuality').addEventListener('change',e=>{renderQuality=e.target.value;if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,renderQuality==='high'?2:renderQuality==='low'?1:1.65));renderer.setSize(innerWidth,innerHeight);}});
-document.getElementById('scopeTouch').addEventListener('pointerdown',()=>{if(specs[weaponName]?.scope){scoped=true;scopeEl.style.display='block';cross.style.display='none';camera.fov=Math.max(18,76/(specs[weaponName].zoom||1.5));camera.updateProjectionMatrix();}});
-document.getElementById('scopeTouch').addEventListener('pointerup',unScope);document.getElementById('scopeTouch').addEventListener('pointercancel',unScope);
+function scopeWeapon(){if(!specs[weaponName]?.scope)return;scoped=true;scopeEl.style.display='block';cross.style.display='none';camera.fov=Math.max(18,76/(specs[weaponName].zoom||1.5));camera.updateProjectionMatrix();}
+const scopeTouchButton=document.getElementById('scopeTouch');
+scopeTouchButton.addEventListener('click',e=>{e.preventDefault();if(mobileLayoutEdit)return;if(scoped)unScope();else scopeWeapon();});
 const lookPad=document.getElementById('lookPad');let lookPointer=null,lastLookX=0,lastLookY=0;
 lookPad.addEventListener('pointerdown',e=>{lookPointer=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;lookPad.setPointerCapture(e.pointerId);});
 lookPad.addEventListener('pointermove',e=>{if(lookPointer!==e.pointerId||!game)return;const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;lastLookX=e.clientX;lastLookY=e.clientY;const scopeMultiplier=scoped?getWeaponScopeSensitivity():1;player.rotation.y-=dx*.004*(touchSensitivity/2.2)*scopeMultiplier;camera.rotation.x=Math.max(-1.48,Math.min(1.48,camera.rotation.x-dy*.004*(touchSensitivity/2.2)*scopeMultiplier));});
