@@ -587,6 +587,20 @@ io.on('connection', socket => {
     }, DEFUSE_TIME);
   });
 
+  socket.on('chatMessage', raw => {
+    const room=rooms.get(socket.data.roomCode),player=room?.players.get(socket.id);
+    if(!room||!player||!room.started)return;
+    const text=String(raw||'').replace(/[<>]/g,'').trim().slice(0,120);
+    if(text)io.to(room.code).emit('chatMessage',{id:socket.id,name:player.name,text,at:Date.now()});
+  });
+
+  socket.on('voiceSignal', data => {
+    const room=rooms.get(socket.data.roomCode),targetId=String(data?.targetId||'');
+    if(!room||!room.players.has(socket.id)||!room.players.has(targetId)||
+       !data?.signal||typeof data.signal!=='object')return;
+    io.to(targetId).emit('voiceSignal',{from:socket.id,signal:data.signal});
+  });
+
   socket.on('playerState', (state = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
