@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.17">
+<meta name="app-version" content="2026.11.08.18">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -123,10 +123,22 @@ body{overscroll-behavior:none}
 #menuMusicToggle{display:block;width:100%;margin:0 0 14px;padding:10px 14px;background:#203d50;color:#fff;border:1px solid #83b7d0;border-radius:8px;font-weight:700;letter-spacing:.5px}
 #menuMusicToggle[aria-pressed="true"]{background:#17634b;border-color:#6bd6a8}
 #rageXMusicPlayer{position:fixed;width:1px;height:1px;left:-20px;bottom:-20px;opacity:.01;pointer-events:none;overflow:hidden}
+
+#privacyConsent{display:none;position:fixed;inset:0;z-index:3000;background:#02070bef;align-items:center;justify-content:center;padding:20px}
+#privacyConsent .privacy-card{width:min(92vw,540px);padding:24px;background:#102331;border:1px solid #e7a83e;box-shadow:0 18px 60px #000d;text-align:left}
+#privacyConsent h2{margin:0 0 12px;color:#ffc45c;font-size:22px}
+#privacyConsent p{color:#d2dde5;font-size:13px;line-height:1.65}
+#privacyConsent .privacy-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+#privacyConsent button{margin:0;padding:11px 14px}
+#rejectPrivacy{background:#344957;color:#fff}
+#savePlayerName{padding:10px 12px;margin:5px 0 8px}
+#accountStatus{font-size:11px;color:#b9cbd5;min-height:18px;margin:2px 0 8px}
+#privacySettings{background:transparent;color:#ffc45c;text-decoration:underline;padding:4px;margin:2px 0;font-size:11px}
 </style>
 </head>
 <body>
 
+<div id="privacyConsent" role="dialog" aria-modal="true" aria-labelledby="privacyTitle"><div class="privacy-card"><h2 id="privacyTitle">RAGE X • ÇEREZ VE GİZLİLİK BİLDİRİMİ</h2><p>Bu cihazı sonraki ziyaretlerinde tanımak ve oyuncu adını korumak için 1 yıl süreli, zorunlu bir cihaz çerezi kullanılır. Kabul edersen site ziyaretlerinde IP adresin, ziyaret zamanı ve tarayıcı bilgisi sunucuda kaydedilir. IP ziyaret kayıtları 90 gün sonra silinir. IP adresin diğer oyunculara gösterilmez.</p><p>Reddetmen hâlinde sunucu cihaz hesabı ve IP ziyaret kaydı etkinleştirilmez; oyun misafir olarak kullanılabilir. Barındırma sağlayıcısının teknik erişim kayıtları ayrıca oluşabilir.</p><div class="privacy-actions"><button id="acceptPrivacy" type="button">KABUL ET VE DEVAM ET</button><button id="rejectPrivacy" type="button">REDDET • MİSAFİR DEVAM</button></div></div></div>
 <div id="updateNotice" role="status"><p id="updateMessage">A new RAGE X update is ready.</p><button id="applyUpdateButton">UPDATE GAME</button></div>
 <div id="menu">
  <div class="panel">
@@ -139,7 +151,7 @@ body{overscroll-behavior:none}
   <div class="online-box">
    <h3>ONLINE CO-OP • 10 PLAYERS</h3>
    <label for="playerName">PLAYER NAME</label><br>
-   <input id="playerName" maxlength="16" placeholder="Your name" value="Player" />
+   <input id="playerName" maxlength="16" placeholder="İlk girişte adını seç" value="" /><button id="savePlayerName" type="button">İSMİMİ KAYDET</button><div id="accountStatus">İsmini bir kez kaydet; bu cihazda sonraki girişlerde korunur.</div><button id="privacySettings" type="button">Çerez / gizlilik ayarları</button>
    <label for="serverUrl">SERVER URL</label><br>
    <input id="serverUrl" placeholder="Server URL" value="https://tactical-strike-online.onrender.com" readonly />
    <div class="online-actions">
@@ -420,6 +432,55 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){
 async function checkForNewGameVersion(){try{const r=await fetch('/?version-check='+Date.now(),{cache:'no-store'});if(!r.ok)return;const doc=new DOMParser().parseFromString(await r.text(),'text/html');const latest=doc.querySelector('meta[name="app-version"]')?.content;const current=document.querySelector('meta[name="app-version"]')?.content;if(latest&&current&&latest!==current)updateNotice.style.display='block';}catch(e){}}
 checkForNewGameVersion();setInterval(checkForNewGameVersion,60000);
 
+
+
+const DEVICE_CONSENT_KEY='rageXPrivacyConsentV1';
+let deviceAccountReady=false;
+let deviceAccountSaved=false;
+function setAccountStatus(message){const el=document.getElementById('accountStatus');if(el)el.textContent=message;}
+function applySavedPlayerName(name){
+ const input=document.getElementById('playerName');if(!input)return;
+ const clean=String(name||'').replace(/[<>]/g,'').trim().slice(0,16);
+ if(clean){input.value=clean;input.readOnly=true;deviceAccountSaved=true;playerName=clean;document.getElementById('savePlayerName').style.display='none';setAccountStatus('Kayıtlı oyuncu adı: '+clean);}
+}
+async function registerDeviceVisit(){
+ try{
+  const response=await fetch('/api/device/visit',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({consent:true})});
+  if(!response.ok)throw new Error(response.status===503?'Sunucu veritabanı henüz bağlanmadı.':'Cihaz hesabı kaydedilemedi.');
+  const data=await response.json();deviceAccountReady=true;
+  if(data.name)applySavedPlayerName(data.name);else setAccountStatus('Bu cihaz için henüz oyuncu adı seçilmedi.');
+ }catch(error){
+  deviceAccountReady=false;const localName=localStorage.getItem('rageXPlayerName');if(localName)applySavedPlayerName(localName);
+  setAccountStatus((error.message||'Sunucu hesabına ulaşılamadı.')+' Yerel misafir hesabı kullanılabilir.');
+ }
+}
+function showPrivacyConsent(){document.getElementById('privacyConsent').style.display='flex';}
+async function choosePrivacyConsent(accepted){
+ localStorage.setItem(DEVICE_CONSENT_KEY,accepted?'accepted':'declined');
+ document.getElementById('privacyConsent').style.display='none';
+ if(accepted)await registerDeviceVisit();
+ else{deviceAccountReady=false;const n=localStorage.getItem('rageXPlayerName');if(n)applySavedPlayerName(n);setAccountStatus('Misafir modu: sunucu cihaz hesabı ve IP ziyaret kaydı kapalı.');}
+}
+document.getElementById('acceptPrivacy').addEventListener('click',()=>choosePrivacyConsent(true));
+document.getElementById('rejectPrivacy').addEventListener('click',()=>choosePrivacyConsent(false));
+document.getElementById('privacySettings').addEventListener('click',showPrivacyConsent);
+document.getElementById('savePlayerName').addEventListener('click',async()=>{
+ const input=document.getElementById('playerName');const name=String(input.value||'').replace(/[<>]/g,'').trim().slice(0,16);
+ if(name.length<2){setAccountStatus('Oyuncu adı en az 2 karakter olmalı.');return;}if(deviceAccountSaved)return;
+ if(localStorage.getItem(DEVICE_CONSENT_KEY)==='accepted'&&deviceAccountReady){
+  try{
+   const response=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name})});
+   const data=await response.json();if(!response.ok)throw new Error(data.error||'Oyuncu adı kaydedilemedi.');
+   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);
+  }catch(error){setAccountStatus(error.message||'Kayıt başarısız.');}
+ }else{localStorage.setItem('rageXPlayerName',name);applySavedPlayerName(name);setAccountStatus('Oyuncu adı bu tarayıcıya kaydedildi (misafir hesabı).');}
+});
+(()=>{
+ const consent=localStorage.getItem(DEVICE_CONSENT_KEY);
+ if(consent==='accepted')registerDeviceVisit();
+ else if(consent==='declined'){const n=localStorage.getItem('rageXPlayerName');if(n)applySavedPlayerName(n);setAccountStatus('Misafir modu etkin.');}
+ else showPrivacyConsent();
+})();
 
 const menu=document.getElementById('menu');
  const lobby = document.getElementById('lobby');
@@ -2251,7 +2312,8 @@ function updateRemotePlayers(){
 
  function connectRoom(action) {
   const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
-  const name = (document.getElementById('playerName').value.trim() || 'Oyuncu').slice(0, 16);
+  const name = (document.getElementById('playerName').value.trim() || '').slice(0, 16);
+  if(!deviceAccountSaved){setOnlineStatus('ÖNCE OYUNCU ADINI KAYDET.');return;}
   const code = document.getElementById('roomCode').value.trim().toUpperCase();
 
   if (!url) {
