@@ -252,7 +252,8 @@ function startBombRound(room, sendStartEvent = false) {
     totalRounds: TOTAL_ROUNDS,
     prepareSeconds: 5,
     attackWins: room.roundWins.attack,
-    defenseWins: room.roundWins.defense
+    defenseWins: room.roundWins.defense,
+    players: roomPlayers(room)
   });
 
   io.to(room.code).emit('bombReset', {
@@ -338,13 +339,14 @@ function checkTeamElimination(room) {
   if (!room.started || room.gameMode !== 'bomb' ||
       !room.roundActive || room.roundOver) return;
 
-  const aliveAttack = [...room.players.values()]
-    .filter(p => p.team === 'attack' && p.hp > 0).length;
+  const activePlayers = [...room.players.values()]
+    .filter(p => p.hp > 0 && !room.disconnectTimers.has(p.id));
+  const aliveAttack = activePlayers.filter(p => p.team === 'attack').length;
+  const aliveDefense = activePlayers.filter(p => p.team === 'defense').length;
 
-  const aliveDefense = [...room.players.values()]
-    .filter(p => p.team === 'defense' && p.hp > 0).length;
-
-  if (aliveAttack === 0 && aliveDefense === 0) {
+  if (room.players.size >= 2 && activePlayers.length <= 1) {
+    finishBombRound(room, activePlayers.length === 1 ? activePlayers[0].team : 'draw', 'elimination');
+  } else if (aliveAttack === 0 && aliveDefense === 0) {
     finishBombRound(room, 'draw', 'elimination');
   } else if (aliveAttack === 0) {
     finishBombRound(room, 'defense', 'elimination');
@@ -760,6 +762,37 @@ io.on('connection', socket => {
 
     io.to(room.code).emit('playersUpdate', roomPlayers(room));
     checkTeamElimination(room);
+  });
+
+  socket.on('leaveRoom', () => {
+    const code = socket.data.roomCode;
+    if (!code) return;
+    const room = rooms.get(code);
+    socket.data.roomCode = null;
+    if (!room) return;
+    const pending = room.disconnectTimers.get(socket.id);
+    if (pending) { clearTimeout(pending); room.disconnectTimers.delete(socket.id); }
+    room.players.delete(socket.id);
+    socket.leave(code);
+    if (room.bomb.carrierId === socket.id) {
+      resetBomb(room);
+      io.to(code).emit('bombReset', { round: room.round, bomb: room.bomb });
+    }
+    if (room.bomb.defuserId === socket.id) {
+      if (room.defuseTimer) clearTimeout(room.defuseTimer);
+      room.defuseTimer = null;
+      room.bomb.defuserId = null;
+    }
+    io.to(code).emit('playerLeft', socket.id);
+    if (room.players.size === 0) {
+      clearRoomTimers(room);
+      rooms.delete(code);
+      return;
+    }
+    if (room.hostId === socket.id) room.hostId = room.players.keys().next().value;
+    if (room.started && room.gameMode === 'bomb') checkTeamElimination(room);
+    sendLobbyUpdate(room);
+    io.to(code).emit('playersUpdate', roomPlayers(room));
   });
 
   socket.on('disconnect', () => {
