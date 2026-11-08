@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.3">
+<meta name="app-version" content="2026.11.08.4">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -549,21 +549,21 @@ const specs={
  Guardian:{mag:12,reserve:60,damage:65,rate:.32,range:105,auto:false,recoil:.018,side:.006,spread:.002,scope:true,zoom:1.55,reload:1.9,kind:'rifle',color:0x59636a},
  Operator:{mag:5,reserve:25,damage:150,rate:1.25,range:180,auto:false,recoil:.052,side:.012,spread:0,scope:true,zoom:2.5,reload:2.4,kind:'sniper',color:0x333c49},
  Marshal:{mag:5,reserve:30,damage:95,rate:.85,range:155,auto:false,recoil:.035,side:.009,spread:0,scope:true,zoom:2.0,reload:2.1,kind:'sniper',color:0x8a765a},
- Classic:{mag:12,reserve:72,damage:26,rate:.22,range:48,auto:false,recoil:.018,side:.009,spread:.012,scope:false,zoom:1,reload:1.35,kind:'pistol',color:0x30343a},
- Ghost:{mag:15,reserve:75,damage:32,rate:.18,range:58,auto:false,recoil:.014,side:.006,spread:.008,scope:false,zoom:1,reload:1.4,kind:'pistol',color:0x343c40,silenced:true},
- Frenzy:{mag:13,reserve:78,damage:25,rate:.075,range:42,auto:true,recoil:.026,side:.014,spread:.018,scope:false,zoom:1,reload:1.45,kind:'pistol',color:0x574c3d},
- Şerif:{mag:6,reserve:36,damage:72,rate:.34,range:75,auto:false,recoil:.045,side:.012,spread:.006,scope:false,zoom:1,reload:1.65,kind:'pistol',color:0x5c5147},
- Spectre:{mag:30,reserve:120,damage:26,rate:.075,range:55,auto:true,recoil:.012,side:.008,spread:.012,scope:false,zoom:1,reload:1.7,kind:'smg',color:0x344b4c},
- Stinger:{mag:20,reserve:100,damage:27,rate:.055,range:48,auto:true,recoil:.019,side:.014,spread:.018,scope:false,zoom:1,reload:1.6,kind:'smg',color:0x5b594e},
- Judge:{mag:7,reserve:35,damage:12,rate:.42,range:24,auto:true,recoil:.06,side:.018,spread:.095,scope:false,zoom:1,reload:2.1,kind:'shotgun',color:0x4c4640},
- Bucky:{mag:5,reserve:30,damage:16,rate:.65,range:20,auto:false,recoil:.07,side:.02,spread:.11,scope:false,zoom:1,reload:2.2,kind:'shotgun',color:0x6a573e},
+ Classic:{mag:12,reserve:72,damage:26,rate:.22,range:48,auto:false,recoil:.018,side:.009,spread:.012,scope:true,zoom:1,reload:1.35,kind:'pistol',color:0x30343a},
+ Ghost:{mag:15,reserve:75,damage:32,rate:.18,range:58,auto:false,recoil:.014,side:.006,spread:.008,scope:true,zoom:1,reload:1.4,kind:'pistol',color:0x343c40,silenced:true},
+ Frenzy:{mag:13,reserve:78,damage:25,rate:.075,range:42,auto:true,recoil:.026,side:.014,spread:.018,scope:true,zoom:1,reload:1.45,kind:'pistol',color:0x574c3d},
+ Şerif:{mag:6,reserve:36,damage:72,rate:.34,range:75,auto:false,recoil:.045,side:.012,spread:.006,scope:true,zoom:1.12,reload:1.65,kind:'pistol',color:0x5c5147},
+ Spectre:{mag:30,reserve:120,damage:26,rate:.075,range:55,auto:true,recoil:.012,side:.008,spread:.012,scope:true,zoom:1,reload:1.7,kind:'smg',color:0x344b4c},
+ Stinger:{mag:20,reserve:100,damage:27,rate:.055,range:48,auto:true,recoil:.019,side:.014,spread:.018,scope:true,zoom:1,reload:1.6,kind:'smg',color:0x5b594e},
+ Judge:{mag:7,reserve:35,damage:12,rate:.42,range:24,auto:true,recoil:.06,side:.018,spread:.095,scope:true,zoom:1,reload:2.1,kind:'shotgun',color:0x4c4640},
+ Bucky:{mag:5,reserve:30,damage:16,rate:.65,range:20,auto:false,recoil:.07,side:.02,spread:.11,scope:true,zoom:1,reload:2.2,kind:'shotgun',color:0x6a573e},
  Ares:{mag:50,reserve:150,damage:30,rate:.085,range:88,auto:true,recoil:.022,side:.009,spread:.012,scope:true,zoom:1.4,reload:3.0,kind:'lmg',color:0x4d5548},
  Odin:{mag:100,reserve:200,damage:38,rate:.075,range:92,auto:true,recoil:.03,side:.012,spread:.016,scope:true,zoom:1.35,reload:4.0,kind:'lmg',color:0x454b50},
  M416:{mag:30,reserve:120,damage:36,rate:.095,range:90,auto:true,recoil:.013,side:.006,spread:.006,scope:true,zoom:1.55,reload:1.8,kind:'rifle',color:0x3d4b3e},
  AKM:{mag:30,reserve:120,damage:43,rate:.13,range:82,auto:true,recoil:.028,side:.013,spread:.012,scope:true,zoom:1.45,reload:2.0,kind:'rifle',color:0x66513a},
  'SCAR-L':{mag:30,reserve:120,damage:38,rate:.11,range:88,auto:true,recoil:.016,side:.007,spread:.007,scope:true,zoom:1.5,reload:1.9,kind:'rifle',color:0x4c594c},
  UMP45:{mag:25,reserve:125,damage:39,rate:.12,range:60,auto:true,recoil:.011,side:.006,spread:.009,scope:true,zoom:1.3,reload:1.8,kind:'smg',color:0x444c50},
- Vector:{mag:25,reserve:150,damage:28,rate:.055,range:45,auto:true,recoil:.018,side:.012,spread:.018,scope:false,zoom:1,reload:1.65,kind:'smg',color:0x343a42},
+ Vector:{mag:25,reserve:150,damage:28,rate:.055,range:45,auto:true,recoil:.018,side:.012,spread:.018,scope:true,zoom:1,reload:1.65,kind:'smg',color:0x343a42},
  Kar98k:{mag:5,reserve:30,damage:95,rate:1.05,range:160,auto:false,recoil:.045,side:.012,spread:0,scope:true,zoom:2.1,reload:2.3,kind:'sniper',color:0x765b3d},
  M24:{mag:5,reserve:30,damage:110,rate:1.1,range:170,auto:false,recoil:.05,side:.012,spread:0,scope:true,zoom:2.2,reload:2.4,kind:'sniper',color:0x414c4d},
  AWM:{mag:5,reserve:20,damage:100,rate:1.05,range:150,auto:false,recoil:.055,side:.014,spread:0,scope:true,zoom:2.35,reload:2.5,kind:'sniper',color:0x303b42},
@@ -1228,8 +1228,10 @@ function buildWeapon(){
   // Tetik koruması
   box(weaponGroup,.38,-.49,-.87,.2,.05,.18,trim);
 
-  // Üst gez ve arpacık
+  // Sheriff'e özel kompakt refleks nişangâhı
   box(weaponGroup,.38,-.21,-.78,.1,.06,.25,black);
+  box(weaponGroup,.38,-.12,-.79,.12,.09,.18,trim);
+  cylinder(weaponGroup,.38,-.105,-.88,.045,.045,.025,mats.glass,Math.PI/2);
 
   // Sürgü detayları
   box(weaponGroup,.26,-.34,-.75,.04,.1,.3,trim);
@@ -1277,7 +1279,7 @@ function buildWeapon(){
   else {reloadMag=box(weaponGroup,.38,-.57,-.82,.16,.36,.22,accent);box(weaponGroup,.38,-.51,-1.02,.14,.22,.18,detail);}
   box(weaponGroup,.38,-.2,-.82,.13,.06,length*.82,accent);
   if(profile.scope){
-    const opticRadius=isSniper?.105:isLMG?.075:.065;
+    const opticRadius=isSniper?.105:isLMG?.075:isPistol?.045:isShotgun?.055:.065;
     box(weaponGroup,.38,-.11,-.82,.12,.08,.28,detail);
     cylinder(weaponGroup,.38,-.105,-.82,.09,.09,isSniper?.42:.25,accent,Math.PI/2);
     cylinder(weaponGroup,.38,-.105,-.82-(isSniper?.23:.14),opticRadius,opticRadius,.035,mats.glass,Math.PI/2);
