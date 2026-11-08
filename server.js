@@ -507,10 +507,12 @@ io.on('connection', socket => {
     sendLobbyUpdate(room);
   });
 
-  socket.on('startMatch', (data = {}) => {
+  socket.on('startMatch', (data = {}, cb = () => {}) => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || room.started || room.hostId !== socket.id) return;
+    if (!room) return cb({ ok: false, error: 'ROOM NOT FOUND. RECREATE THE ROOM.' });
+    if (room.started) return cb({ ok: false, error: 'MATCH IS ALREADY RUNNING.' });
+    if (room.hostId !== socket.id) return cb({ ok: false, error: 'ONLY THE ROOM HOST CAN START THE MATCH.' });
 
     const requestedMode = String(data?.gameMode || 'deathmatch');
     const requestedMap = String(data?.map || 'desert');
@@ -572,6 +574,7 @@ io.on('connection', socket => {
 
     sendLobbyUpdate(room);
     if(!['bomb','swiftplay','spike'].includes(room.gameMode))publishScore(room);
+    cb({ ok: true });
   });
 
   socket.on('pickBomb', () => {
