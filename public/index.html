@@ -1940,8 +1940,20 @@ if (selectedGameMode === 'bomb') {
     (list || []).forEach(p => {
       if (p.id === socket.id && player && p.hp > 0) {
         player.position.set(Number(p.x)||0,0,Number(p.z)||0);
-        hp=Number(p.hp)||100; hpEl.textContent=hp;
-      } else if (p.id !== socket.id) remotePlayers.set(p.id, p);
+        hp=Number(p.hp)||100;
+        hpEl.textContent=hp;
+      } else if (p.id !== socket.id) {
+        if (Number(p.hp) <= 0) {
+          remotePlayers.delete(p.id);
+          const deadMesh = remoteMeshes.get(p.id);
+          if (deadMesh) {
+            scene.remove(deadMesh);
+            remoteMeshes.delete(p.id);
+          }
+        } else {
+          remotePlayers.set(p.id, p);
+        }
+      }
     });
     updatePlayerCount();
   });
