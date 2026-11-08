@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.9">
+<meta name="app-version" content="2026.11.08.10">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -1810,6 +1810,28 @@ function update(dt){
  if(!game)return;
  if(!climbing&&player.position.y>0){const onDeck=watchtowerDecks.some(t=>Math.abs(player.position.x-t.x)<1.65&&Math.abs(player.position.z-t.z)<1.65);if(onDeck)player.position.y=5.85;else player.position.y=Math.max(0,player.position.y-10*dt);}
  if(reloading&&reloadMag&&reloadMagBase){const p=Math.min(1,(performance.now()-reloadAnimStart)/1050);const swing=Math.sin(p*Math.PI);reloadMag.position.y=reloadMagBase.position.y-swing*.62;reloadMag.rotation.x=reloadMagBase.rotation.x+swing*.75;if(weaponGroup)weaponGroup.rotation.z=swing*.12;}
+ // Smooth network snapshots instead of teleporting remote players between 20 Hz updates.
+ const netBlend=1-Math.exp(-dt*13);
+ for(const mesh of remoteMeshes.values()){
+  const tx=mesh.userData.targetX,tz=mesh.userData.targetZ;
+  if(Number.isFinite(tx)&&Number.isFinite(tz)){
+   const dx=tx-mesh.position.x,dz=tz-mesh.position.z;
+   const moving=Math.hypot(dx,dz)>.035;
+   mesh.position.x+=dx*netBlend;mesh.position.z+=dz*netBlend;
+   const targetRot=mesh.userData.targetRotation;
+   if(Number.isFinite(targetRot)){
+    let delta=(targetRot-mesh.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI;
+    mesh.rotation.y+=delta*netBlend;
+   }
+   const parts=mesh.userData.parts;
+   if(parts){
+    const phase=(mesh.userData.walkPhase||0)+(moving?dt*10:0);mesh.userData.walkPhase=phase;
+    const swing=moving?Math.sin(phase)*.48:0;
+    parts.leftLeg.rotation.x=swing;parts.rightLeg.rotation.x=-swing;
+    parts.leftArm.rotation.x=-swing*.65;parts.rightArm.rotation.x=swing*.65;
+   }
+  }
+ }
  shootCd=Math.max(0,shootCd-dt);
  if(abilityCooldowns.Q>0)abilityCooldowns.Q=Math.max(0,abilityCooldowns.Q-dt);
  if(abilityCooldowns.F>0)abilityCooldowns.F=Math.max(0,abilityCooldowns.F-dt);
@@ -2086,36 +2108,22 @@ function updateRemotePlayers(){
  if(!scene)return;
  for(const [id,p] of remotePlayers){
   let mesh=remoteMeshes.get(id);
-
   if(mesh && (mesh.userData.team !== p.team ||
               mesh.userData.character !== (p.character||'soldier') ||
               mesh.userData.gameMode !== selectedGameMode)){
-    scene.remove(mesh);
-    mesh = null;
-    remoteMeshes.delete(id);
+    scene.remove(mesh);mesh=null;remoteMeshes.delete(id);
   }
-
+  const tx=Number(p.x)||0,tz=Number(p.z)||0,ry=Number(p.ry)||0;
   if(!mesh){
     mesh=makeBlockCharacter(false,p.team,p.character||'soldier');
-    scene.add(mesh);
-    remoteMeshes.set(id,mesh);
+    mesh.position.set(tx,0,tz);
+    mesh.rotation.y=ry;
+    scene.add(mesh);remoteMeshes.set(id,mesh);
   }
-
-  mesh.visible = p.alive !== false && Number(p.hp) !== 0;
-  const oldX=mesh.position.x, oldZ=mesh.position.z;
-  const newX=Number(p.x)||0, newZ=Number(p.z)||0;
-  const moving=Math.hypot(newX-oldX,newZ-oldZ)>0.002;
-  if(moving&&performance.now()>(mesh.userData.nextStep||0)){playSfx('step');mesh.userData.nextStep=performance.now()+470;}
-  mesh.position.set(newX,0,newZ);
-  mesh.rotation.y=Number(p.ry)||0;
+  mesh.visible=p.alive!==false&&Number(p.hp)!==0;
+  mesh.userData.targetX=tx;mesh.userData.targetZ=tz;mesh.userData.targetRotation=ry;
   const parts=mesh.userData.parts;
-  if(parts){
-   const phase=(mesh.userData.walkPhase||0)+(moving?0.32:0); mesh.userData.walkPhase=phase;
-   const swing=moving?Math.sin(phase)*0.55:0;
-   parts.leftLeg.rotation.x=swing; parts.rightLeg.rotation.x=-swing;
-   parts.leftArm.rotation.x=-swing*0.65; parts.rightArm.rotation.x=swing*0.65;
-   parts.marker.material.color.set(mesh.userData.friendly?0x168bff:0xff3030);
-  }
+  if(parts)parts.marker.material.color.set(mesh.userData.friendly?0x168bff:0xff3030);
  }
  updatePlayerCount();
 }
@@ -2455,8 +2463,9 @@ socket.on('bombReset', data => {
   if (!bombMesh) createBombMesh();
 
   if (bombMesh) {
-    bombMesh.visible = true;
-    {const spawn=getClientBombSpawn();bombMesh.position.set(spawn.x,0,spawn.z);}
+    const bombMode=['bomb','swiftplay','spike'].includes(selectedGameMode);
+    bombMesh.visible=bombMode&&!bombState.pickedUp&&!bombState.planted;
+    if(bombMesh.visible){const spawn=getClientBombSpawn();bombMesh.position.set(spawn.x,0,spawn.z);}
   }
 });
 
