@@ -54,6 +54,15 @@ const BOMB_SITES = {
   B: { x: 42, z: -4 }
 };
 
+const BIND_ATTACK_SPAWNS=[{x:-7,z:86},{x:0,z:86},{x:7,z:86},{x:-14,z:80},{x:14,z:80}];
+const BIND_DEFENSE_SPAWNS=[{x:-8,z:-86},{x:0,z:-86},{x:8,z:-86},{x:-15,z:-80},{x:15,z:-80}];
+const BIND_BOMB_SPAWN={x:0,z:76};
+const BIND_BOMB_SITES={A:{x:-46,z:-18},B:{x:46,z:-18}};
+function getSpawnPoints(map){return map==='bind'?[...BIND_ATTACK_SPAWNS,...BIND_DEFENSE_SPAWNS]:SPAWN_POINTS;}
+function getTeamSpawns(map,team){return map==='bind'?(team==='attack'?BIND_ATTACK_SPAWNS:BIND_DEFENSE_SPAWNS):(team==='attack'?ATTACK_SPAWNS:DEFENSE_SPAWNS);}
+function getBombSpawn(map){return map==='bind'?BIND_BOMB_SPAWN:BOMB_SPAWN;}
+function getBombSites(map){return map==='bind'?BIND_BOMB_SITES:BOMB_SITES;}
+
 const makeCode = () =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -189,7 +198,7 @@ function join(sock, room, name, character, cb) {
     .filter(p => p.team === 'defense').length;
 
   const team = attackCount <= defenseCount ? 'attack' : 'defense';
-  const spawn = SPAWN_POINTS[room.players.size % SPAWN_POINTS.length];
+  const spawn = getSpawnPoints(room.map)[room.players.size % getSpawnPoints(room.map).length];
 
   const player = {
     id: sock.id,
@@ -249,10 +258,9 @@ function scheduleRespawn(room, player) {
     room.respawnTimers.delete(player.id);
     if(!room.started||!room.players.has(player.id))return;
     const current=room.players.get(player.id); if(current.hp>0)return;
-    let spawn=SPAWN_POINTS[Math.floor(Math.random()*SPAWN_POINTS.length)];
+    let spawn=getSpawnPoints(room.map)[Math.floor(Math.random()*getSpawnPoints(room.map).length)];
     if(['deathmatch','domination'].includes(room.gameMode)){
-      const list=current.team==='attack'?ATTACK_SPAWNS:DEFENSE_SPAWNS;
-      spawn=list[Math.floor(Math.random()*list.length)];
+      const list=getTeamSpawns(room.map,current.team);spawn=list[Math.floor(Math.random()*list.length)];
     }
     current.x=spawn.x;current.y=0;current.z=spawn.z;current.ry=0;current.rx=0;current.hp=100;current.alive=true;
     io.to(room.code).emit('playerRespawned',{player:{...current},delay});
@@ -295,15 +303,11 @@ function startBombRound(room, sendStartEvent = false) {
     player.rx = 0;
 
     if (player.team === 'attack') {
-      const spawn = ATTACK_SPAWNS[
-        attackIndex++ % ATTACK_SPAWNS.length
-      ];
+      const list=getTeamSpawns(room.map,'attack');const spawn=list[attackIndex++ % list.length];
       player.x = spawn.x;
       player.z = spawn.z;
     } else {
-      const spawn = DEFENSE_SPAWNS[
-        defenseIndex++ % DEFENSE_SPAWNS.length
-      ];
+      const list=getTeamSpawns(room.map,'defense');const spawn=list[defenseIndex++ % list.length];
       player.x = spawn.x;
       player.z = spawn.z;
     }
@@ -549,10 +553,7 @@ io.on('connection', socket => {
 
       roomPlayers(room).forEach(p => {
         const live = room.players.get(p.id);
-        const spawn = SPAWN_POINTS[
-          [...room.players.keys()].indexOf(p.id) %
-          SPAWN_POINTS.length
-        ];
+        const spawnList=getSpawnPoints(room.map);const spawn=spawnList[[...room.players.keys()].indexOf(p.id)%spawnList.length];
 
         live.x = spawn.x;
         live.z = spawn.z;
@@ -585,8 +586,8 @@ io.on('connection', socket => {
         room.bomb.pickedUp || room.bomb.planted) return;
 
     if (Math.hypot(
-      player.x - BOMB_SPAWN.x,
-      player.z - BOMB_SPAWN.z
+      player.x - getBombSpawn(room.map).x,
+      player.z - getBombSpawn(room.map).z
     ) > 6) return;
 
     room.bomb.pickedUp = true;
@@ -610,7 +611,7 @@ io.on('connection', socket => {
         !room.bomb.pickedUp || room.bomb.carrierId !== socket.id) return;
 
     const siteName = String(data?.site || '').toUpperCase();
-    const site = BOMB_SITES[siteName];
+    const site = getBombSites(room.map)[siteName];
 
     if (!site || Math.hypot(
       player.x - site.x,
@@ -656,7 +657,7 @@ io.on('connection', socket => {
 
     if (!player || player.team !== 'defense' || player.hp <= 0) return;
 
-    const site = BOMB_SITES[room.bomb.site];
+    const site = getBombSites(room.map)[room.bomb.site];
 
     if (!site || Math.hypot(
       player.x - site.x,
