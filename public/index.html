@@ -1943,6 +1943,7 @@ function updateRemotePlayers(){
   socket.on('connect', () => {
     if(socket.recovered){
       online=true;
+      hideLoading();
       setOnlineStatus('CONNECTION RESTORED.');
       msg.textContent='CONNECTION RESTORED';
       setTimeout(()=>{if(msg.textContent==='CONNECTION RESTORED')msg.textContent='';},1800);
@@ -1976,7 +1977,7 @@ function updateRemotePlayers(){
   socket.on('lobbyUpdate', data => updateLobby(data));
 
   
-socket.on('gameStarted', data => {
+socket.on('gameStarted', async data => {
   const me = (data.players || []).find(p => p.id === socket.id);
 
   myTeam = me ? me.team : null;
@@ -2021,7 +2022,7 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
   currentBotsEnabled = data.botsEnabled;
   lobby.style.display = 'none';
 
-  startGame({
+  await startGame({
     bots: ['bomb','swiftplay','spike'].includes(selectedGameMode) ? false : currentBotsEnabled
   });
 
