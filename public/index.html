@@ -318,7 +318,7 @@ mapSelect.addEventListener('change', () => {
 });
 let bots=[],keys={},locked=false,scoped=false,reloading=false;
 let shootCd=0,kills=0,game=false,moveBob=0,recoil=0;
-let thirdPerson=false,mobileLayoutEdit=false,renderQuality='auto';
+let thirdPerson=false,mobileLayoutEdit=false,renderQuality='auto',localAvatar=null;
 let jumping=false,jumpVelocity=0,jumpHeight=0;
 let footstepTimer=0,portalCooldown=0;
 
@@ -1500,7 +1500,7 @@ function collides(x,z){
   return common.some(([bx,bz,w,d])=>Math.abs(x-bx)<w/2+r && Math.abs(z-bz)<d/2+r);
 }
 
-function toggleCameraView(){thirdPerson=!thirdPerson;if(weaponGroup)weaponGroup.visible=!thirdPerson;camera.position.set(0,thirdPerson?2.55:1.65,thirdPerson?5:0);camera.rotation.x=thirdPerson?-0.12:0;const b=document.getElementById('cameraTouch');if(b)b.innerHTML='<span class="sym">◉</span>'+(thirdPerson?'DIŞ':'İÇ');}
+function toggleCameraView(){thirdPerson=!thirdPerson;if(weaponGroup)weaponGroup.visible=!thirdPerson;if(localAvatar)localAvatar.visible=thirdPerson;camera.position.set(0,thirdPerson?2.55:1.65,thirdPerson?5:0);camera.rotation.x=thirdPerson?-0.12:0;const b=document.getElementById('cameraTouch');if(b)b.innerHTML='<span class="sym">◉</span>'+(thirdPerson?'DIŞ':'İÇ');}
 function cycleWeapon(){const a=['Vandal','Şerif','AWM'];setWeapon(a[(a.indexOf(weaponName)+1)%a.length]);}
 function setupTouchControls(){
  const pad=document.getElementById('movePad'), stick=document.getElementById('moveStick');
