@@ -69,7 +69,7 @@ body{overscroll-behavior:none}
  #miniMap{width:140px;height:140px;right:10px;top:72px}
  #players{top:220px;right:10px;font-size:10px}
  #ammo{bottom:18px;right:12px;font-size:18px}#health{bottom:18px;left:12px}
- #chatPanel{top:auto;bottom:94px;left:10px;width:min(230px,48vw)}#chatLog{height:66px}
+ #chatPanel{top:auto;bottom:180px;left:10px;width:min(230px,48vw)}#chatLog{height:66px}
 }
 
 #miniMap{position:absolute;right:18px;top:105px;width:190px;height:190px;border-radius:50%;border:3px solid #dce8ef;background:rgba(5,12,20,.78);box-shadow:0 3px 18px #000;pointer-events:none}
@@ -1295,8 +1295,8 @@ const hit = botHit;
  }
 }
 
-function damagePlayer(d){
- if(Date.now()<shieldUntil&&!online)d=Math.ceil(d*.5);
+function damagePlayer(d,serverApplied=false){
+ if(Date.now()<shieldUntil&&!serverApplied)d=Math.ceil(d*.5);
  hp=Math.max(0,hp-d);
  hpEl.textContent=hp;
  if(hp<=0){
@@ -1602,6 +1602,7 @@ function updateRemotePlayers(){
   const oldX=mesh.position.x, oldZ=mesh.position.z;
   const newX=Number(p.x)||0, newZ=Number(p.z)||0;
   const moving=Math.hypot(newX-oldX,newZ-oldZ)>0.002;
+  if(moving&&performance.now()>(mesh.userData.nextStep||0)){playSfx('step');mesh.userData.nextStep=performance.now()+470;}
   mesh.position.set(newX,0,newZ);
   mesh.rotation.y=Number(p.ry)||0;
   const parts=mesh.userData.parts;
@@ -1752,7 +1753,7 @@ if (selectedGameMode === 'bomb') {
   });
   socket.on('playerHealed', data => {if(data?.hp!=null){hp=Number(data.hp);hpEl.textContent=hp;}});
   socket.on('playerDamaged', data => {
-    damagePlayer(Number(data?.damage) || 0);
+    damagePlayer(Number(data?.damage) || 0,true);
 
     msg.textContent = (data?.attacker || 'An enemy') + ' hit you!';
 
