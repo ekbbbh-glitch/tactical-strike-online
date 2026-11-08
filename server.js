@@ -441,7 +441,7 @@ function checkTeamElimination(room) {
 
 function readDeviceCookie(req) {
   const raw = String(req.headers.cookie || '');
-  const match = raw.match(/(?:^|;\\s*)ragex_device=([a-f0-9-]{36})(?:;|$)/i);
+  const match = raw.match(/(?:^|;\s*)ragex_device=([a-f0-9-]{36})(?:;|$)/i);
   return match ? match[1] : null;
 }
 function setDeviceCookie(res, id) {
