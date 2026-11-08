@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.4">
+<meta name="app-version" content="2026.11.08.5">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -529,7 +529,7 @@ mapSelect.addEventListener('change', () => {
   selectedMap = mapSelect.value;
 });
 let bots=[],keys={},locked=false,scoped=false,reloading=false;
-let shootCd=0,kills=0,game=false,moveBob=0,recoil=0,recoilPitchOffset=0,recoilYawOffset=0;
+let shootCd=0,kills=0,game=false,moveBob=0,recoil=0,recoilPitchOffset=0,recoilYawOffset=0,burstRemaining=0;
 let thirdPerson=false,mobileLayoutEdit=false,renderQuality='auto',localAvatar=null;
 let climbPoints=[],watchtowerDecks=[],climbing=false,reloadMag=null,reloadMagBase=null,reloadAnimStart=0;
 let jumping=false,jumpVelocity=0,jumpHeight=0;
@@ -1310,6 +1310,7 @@ function updateAmmo(){
 function setWeapon(n){
  if(!specs[n])n='Vandal';
  weaponName=n;
+ burstRemaining=0;
  ammo=specs[n].mag;
  reserve=specs[n].reserve;
  reloading=false;
@@ -1597,7 +1598,7 @@ function reload(){
  },(specs[weaponName].reload||1.5)*1000);
 }
 
-function shoot(){
+function shoot(isBurstContinuation=false){
  if(!game||(!locked&&!touchFire)||reloading||shootCd>0)return;
 
  if(ammo<=0){
@@ -1610,7 +1611,8 @@ function shoot(){
  const shotDamage=nextShotDamage||specs[weaponName].damage;nextShotDamage=0;
  playSfx('shot');
  if(online&&socket?.connected)socket.emit('weaponFired');
- shootCd=specs[weaponName].rate*(rapidFireUntil>Date.now()?.55:1);
+ shootCd=(profile.burst?.075:profile.rate)*(rapidFireUntil>Date.now()?.55:1);
+ if(!isBurstContinuation&&profile.burst)burstRemaining=2;
  const profile=specs[weaponName];
  recoil=Math.min(.34,recoil+(profile.recoil||.015)*3.2);
  const kick=(profile.recoil||.015)*(scoped?.55:1);
@@ -1656,68 +1658,40 @@ if (weaponGroup) {
 }
  updateAmmo();
 
- const ray=new THREE.Raycaster();
- const shotSpread=(profile.spread||0)*(scoped?.22:1);
- ray.setFromCamera(new THREE.Vector2((Math.random()-.5)*shotSpread,(Math.random()-.5)*shotSpread),camera);
- ray.far=profile.range;
-
- let targets=[];
-
- bots.filter(b=>b.userData.alive).forEach(b=>{
-  b.traverse(o=>{
-   if(o.isMesh)targets.push(o);
-  });
- });
-
- const botHit = ray.intersectObjects(targets, false)[0];
-const playerRayHit = ray.intersectObjects([...remoteMeshes.values()], true)[0];
-
-if (playerRayHit && (!botHit || playerRayHit.distance < botHit.distance)) {
-  let hitPlayerId = null;
-
-  for (const [id, mesh] of remoteMeshes) {
-    let node = playerRayHit.object;
-
-    while (node && node !== mesh) {
-      node = node.parent;
-    }
-
-    if (node === mesh) {
-      hitPlayerId = id;
-      break;
-    }
+ const pelletCount=profile.kind==='shotgun'?(profile.pellets||8):1;
+ const pelletDamage=pelletCount>1?shotDamage:shotDamage;
+ const targets=[];
+ bots.filter(b=>b.userData.alive).forEach(b=>b.traverse(o=>{if(o.isMesh)targets.push(o);}));
+ for(let pellet=0;pellet<pelletCount;pellet++){
+  const ray=new THREE.Raycaster();
+  const shotSpread=(profile.spread||0)*(scoped?.22:1);
+  ray.setFromCamera(new THREE.Vector2((Math.random()-.5)*shotSpread,(Math.random()-.5)*shotSpread),camera);
+  ray.far=profile.range;
+  const botHit=ray.intersectObjects(targets,false)[0];
+  const playerRayHit=ray.intersectObjects([...remoteMeshes.values()],true)[0];
+  if(playerRayHit&&(!botHit||playerRayHit.distance<botHit.distance)){
+   let hitPlayerId=null;
+   for(const [id,mesh] of remoteMeshes){
+    let node=playerRayHit.object;
+    while(node&&node!==mesh)node=node.parent;
+    if(node===mesh){hitPlayerId=id;break;}
+   }
+   if(hitPlayerId&&online&&socket?.connected){
+    socket.emit('playerHit',{targetId:hitPlayerId,damage:pelletDamage});
+   }
+   continue;
   }
-
-  if (hitPlayerId && online && socket && socket.connected) {
-    socket.emit('playerHit', {
-      targetId: hitPlayerId,
-      damage: shotDamage
-    });
-    return;
-  }
-}
-
-const hit = botHit;
-
- if(hit){
-  let b=hit.object;
-
-  while(b.parent&&!b.userData.alive){
-   b=b.parent;
-  }
-
-  if(b.userData.alive){
-   if(online&&socket&&socket.connected){
-    socket.emit('botHit',{botId:b.userData.id,damage:shotDamage});
-   }else{
-    b.userData.hp-=shotDamage;
-    if(b.userData.hp<=0){
-     b.userData.alive=false;
-     b.visible=false;
-     kills++;
-     msg.textContent='TARGET ELIMINATED';
-     setTimeout(()=>msg.textContent='',700);
-     updateHud();
+  if(botHit){
+   let b=botHit.object;
+   while(b&&!b.userData?.alive)b=b.parent;
+   if(b?.userData?.alive){
+    if(online&&socket?.connected)socket.emit('botHit',{botId:b.userData.id,damage:pelletDamage});
+    else{
+     b.userData.hp-=pelletDamage;
+     if(b.userData.hp<=0){
+      b.userData.alive=false;b.visible=false;kills++;
+      msg.textContent='TARGET ELIMINATED';setTimeout(()=>msg.textContent='',700);updateHud();
+     }
     }
    }
   }
@@ -1821,7 +1795,8 @@ if (jumping) {
     jumpVelocity = 0;
   }
 }
- if((lastMouseDown||touchFire)&&specs[weaponName].auto)shoot();
+ if(burstRemaining>0&&shootCd<=0){burstRemaining--;shoot(true);}
+ else if((lastMouseDown||touchFire)&&specs[weaponName].auto)shoot();
 
  let f=0,s=0;
  if(climbing){let climbDir=(keys.KeyW?1:0)-(keys.KeyS?1:0);if(Math.abs(touchMove.y)>.15)climbDir=-Math.sign(touchMove.y);const ladder=climbPoints.find(p=>Math.abs(player.position.x-p.x)<1&&Math.abs(player.position.z-p.z)<1);const top=ladder?.top||5.85;player.position.y=Math.max(0,Math.min(top,player.position.y+climbDir*3.4*dt));if(player.position.y>=top){player.position.y=top;player.position.z=ladder.deckZ;climbing=false;playSfx('land');msg.textContent='KULEYE ÇIKTIN';}if(player.position.y<=0&&climbDir<0){climbing=false;playSfx('land');}}
