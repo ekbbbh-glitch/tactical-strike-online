@@ -1213,7 +1213,11 @@ function updateRemotePlayers(){
  if(!scene)return;
  for(const [id,p] of remotePlayers){
   let mesh=remoteMeshes.get(id);
-  if(!mesh){mesh=makeBlockCharacter(false);scene.add(mesh);remoteMeshes.set(id,mesh);}
+  if(!mesh){
+  mesh=makeBlockCharacter(false,p.team);
+  scene.add(mesh);
+  remoteMeshes.set(id,mesh);
+}
   mesh.position.set(Number(p.x)||0,0,Number(p.z)||0);
   mesh.rotation.y=Number(p.ry)||0;
  }
@@ -1277,6 +1281,9 @@ function updateRemotePlayers(){
   socket.on('gameStarted', data => {
      const me = (data.players || []).find(p => p.id === socket.id);
   myTeam = me ? me.team : null;
+   if (me) {
+  mySpawn = { x: me.x, z: me.z };
+}
   bombState = data.bomb || {
     planted: false,
     site: null,
