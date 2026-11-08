@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.16">
+<meta name="app-version" content="2026.11.08.17">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -1386,7 +1386,7 @@ function spawnBot(x,z){
  async function startGame(options = {}){
  showLoading('loading');
  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
- if(!renderer)init();
+ if(!renderer || !player)init();
  const abilityNames={
   jett:['IŞINLAN','TEK ATIŞ'],heavy:['ZIRH','PATLAYICI'],special:['İYİLEŞ','TARA'],
   viper:['ZEHİR','HIZ'],steve:['SÜPER ZIPLA','HIZLI DOLDUR'],roblox:['HIZ PATLAMASI','KALKAN'],
@@ -2225,6 +2225,7 @@ function updateRemotePlayers(){
 
   
 socket.on('gameStarted', async data => {
+  try {
   currentRankedMatch=data.ranked===true;
   const me = (data.players || []).find(p => p.id === socket.id);
 
@@ -2284,6 +2285,16 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
       b.visible = !state.dead;
     }
   });
+  } catch (error) {
+    console.error('GAME START FAILED:', error);
+    game = false;
+    hideLoading();
+    hud.style.display = 'none';
+    lobby.style.display = 'flex';
+    lobbyStatus.textContent = 'GAME START ERROR: ' + (error?.message || 'UNKNOWN ERROR');
+    const launchButton = document.getElementById('launchGame');
+    launchButton.disabled = !isRoomHost;
+  }
 });
 
 
@@ -2650,11 +2661,16 @@ document.getElementById('launchGame').onclick = () => {
   }
   button.disabled = true;
   lobbyStatus.textContent = 'STARTING MATCH...';
-  socket.emit('startMatch', {
+  socket.timeout(12000).emit('startMatch', {
     gameMode: gameModeSelect.value,
     map: mapSelect.value,
     ranked: rankedModeSelect.value === 'ranked'
-  }, result => {
+  }, (timeoutError, result) => {
+    if (timeoutError) {
+      lobbyStatus.textContent = 'SERVER DID NOT CONFIRM THE START REQUEST. CHECK RENDER DEPLOYMENT.';
+      button.disabled = false;
+      return;
+    }
     if (!result || result.ok !== true) {
       lobbyStatus.textContent = result?.error || 'MATCH COULD NOT START. TRY AGAIN.';
       button.disabled = false;
