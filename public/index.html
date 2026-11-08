@@ -2550,6 +2550,11 @@ const musicFrame=document.createElement('div');musicFrame.id='rageXMusicPlayer';
 const ytApi=document.createElement('script');ytApi.src='https://www.youtube.com/iframe_api';document.head.appendChild(ytApi);
 updateMusicButton();
 musicToggle.addEventListener('click',()=>{
+  // If autoplay was blocked, the first user click starts playback instead of switching it off.
+  if(rageXMusicEnabled&&rageXMusicReady&&rageXMusicPlayer&&rageXMusicPlayer.getPlayerState()!==YT.PlayerState.PLAYING){
+    playMenuMusic();
+    return;
+  }
   rageXMusicEnabled=!rageXMusicEnabled;
   try{localStorage.setItem('rageXMenuMusic',rageXMusicEnabled?'on':'off');}catch(e){}
   updateMusicButton();
