@@ -134,11 +134,38 @@ body{overscroll-behavior:none}
 #savePlayerName{padding:10px 12px;margin:5px 0 8px}
 #accountStatus{font-size:11px;color:#b9cbd5;min-height:18px;margin:2px 0 8px}
 #privacySettings{background:transparent;color:#ffc45c;text-decoration:underline;padding:4px;margin:2px 0;font-size:11px}
+
+#adminOpen{display:block;width:min(100%,560px);margin:16px auto 4px;padding:12px;background:#1b2d3b;color:#ffc45c;border:1px solid #c58c37;border-radius:7px;font-weight:800;letter-spacing:2px}
+#adminPanel{display:none;position:fixed;inset:0;z-index:5000;background:#02070bf2;align-items:center;justify-content:center;padding:14px}
+#adminPanel .admin-card{width:min(96vw,1100px);max-height:92vh;overflow:auto;padding:22px;background:#102331;border:1px solid #e7a83e;box-shadow:0 18px 60px #000d}
+#adminPanel h2{color:#ffc45c;margin:0 0 12px}
+#adminPanel input{max-width:260px}
+#adminPanel button{margin:4px;padding:9px 13px}
+#adminPanel .admin-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#adminStatus{min-height:22px;color:#f3c875;font-size:13px;margin:10px 0}
+#adminTableWrap{overflow:auto;max-height:62vh}
+#adminTable{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}
+#adminTable th,#adminTable td{padding:9px;border-bottom:1px solid #456071;text-align:left;vertical-align:top}
+#adminTable th{position:sticky;top:0;background:#1b3546;color:#ffc45c}
+#adminTable details{min-width:200px}
+#adminTable summary{cursor:pointer;color:#8dd4ff}
+#adminLogout{background:#713b35;color:#fff}
+
 </style>
 </head>
 <body>
 
 <div id="privacyConsent" role="dialog" aria-modal="true" aria-labelledby="privacyTitle"><div class="privacy-card"><h2 id="privacyTitle">RAGE X • ÇEREZ VE GİZLİLİK BİLDİRİMİ</h2><p>Bu cihazı sonraki ziyaretlerinde tanımak ve oyuncu adını korumak için 1 yıl süreli, zorunlu bir cihaz çerezi kullanılır. Kabul edersen site ziyaretlerinde IP adresin, ziyaret zamanı ve tarayıcı bilgisi sunucuda kaydedilir. IP ziyaret kayıtları 90 gün sonra silinir. IP adresin diğer oyunculara gösterilmez.</p><p>Reddetmen hâlinde sunucu cihaz hesabı ve IP ziyaret kaydı etkinleştirilmez; oyun misafir olarak kullanılabilir. Barındırma sağlayıcısının teknik erişim kayıtları ayrıca oluşabilir.</p><div class="privacy-actions"><button id="acceptPrivacy" type="button">KABUL ET VE DEVAM ET</button><button id="rejectPrivacy" type="button">REDDET • MİSAFİR DEVAM</button></div></div></div>
+
+<div id="adminPanel" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+ <div class="admin-card">
+  <div class="admin-top"><h2 id="adminTitle">RAGE X • ADMIN PANELİ</h2><div><button id="adminLogout" type="button" style="display:none">ÇIKIŞ</button><button id="adminClose" type="button">KAPAT</button></div></div>
+  <div id="adminLoginArea"><p>Yönetici şifresini gir.</p><input id="adminPassword" type="password" maxlength="100" placeholder="Admin şifresi" autocomplete="current-password"><button id="adminLogin" type="button">GİRİŞ</button></div>
+  <div id="adminStatus" role="status"></div>
+  <div id="adminData" style="display:none"><p id="adminSummary"></p><div id="adminTableWrap"><table id="adminTable"><thead><tr><th>Oyuncu adı</th><th>Son IP</th><th>Hesap oluşturma</th><th>Son görülme</th><th>Ziyaret sayısı</th><th>Son IP / tarayıcı kayıtları</th></tr></thead><tbody id="adminRows"></tbody></table></div></div>
+ </div>
+</div>
+
 <div id="updateNotice" role="status"><p id="updateMessage">A new RAGE X update is ready.</p><button id="applyUpdateButton">UPDATE GAME</button></div>
 <div id="menu">
  <div class="panel">
@@ -242,6 +269,7 @@ body{overscroll-behavior:none}
   <details id="installGuide"><summary id="installGuideTitle">İNDİRME VE KURULUM KILAVUZU</summary><p id="installGuideText"></p></details>
   <p class="small"><b>CONTROLS:</b> WASD move • Mouse aim • Left click fire • Right click scope • R reload • 1/2/3 switch weapon • Shift sprint • E interact</p>
   <p class="small">Original fan-made prototype. No official Riot Games or Valorant assets are used.</p>
+  <button id="adminOpen" type="button">ADMIN PANELİ</button>
  </div>
 </div>
 
@@ -583,6 +611,64 @@ async function registerDeviceVisit(){
   setAccountStatus((error.message||'Sunucu hesabına ulaşılamadı.')+' Yerel misafir hesabı kullanılabilir.');
  }
 }
+
+const adminPanel=document.getElementById('adminPanel');
+const adminStatus=document.getElementById('adminStatus');
+function showAdminPanel(){adminPanel.style.display='flex';document.getElementById('adminPassword').focus();}
+function hideAdminPanel(){adminPanel.style.display='none';}
+function adminText(tag,value){const el=document.createElement(tag);el.textContent=value==null?'—':String(value);return el;}
+function adminDate(value){if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?String(value):d.toLocaleString('tr-TR');}
+function renderAdminAccounts(accounts){
+ const body=document.getElementById('adminRows');body.replaceChildren();
+ accounts.forEach(account=>{
+  const tr=document.createElement('tr');
+  [account.player_name||'(İsim seçilmemiş)',account.latest_ip||'—',adminDate(account.created_at),adminDate(account.last_seen_at),String(account.visit_count||0)].forEach(value=>tr.appendChild(adminText('td',value)));
+  const detailCell=document.createElement('td'),details=document.createElement('details'),summary=document.createElement('summary');
+  summary.textContent='Ziyaret kayıtlarını göster';details.appendChild(summary);
+  (account.visits||[]).forEach(visit=>{
+   const line=document.createElement('div');
+   line.style.cssText='padding:5px 0;border-top:1px solid #456071;white-space:normal';
+   line.appendChild(adminText('b',visit.ip_address||'IP yok'));
+   line.appendChild(adminText('div',adminDate(visit.visited_at)));
+   line.appendChild(adminText('div',visit.user_agent||'Tarayıcı bilgisi yok'));
+   details.appendChild(line);
+  });
+  detailCell.appendChild(details);tr.appendChild(detailCell);body.appendChild(tr);
+ });
+ document.getElementById('adminSummary').textContent=accounts.length+' kayıtlı cihaz hesabı bulundu. Her hesap için en fazla son 20 ziyaret gösterilir.';
+}
+async function loadAdminAccounts(){
+ adminStatus.textContent='Hesaplar yükleniyor...';
+ try{
+  const response=await fetch('/api/admin/accounts',{credentials:'same-origin'});
+  const data=await response.json();
+  if(response.status===401){document.getElementById('adminLoginArea').style.display='block';document.getElementById('adminData').style.display='none';document.getElementById('adminLogout').style.display='none';adminStatus.textContent=data.error||'Yönetici oturumu sona erdi.';return;}
+  if(!response.ok)throw new Error(data.error||'Kayıtlar alınamadı.');
+  renderAdminAccounts(data.accounts||[]);
+  document.getElementById('adminLoginArea').style.display='none';document.getElementById('adminData').style.display='block';document.getElementById('adminLogout').style.display='inline-block';
+  adminStatus.textContent='Yönetici oturumu açık.';
+ }catch(error){adminStatus.textContent=error.message||'Sunucuya ulaşılamadı.';}
+}
+async function adminLogin(){
+ const password=document.getElementById('adminPassword').value;
+ adminStatus.textContent='Kontrol ediliyor...';
+ try{
+  const response=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({password})});
+  const data=await response.json();if(!response.ok)throw new Error(data.error||'Giriş başarısız.');
+  document.getElementById('adminPassword').value='';await loadAdminAccounts();
+ }catch(error){adminStatus.textContent=error.message||'Giriş başarısız.';}
+}
+async function adminLogout(){
+ try{await fetch('/api/admin/logout',{method:'POST',credentials:'same-origin'});}catch(e){}
+ document.getElementById('adminLoginArea').style.display='block';document.getElementById('adminData').style.display='none';document.getElementById('adminLogout').style.display='none';adminStatus.textContent='Oturum kapatıldı.';
+}
+document.getElementById('adminOpen').addEventListener('click',showAdminPanel);
+document.getElementById('adminClose').addEventListener('click',hideAdminPanel);
+document.getElementById('adminLogin').addEventListener('click',adminLogin);
+document.getElementById('adminPassword').addEventListener('keydown',event=>{if(event.key==='Enter')adminLogin();});
+document.getElementById('adminLogout').addEventListener('click',adminLogout);
+adminPanel.addEventListener('click',event=>{if(event.target===adminPanel)hideAdminPanel();});
+
 function showPrivacyConsent(){document.getElementById('privacyConsent').style.display='flex';}
 async function choosePrivacyConsent(accepted){
  const wasAccepted=localStorage.getItem(DEVICE_CONSENT_KEY)==='accepted';
