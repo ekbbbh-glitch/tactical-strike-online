@@ -2639,15 +2639,27 @@ document.getElementById('botsNo').onclick = () => {
 };
 
 document.getElementById('launchGame').onclick = () => {
-  if (isRoomHost && socket) {
-   socket.emit('startMatch', {
-  gameMode: gameModeSelect.value,
-  map: mapSelect.value,
-  ranked: rankedModeSelect.value === 'ranked'
-}); 
-  
-
+  const button = document.getElementById('launchGame');
+  if (!socket || !socket.connected) {
+    lobbyStatus.textContent = 'SERVER CONNECTION LOST. RECONNECT AND TRY AGAIN.';
+    return;
   }
+  if (!isRoomHost) {
+    lobbyStatus.textContent = 'ONLY THE ROOM HOST CAN START THE MATCH.';
+    return;
+  }
+  button.disabled = true;
+  lobbyStatus.textContent = 'STARTING MATCH...';
+  socket.emit('startMatch', {
+    gameMode: gameModeSelect.value,
+    map: mapSelect.value,
+    ranked: rankedModeSelect.value === 'ranked'
+  }, result => {
+    if (!result || result.ok !== true) {
+      lobbyStatus.textContent = result?.error || 'MATCH COULD NOT START. TRY AGAIN.';
+      button.disabled = false;
+    }
+  });
 };
 document.getElementById('joinRoom').onclick=()=>connectRoom('join');
 document.getElementById('again').onclick=startGame;
