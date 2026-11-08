@@ -1454,6 +1454,18 @@ function damagePlayer(d,serverApplied=false){
   }else if(online){
     game=false;
     msg.textContent='ELIMINATED — RESPAWNING...';
+  }else if(!online && ['deathmatch','ffa','domination','escalation'].includes(selectedGameMode)){
+    game=false;
+    msg.textContent='ELIMINATED — RESPAWNING...';
+    setTimeout(()=>{
+      if(online || selectedGameMode==='bomb')return;
+      hp=100;hpEl.textContent=hp;
+      player.position.set(mySpawn.x,0,mySpawn.z);
+      game=true;end.style.display='none';hud.style.display='block';
+      msg.textContent='READY — RESPAWNED';
+      setTimeout(()=>{if(msg.textContent==='READY — RESPAWNED')msg.textContent='';},900);
+      updateHud();
+    },1500);
   }else{
     game=false;
     document.exitPointerLock?.();
@@ -1461,7 +1473,6 @@ function damagePlayer(d,serverApplied=false){
     end.style.display='flex';
   }
  }
-}
 
 function updateBots(dt){
  bots.forEach(b=>{
@@ -1679,6 +1690,12 @@ function drawMinimap(){
   ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
   for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);
   ctx.closePath();ctx.fill();ctx.stroke();
+ }
+ if(selectedGameMode==='domination'){
+  const point=toMap(0,0);
+  ctx.fillStyle='#42e68b';ctx.beginPath();ctx.arc(point.x,point.y,7,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#eafff2';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#eafff2';ctx.font='bold 10px Arial';ctx.fillText('C',point.x+9,point.y-8);
  }
  if(['bomb','swiftplay','spike'].includes(selectedGameMode))for(const [x,z,label] of [[-42,4,'A'],[42,-4,'B']]){
   const p=toMap(x,z);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);ctx.fillStyle='#ffd52a';ctx.fillRect(-6,-6,12,12);ctx.restore();
@@ -1989,7 +2006,7 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
     if(selectedGameMode==='domination'&&data.domination)document.getElementById('bombStatus').textContent='CONTROL POINT: '+data.domination.owner.toUpperCase()+' • '+data.domination.progress+'%';
   });
   socket.on('escalationUpdate', data => {
-    if(data?.playerId===socket.id){const arsenal=['Şerif','Vandal','AWM'];setWeapon(arsenal[Math.min(2,Math.floor((data.level-1)/4))]);msg.textContent='WEAPON LEVEL '+data.level+' / 12';}
+    if(data?.playerId===socket.id){const arsenal=['Şerif','Vandal','AWM'];setWeapon(arsenal[(data.level-1)%arsenal.length]);msg.textContent='WEAPON LEVEL '+data.level+' / 12';}
   });
   socket.on('matchEnded', data => {
     game=false;document.exitPointerLock?.();
