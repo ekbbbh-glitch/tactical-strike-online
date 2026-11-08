@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.15">
+<meta name="app-version" content="2026.11.08.16">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -823,29 +823,32 @@ function init(){
 
  function addWoodenWindow(x,y,z,rotationY=0){
  const frame=new THREE.Group();
- const wood=mat(0x75401f,.82),woodLight=mat(0xa96835,.78),glass=new THREE.MeshStandardMaterial({color:0x83d9eb,transparent:true,opacity:.58,roughness:.18,metalness:.12});
- box(frame,0,0,0,2.35,2.05,.18,wood);
- box(frame,0,0,.115,2.12,1.82,.055,woodLight);
- box(frame,0,0,.15,1.88,1.58,.045,glass);
- // Thick wooden frame, central mullions and projecting sill like the reference.
- box(frame,0,.91,.19,2.28,.18,.24,woodLight);
- box(frame,0,-.91,.19,2.32,.2,.3,wood);
- box(frame,-1.08,0,.19,.18,1.72,.24,woodLight);
- box(frame,1.08,0,.19,.18,1.72,.24,woodLight);
- box(frame,0,0,.225,.12,1.65,.1,wood);
- box(frame,0,0,.23,2.12,.12,.1,wood);
- box(frame,0,1.12,.12,2.55,.2,.34,woodLight);
- box(frame,0,-1.08,.12,2.58,.18,.42,woodLight);
+ const wood=mat(0x70401f,.78),woodLight=mat(0xb8753b,.72);
+ const glass=new THREE.MeshStandardMaterial({color:0x55c9ef,emissive:0x16465d,emissiveIntensity:.32,transparent:true,opacity:.88,roughness:.16,metalness:.08,side:THREE.DoubleSide});
+ // Visible raised window assembly sits proud of the wall instead of being buried in it.
+ box(frame,0,0,0,2.55,2.25,.16,wood);
+ box(frame,0,0,.095,2.27,1.96,.08,glass);
+ box(frame,0,1.04,.17,2.55,.2,.28,woodLight);
+ box(frame,0,-1.04,.17,2.58,.2,.3,woodLight);
+ box(frame,-1.18,0,.17,.2,1.95,.28,woodLight);
+ box(frame,1.18,0,.17,.2,1.95,.28,woodLight);
+ box(frame,0,0,.22,.13,1.82,.14,wood);
+ box(frame,0,0,.23,2.32,.13,.14,wood);
+ box(frame,0,1.2,.1,2.78,.2,.38,woodLight);
+ box(frame,0,-1.2,.1,2.8,.2,.4,woodLight);
+ // Small wooden side shutters make the opening unmistakable from a distance.
+ box(frame,-1.48,0,.02,.42,1.75,.12,wood);
+ box(frame,1.48,0,.02,.42,1.75,.12,wood);
  frame.position.set(x,y,z);frame.rotation.y=rotationY;scene.add(frame);return frame;
 }
 
 function buildDesertMap() {
- const concrete = mat(0x626970);
+ const concrete = mat(0x347fb5,.45,.25);
  const road = mat(0x292e35);
  const yellow = mat(0xe5b83e);
  const windowMat = mat(0x263d50);
  const sand = mat(0xb4a078);
- const metal = mat(0x414b55);
+ const metal = mat(0xf18a32,.5,.35);
  const green = mat(0x354b35);
 
  // Zemin
@@ -892,7 +895,7 @@ function buildDesertMap() {
   box(scene,x,3,z,13,6,12,concrete);
   box(scene,x,6.1,z,14,.5,13,metal);
 
-  for(const wx of [-4,0,4])addWoodenWindow(x+wx,3.8,z-6.12,0);
+  for(const wx of [-4,0,4]){addWoodenWindow(x+wx,3.8,z-6.18,0);addWoodenWindow(x+wx,3.8,z+6.18,Math.PI);}\n  for(const wz of [-2.7,2.7]){addWoodenWindow(x+6.68,3.8,z+wz,Math.PI/2);addWoodenWindow(x-6.68,3.8,z+wz,-Math.PI/2);}
 
   box(scene,x,1.5,z-6.2,2.5,3,.15,metal);
   box(scene,x,6.5,z,1,.5,1,yellow);
@@ -1098,7 +1101,7 @@ function buildIceboxMap(){
 
 const BIND_WALLS=[[-86,44,2,26,6],[-70,44,2,26,6],[-78,31,18,2,6],[-83,57,8,2,6],[-73,57,8,2,6],[-67,7,2,72,5],[-43,7,2,72,5],[-55,-31,26,2,5],[-62,-18,2,24,5],[-30,-18,2,24,5],[-46,-31,30,2,5],[-55,-5,14,2,5],[-28,-23,2,22,5],[-8,-23,2,22,5],[-18,-34,22,2,5],[-18,-12,22,2,5],[30,-18,2,24,5],[62,-18,2,24,5],[46,-31,30,2,5],[38,-5,14,2,5],[34,23,2,18,5],[50,23,2,18,5],[42,32,18,2,5],[37,14,8,2,5],[48,14,6,2,5],[68,30,2,64,5],[92,30,2,64,5],[80,-2,26,2,5],[14,-10,2,18,5],[26,-10,2,18,5],[20,-19,14,2,5],[-2,12,12,2,3],[8,42,12,2,3]];
 function buildBindMap(){
- const sand=mat(0xc8a574),plaster=mat(0xd8c6a5),stone=mat(0x8c765b),dark=mat(0x5d5142),teal=mat(0x287e79),portal=mat(0x25d9c8,.25,.35),yellow=mat(0xe9bd4b);
+ const sand=mat(0xc8a574),plaster=mat(0x347fb5,.45,.25),stone=mat(0xf18a32,.5,.35),dark=mat(0x5d5142),teal=mat(0x287e79),portal=mat(0x25d9c8,.25,.35),yellow=mat(0xe9bd4b);
  box(scene,0,-.35,0,200,.7,200,sand);for(const x of [-99,99])box(scene,x,3,0,2,6,200,stone);for(const z of [-99,99])box(scene,0,3,z,200,6,2,stone);
  for(const [x,z,w,d,h] of BIND_WALLS){box(scene,x,h/2,z,w,h,d,plaster);box(scene,x,h+.12,z,w+.35,.24,d+.35,stone);}
  // Showers, A short and A site
@@ -1117,7 +1120,7 @@ function buildBindMap(){
  const atk=box(scene,0,.025,85,20,.05,10,mat(0x386d8b));atk.material.transparent=true;atk.material.opacity=.3;const def=box(scene,0,.025,-85,20,.05,10,mat(0x9c4545));def.material.transparent=true;def.material.opacity=.3;
  // Bind teleporters and warm desert-town landmarks
  for(const [x,z,angle] of [[-72,0,Math.PI/2],[91,0,-Math.PI/2]]){const frame=new THREE.Group();box(frame,0,2.7,0,1,5.4,7,teal);box(frame,0,2.75,.56,.22,4.4,5.8,portal);box(frame,0,5.55,0,2,.35,8,yellow);frame.rotation.y=angle;frame.position.set(x,0,z);scene.add(frame);}
- for(const [x,z] of [[-90,72],[-92,-70],[92,70],[92,-70]]){box(scene,x,3,z,9,6,9,plaster);box(scene,x,6.15,z,10,.3,10,stone);box(scene,x,3,z+4.7,4,2,.2,teal);addWoodenWindow(x-2,3.8,z+4.62,0);addWoodenWindow(x+2,3.8,z+4.62,0);}
+ for(const [x,z] of [[-90,72],[-92,-70],[92,70],[92,-70]]){box(scene,x,3,z,9,6,9,plaster);box(scene,x,6.15,z,10,.3,10,stone);box(scene,x,3,z+4.7,4,2,.2,teal);for(const offset of [-2,2]){addWoodenWindow(x+offset,3.8,z+4.72,0);addWoodenWindow(x+offset,3.8,z-4.72,Math.PI);addWoodenWindow(x+4.72,3.8,z+offset,Math.PI/2);addWoodenWindow(x-4.72,3.8,z+offset,-Math.PI/2);}}
  for(const [x,z] of [[-94,18],[94,-18],[-8,94],[8,-94]]){cylinder(scene,x,3,z,.18,.22,6,dark);box(scene,x,6.1,z,1.3,.25,1.3,yellow);}
  for(const [x,z,color] of [[-46,-18,0xe7b747],[46,-18,0x55c6d0]]){const ring=new THREE.Mesh(new THREE.RingGeometry(3.8,4.2,32),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(x,.12,z);scene.add(ring);}
 }
