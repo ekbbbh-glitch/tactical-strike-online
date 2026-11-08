@@ -2203,7 +2203,7 @@ socket.on('roundStarted', data => {
 
 socket.on('roundOver', data => {
   const won = data.winner === 'draw' ? null : data.winner === myTeam;
-  showRoundResult(won, `ROUND ${data.round}/12  •  SCORE ${data.attackWins}-${data.defenseWins}`, false);
+  showRoundResult(won, `ROUND ${data.round}/${data.totalRounds || 12}  •  SCORE ${data.attackWins}-${data.defenseWins}`, false);
 });
 
 socket.on('gameEnded', data => {
