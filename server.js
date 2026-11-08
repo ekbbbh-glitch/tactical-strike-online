@@ -39,7 +39,10 @@ function cleanName(v) {
 }
 
 function roomPlayers(room) {
-  return [...room.players.values()];
+  return [...room.players.values()].map(p => ({
+    ...p,
+    team: p.team
+  }));
 }
 
 function createRoom(code) {
