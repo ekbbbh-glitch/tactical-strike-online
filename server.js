@@ -589,7 +589,7 @@ io.on('connection', socket => {
 
   socket.on('weaponFired', () => {
     const room=rooms.get(socket.data.roomCode);
-    if(room?.started&&room.players.has(socket.id))socket.to(room.code).emit('weaponFired');
+    if(room?.started&&room.players.has(socket.id))socket.to(room.code).emit('weaponFired',{playerId:socket.id});
   });
 
   socket.on('healSelf', amount => {
@@ -648,6 +648,7 @@ io.on('connection', socket => {
     player.character = cleanCharacter(
       state.character || player.character
     );
+    player.shieldUntil = state.shield === true ? Date.now() + 300 : 0;
 
     socket.to(room.code).emit('playersUpdate', [player]);
   });
@@ -703,9 +704,9 @@ io.on('connection', socket => {
 
     if (distance > 150) return;
 
-    const damage = finiteClamped(data.damage, 0, 100, 0);
+    let damage = finiteClamped(data.damage, 0, 100, 0);
     if (!damage) return;
-
+    if (target.shieldUntil > Date.now()) damage = Math.ceil(damage * 0.5);
     target.hp = Math.max(0, target.hp - damage);
 
     io.to(target.id).emit('playerDamaged', {
