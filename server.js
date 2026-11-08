@@ -360,6 +360,16 @@ app.get('/health', (req, res) => {
 });
 
 io.on('connection', socket => {
+  if (socket.recovered) {
+    const recoveredCode = socket.data.roomCode;
+    const recoveredRoom = rooms.get(recoveredCode);
+    const pending = recoveredRoom?.disconnectTimers?.get(socket.id);
+    if (pending) { clearTimeout(pending); recoveredRoom.disconnectTimers.delete(socket.id); }
+    if (recoveredRoom) {
+      io.to(recoveredCode).emit('playersUpdate', roomPlayers(recoveredRoom));
+      sendLobbyUpdate(recoveredRoom);
+    }
+  }
 
   socket.on('createRoom', (data = {}, cb = () => {}) => {
     if (!data || typeof data !== 'object') data = {};
@@ -789,5 +799,5 @@ io.on('connection', socket => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`EMIRCRITICAL server listening on port ${PORT}`);
+  console.log(`RAGE X server listening on port ${PORT}`);
 });
