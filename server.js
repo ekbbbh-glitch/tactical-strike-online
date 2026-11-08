@@ -117,6 +117,7 @@ function createRoom(code) {
     dominationTimer: null,
     domination: { owner: 'neutral', progress: 0 },
     escalationLevels: { attack: 0, defense: 0 },
+    roundWeapon: 'Vandal',
     respawnTimers: new Map()
   };
 }
@@ -277,6 +278,7 @@ function startBombRound(room, sendStartEvent = false) {
 
   const token = room.roundToken;
   resetBomb(room);
+  if(room.gameMode==='spike')room.roundWeapon=['Vandal','Şerif','AWM'][Math.floor(Math.random()*3)];
 
   let attackIndex = 0;
   let defenseIndex = 0;
@@ -310,6 +312,7 @@ function startBombRound(room, sendStartEvent = false) {
     round: room.round,
     totalRounds: modeRoundLimit(room),
     prepareSeconds: 5,
+    weapon: room.gameMode==='spike'?room.roundWeapon:null,
     attackWins: room.roundWins.attack,
     defenseWins: room.roundWins.defense,
     players: roomPlayers(room)
@@ -335,6 +338,9 @@ function startBombRound(room, sendStartEvent = false) {
       totalRounds: modeRoundLimit(room)
     });
 
+    room.roundTimer = setTimeout(() => {
+      if(room.started && room.roundActive && !room.roundOver) finishBombRound(room, room.bomb.planted ? 'attack' : 'defense', 'timeout');
+    }, 90000);
     checkTeamElimination(room);
   }, PREP_TIME);
 }
@@ -512,6 +518,7 @@ io.on('connection', socket => {
     room.roundActive = false;
     room.roundWins = { attack: 0, defense: 0 };
     room.score={attack:0,defense:0};room.escalationLevels={attack:0,defense:0};room.domination={owner:'neutral',progress:0};
+    for(const p of room.players.values()){p.kills=0;p.hp=100;}
     if(room.matchTimer)clearTimeout(room.matchTimer);if(room.dominationTimer)clearInterval(room.dominationTimer);
 
     if (['bomb','swiftplay','spike'].includes(room.gameMode)) {
@@ -549,7 +556,7 @@ io.on('connection', socket => {
       io.to(room.code).emit('playersUpdate', roomPlayers(room));
       const duration=room.gameMode==='deathmatch'?570000:room.gameMode==='ffa'?540000:room.gameMode==='escalation'?600000:480000;
       room.matchTimer=setTimeout(()=>{
-        const winner=room.gameMode==='ffa'?[...room.players.values()].sort((a,b)=>(b.kills||0)-(a.kills||0))[0]?.id||'draw':room.score.attack===room.score.defense?'draw':room.score.attack>room.score.defense?'attack':'defense';
+        const winner=room.gameMode==='ffa'?[...room.players.values()].sort((a,b)=>(b.kills||0)-(a.kills||0))[0]?.id||'draw':room.gameMode==='escalation'?(room.escalationLevels.attack===room.escalationLevels.defense?'draw':room.escalationLevels.attack>room.escalationLevels.defense?'attack':'defense'):(room.score.attack===room.score.defense?'draw':room.score.attack>room.score.defense?'attack':'defense');
         finishScoreMatch(room,winner,'time');
       },duration);
       if(room.gameMode==='domination')startDominationScoring(room);
@@ -808,7 +815,7 @@ io.on('connection', socket => {
 
     if (target.hp <= 0) {
       attacker.kills=(attacker.kills||0)+1;
-      if(room.gameMode==='deathmatch'||room.gameMode==='domination')room.score[attacker.team]+=1;
+      if(room.gameMode==='deathmatch')room.score[attacker.team]+=1;
       if(room.gameMode==='escalation')room.escalationLevels[attacker.team]=Math.min(12,room.escalationLevels[attacker.team]+1);
       io.to(room.code).emit('playerEliminated', {
         playerId: target.id,
@@ -829,9 +836,9 @@ io.on('connection', socket => {
         room.defuseTimer = null;
         room.bomb.defuserId = null;
       }
-      if(['deathmatch','ffa','domination'].includes(room.gameMode)&&room.started){
+      if(['deathmatch','ffa'].includes(room.gameMode)&&room.started){
         if(room.gameMode==='ffa'&&attacker.kills>=40)finishScoreMatch(room,attacker.id,'kills');
-        else if(room.gameMode!=='ffa'&&room.score[attacker.team]>=100)finishScoreMatch(room,attacker.team,'kills');
+        else if(room.gameMode==='deathmatch'&&room.score[attacker.team]>=100)finishScoreMatch(room,attacker.team,'kills');
       }
       if(room.gameMode==='escalation'){
         const level=room.escalationLevels[attacker.team];io.to(room.code).emit('escalationUpdate',{team:attacker.team,level,playerId:attacker.id});
