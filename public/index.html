@@ -2052,7 +2052,7 @@ document.getElementById('settingsButton').addEventListener('click',()=>{const p=
 document.getElementById('closeSettings').addEventListener('click',()=>document.getElementById('settingsPanel').style.display='none');
 document.getElementById('mouseSensitivity').addEventListener('input',e=>mouseSensitivity=Number(e.target.value));
 document.getElementById('touchSensitivity').addEventListener('input',e=>touchSensitivity=Number(e.target.value));
-document.getElementById('mobileButtonSize').addEventListener('input',e=>document.querySelectorAll('#mobileActions button').forEach(b=>{b.style.width=e.target.value+'px';b.style.height=e.target.value+'px';b.style.minWidth=e.target.value+'px';}));
+document.getElementById('mobileButtonSize').addEventListener('input',e=>document.querySelectorAll('#mobileActions button').forEach(b=>{b.style.width=e.target.value+'px';b.style.height=e.target.value+'px';b.style.minWidth=e.target.value+'px';const icon=b.querySelector('.sym');if(icon)icon.style.fontSize=Math.round(Number(e.target.value)*.34)+'px';}));
 document.querySelectorAll('#mobileActions button').forEach(btn=>{
  let drag=null;
  btn.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,left:btn.offsetLeft,top:btn.offsetTop};btn.setPointerCapture(e.pointerId);});
