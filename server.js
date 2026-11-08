@@ -93,8 +93,9 @@ const p = {
     ry: 0,
     rx: 0,
     hp: 100,
-    weapon: 'Vandal'
-  team: room.players.size % 2 === 0 ? 'attack' : 'defense'
+    weapon: 'Vandal',
+team: room.players.size % 2 === 0 ? 'attack' : 'defense'
+  
   };
 
   room.players.set(sock.id, p);
@@ -198,6 +199,7 @@ room.roundOver = false;
   bomb: room.bomb,
   round: room.round
 });
+      });
 socket.on('plantBomb', data => {
   const room = rooms.get(socket.data.roomCode);
   if (!room || !room.started || room.gameMode !== 'bomb') return;
