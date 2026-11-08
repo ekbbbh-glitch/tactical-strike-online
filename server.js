@@ -592,6 +592,14 @@ io.on('connection', socket => {
     if(room?.started&&room.players.has(socket.id))socket.to(room.code).emit('weaponFired');
   });
 
+  socket.on('healSelf', amount => {
+    const room=rooms.get(socket.data.roomCode),player=room?.players.get(socket.id);
+    if(!room||!room.started||!player||player.hp<=0)return;
+    player.hp=Math.min(100,player.hp+finiteClamped(amount,0,40,0));
+    io.to(socket.id).emit('playerHealed',{hp:player.hp});
+    io.to(room.code).emit('playersUpdate',roomPlayers(room));
+  });
+
   socket.on('chatMessage', raw => {
     const room=rooms.get(socket.data.roomCode),player=room?.players.get(socket.id);
     if(!room||!player||!room.started)return;
