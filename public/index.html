@@ -1457,25 +1457,60 @@ let bombPrepInterval = null;
 socket.on('bombPickedUp', data => {
   bombState.pickedUp = true;
   bombState.carrierId = data.carrierId;
+  bombState.planted = false;
+
+  if (bombMesh) {
+    bombMesh.visible = false;
+  }
 
   document.getElementById('bombStatus').textContent =
-    'BOMBA ALINDI! TAŞIYAN: ' + data.playerName;
+    '💣 BOMBA ALINDI: ' + data.playerName;
 });
 
 socket.on('bombPlanted', data => {
-  bombState = {
-    ...data,
-    pickedUp: false,
-    carrierId: null
-  };
+  bombState.pickedUp = false;
+  bombState.planted = true;
+  bombState.carrierId = null;
+  bombState.site = data.site;
+  bombState.endsAt = data.endsAt;
+
+  if (bombMesh) {
+    bombMesh.visible = true;
+
+    const site = data.site === 'A'
+      ? { x: -25, z: 0 }
+      : { x: 25, z: 0 };
+
+    bombMesh.position.set(site.x, 0, site.z);
+  }
 
   document.getElementById('bombStatus').textContent =
-    'BOMBA KURULDU! BÖLGE: ' + data.site;
+    '💣 BOMBA KURULDU! ' + data.site + ' NOKTASI';
 });
 
 socket.on('bombDefusing', () => {
   document.getElementById('bombStatus').textContent =
     'BOMBA ETKİSİZLEŞTİRİLİYOR...';
+});
+  socket.on('bombDefused', () => {
+  bombState.planted = false;
+
+  if (bombMesh) {
+    bombMesh.visible = false;
+  }
+
+  document.getElementById('bombStatus').textContent =
+    '✅ BOMBA ETKİSİZLEŞTİRİLDİ!';
+});
+  socket.on('bombExploded', () => {
+  bombState.planted = false;
+
+  if (bombMesh) {
+    bombMesh.visible = false;
+  }
+
+  document.getElementById('bombStatus').textContent =
+    '💥 BOMBA PATLADI!';
 });
 
 socket.on('bombExploded', () => {
@@ -1520,6 +1555,10 @@ socket.on('bombPickedUp', data => {
 
   document.getElementById('bombStatus').textContent =
     '💣 BOMBA KURULDU! ' + data.bomb.site NOKTASI;
+});
+  socket.on('bombDefusing', data => {
+  document.getElementById('bombStatus').textContent =
+    '🔧 SAVUNMA TAKIMI BOMBAYI ETKİSİZLEŞTİRİYOR!';
 });
 socket.on('roundStarting', data => {
   if (bombPrepInterval) clearInterval(bombPrepInterval);
