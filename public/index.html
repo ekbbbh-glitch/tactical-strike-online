@@ -157,13 +157,40 @@ let currentBotsEnabled = true;
   lobbyCode.textContent = data.code;
   lobbyPlayers.innerHTML = '';
 
-  (data.players || []).forEach(player => {
-    const item = document.createElement('div');
-    item.textContent =
-      player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
-    item.style.padding = '8px';
-    lobbyPlayers.appendChild(item);
-  });
+  if (gameModeSelect.value === 'bomb') {
+    const attackTitle = document.createElement('div');
+    attackTitle.textContent = '🔵 SALDIRI TAKIMI';
+    attackTitle.style.cssText = 'padding:10px;font-weight:bold;color:#3399ff;';
+    lobbyPlayers.appendChild(attackTitle);
+
+    const defenseTitle = document.createElement('div');
+    defenseTitle.textContent = '🔴 SAVUNMA TAKIMI';
+    defenseTitle.style.cssText = 'padding:10px;font-weight:bold;color:#ff4444;';
+
+    (data.players || []).forEach(player => {
+      const item = document.createElement('div');
+      item.textContent = player.name;
+      item.style.padding = '8px';
+
+      if (player.team === 'attack') {
+        item.style.color = '#3399ff';
+        lobbyPlayers.insertBefore(item, defenseTitle);
+      } else {
+        item.style.color = '#ff4444';
+        lobbyPlayers.appendChild(item);
+      }
+    });
+
+    lobbyPlayers.appendChild(defenseTitle);
+  } else {
+    (data.players || []).forEach(player => {
+      const item = document.createElement('div');
+      item.textContent =
+        player.name + (player.id === data.hostId ? ' 👑 ODA SAHİBİ' : '');
+      item.style.padding = '8px';
+      lobbyPlayers.appendChild(item);
+    });
+  }
 
   isRoomHost = data.hostId === socket.id;
   currentBotsEnabled = data.botsEnabled;
@@ -189,6 +216,7 @@ const cross=document.getElementById('cross');
 let weaponName='Vandal',ammo=25,reserve=75,hp=100;
  let selectedGameMode = 'deathmatch';
  let myTeam = null;
+ let bombMesh = null;
 let bombState = {
   planted: false,
   pickedUp: false,
@@ -599,10 +627,36 @@ function buildMap() {
   // Yeni harita nesnelerini kaydet
   mapObjects = scene.children.filter(obj => !before.has(obj));
 }
+function createBombMesh() {
+  if (!scene || bombMesh) return;
 
+  const group = new THREE.Group();
 
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.45, 0.7),
+    new THREE.MeshStandardMaterial({
+      color: 0x222222,
+      metalness: 0.6,
+      roughness: 0.35
+    })
+  );
 
+  body.position.y = 0.35;
+  group.add(body);
 
+  const light = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+  );
+
+  light.position.y = 0.65;
+  group.add(light);
+
+  group.position.set(-48, 0, -48);
+  scene.add(group);
+
+  bombMesh = group;
+}
 function buildWeapon(){
  if(weaponGroup) camera.remove(weaponGroup);
 
@@ -738,6 +792,7 @@ function spawnBot(x,z){
 selectedMap = mapSelect.value;
 selectedGameMode = gameModeSelect.value;
 buildMap();
+  createBombMesh();
  menu.style.display='none';
  end.style.display='none';
  hud.style.display='block';
@@ -1299,6 +1354,19 @@ socket.on('gameStarted', data => {
   const me = (data.players || []).find(p => p.id === socket.id);
 
   myTeam = me ? me.team : null;
+  selectedGameMode = data.gameMode || 'deathmatch';
+gameModeSelect.value = selectedGameMode;
+
+if (selectedGameMode === 'bomb') {
+  document.getElementById('bombStatus').textContent =
+    myTeam === 'attack'
+      ? '🔵 SEN SALDIRI TAKIMINDASIN'
+      : '🔴 SEN SAVUNMA TAKIMINDASIN';
+}
+    
+      
+  
+
 
   if (me) {
     mySpawn = { x: me.x, z: me.z };
@@ -1422,8 +1490,37 @@ socket.on('bombDefused', () => {
 
 socket.on('bombReset', data => {
   bombState = data.bomb;
-});
 
+  if (!bombMesh) createBombMesh();
+
+  if (bombMesh) {
+    bombMesh.visible = true;
+    bombMesh.position.set(-48, 0, -48);
+  }
+});
+socket.on('bombPickedUp', data => {
+  bombState = data.bomb;
+
+  if (bombMesh) {
+    bombMesh.visible = false;
+  }
+});
+  socket.on('bombPlanted', data => {
+  bombState = data.bomb;
+
+  if (bombMesh) {
+    bombMesh.visible = true;
+
+    const site = data.bomb.site === 'A'
+      ? { x: -25, z: 0 }
+      : { x: 25, z: 0 };
+
+    bombMesh.position.set(site.x, 0, site.z);
+  }
+
+  document.getElementById('bombStatus').textContent =
+    '💣 BOMBA KURULDU! ' + data.bomb.site NOKTASI;
+});
 socket.on('roundStarting', data => {
   if (bombPrepInterval) clearInterval(bombPrepInterval);
 
