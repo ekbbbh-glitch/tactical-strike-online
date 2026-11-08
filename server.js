@@ -161,7 +161,7 @@ function sendLobbyUpdate(room) {
 
 function sendGameStarted(room) {
   io.to(room.code).emit('gameStarted', {
-    botsEnabled: room.gameMode === 'bomb' ? false : room.botsEnabled,
+    botsEnabled: ['bomb','swiftplay','spike'].includes(room.gameMode) ? false : room.botsEnabled,
     bots: room.bots,
     gameMode: room.gameMode,
     map: room.map,
@@ -269,7 +269,7 @@ function startDominationScoring(room) {
   },1000);
 }
 function startBombRound(room, sendStartEvent = false) {
-  if (!room.started || room.gameMode !== 'bomb') return;
+  if (!room.started || !['bomb','swiftplay','spike'].includes(room.gameMode)) return;
 
   room.roundOver = false;
   room.roundActive = false;
@@ -340,7 +340,7 @@ function startBombRound(room, sendStartEvent = false) {
 }
 
 function finishBombRound(room, winner, reason) {
-  if (!room.started || room.gameMode !== 'bomb' || room.roundOver) return;
+  if (!room.started || !['bomb','swiftplay','spike'].includes(room.gameMode) || room.roundOver) return;
 
   room.roundOver = true;
   room.roundActive = false;
@@ -397,7 +397,7 @@ function finishBombRound(room, winner, reason) {
 }
 
 function checkTeamElimination(room) {
-  if (!room.started || room.gameMode !== 'bomb' ||
+  if (!room.started || !['bomb','swiftplay','spike'].includes(room.gameMode) ||
       !room.roundActive || room.roundOver) return;
 
   const activePlayers = [...room.players.values()]
@@ -561,7 +561,7 @@ io.on('connection', socket => {
   socket.on('pickBomb', () => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || !room.started || room.gameMode !== 'bomb' ||
+    if (!room || !room.started || !['bomb','swiftplay','spike'].includes(room.gameMode) ||
         !room.roundActive || room.roundOver) return;
 
     const player = room.players.get(socket.id);
@@ -586,7 +586,7 @@ io.on('connection', socket => {
   socket.on('plantBomb', (data = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || !room.started || room.gameMode !== 'bomb' ||
+    if (!room || !room.started || !['bomb','swiftplay','spike'].includes(room.gameMode) ||
         !room.roundActive || room.roundOver || room.bomb.planted) return;
 
     const player = room.players.get(socket.id);
@@ -633,7 +633,7 @@ io.on('connection', socket => {
   socket.on('defuseBomb', () => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || !room.started || room.gameMode !== 'bomb' ||
+    if (!room || !room.started || !['bomb','swiftplay','spike'].includes(room.gameMode) ||
         !room.roundActive || room.roundOver ||
         !room.bomb.planted || room.bomb.defuserId) return;
 
@@ -777,7 +777,7 @@ io.on('connection', socket => {
     if (!room || !room.started || !data ||
         typeof data !== 'object') return;
 
-    if (room.gameMode === 'bomb' &&
+    if (['bomb','swiftplay','spike'].includes(room.gameMode) &&
         (!room.roundActive || room.roundOver)) return;
 
     const attacker = room.players.get(socket.id);
@@ -872,7 +872,7 @@ io.on('connection', socket => {
       return;
     }
     if (room.hostId === socket.id) room.hostId = room.players.keys().next().value;
-    if (room.started && room.gameMode === 'bomb') checkTeamElimination(room);
+    if (room.started && ['bomb','swiftplay','spike'].includes(room.gameMode)) checkTeamElimination(room);
     sendLobbyUpdate(room);
     io.to(code).emit('playersUpdate', roomPlayers(room));
   });
@@ -906,7 +906,7 @@ io.on('connection', socket => {
         return;
       }
       if (room.hostId === socket.id) room.hostId = room.players.keys().next().value;
-      if (room.started && room.gameMode === 'bomb') checkTeamElimination(room);
+      if (room.started && ['bomb','swiftplay','spike'].includes(room.gameMode)) checkTeamElimination(room);
       sendLobbyUpdate(room);
       io.to(code).emit('playersUpdate', roomPlayers(room));
     }, 125000);
