@@ -55,6 +55,10 @@ body{overscroll-behavior:none}
 #chatLog{height:112px;overflow:auto;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
 #chatForm{display:flex;gap:5px;margin-top:6px}#chatInput{min-width:0;width:100%;padding:8px;border:0;border-radius:6px}
 #chatForm button{margin:0;padding:7px 10px;border-radius:6px}
+#abilityButtons{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);display:flex;gap:10px;pointer-events:auto}
+#abilityButtons button{width:58px;height:58px;min-width:58px;padding:4px;margin:0;border-radius:50%;background:#243b4b;color:#fff;border:2px solid #dce8ef;font-size:12px}
+#abilityButtons button small{display:block;font-size:9px}
+@media (pointer:coarse),(max-width:800px){#abilityButtons{bottom:108px;gap:6px}#abilityButtons button{width:50px;height:50px;min-width:50px;font-size:11px}}
 #mobileActions button{width:64px;height:64px;min-width:64px;padding:5px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
 #mobileActions button .sym{font-size:21px;line-height:1}
 #lookPad{display:none;position:absolute;right:102px;top:32%;width:calc(52vw - 110px);height:42%;pointer-events:auto;touch-action:none;background:transparent}
@@ -183,6 +187,7 @@ body{overscroll-behavior:none}
   </div>
  </div>
  <div id="chatPanel"><div id="chatLog" aria-live="polite"></div><form id="chatForm"><input id="chatInput" maxlength="120" placeholder="Mesaj yaz..." autocomplete="off"><button type="submit">GÖNDER</button></form></div>
+ <div id="abilityButtons"><button id="abilityQ" type="button">Q<small>YETENEK 1</small></button><button id="abilityF" type="button">F<small>YETENEK 2</small></button></div>
  <div id="bombStatus" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:20px;font-weight:bold;z-index:20;"></div>
 </div>
 <button id="settingsButton" title="Ayarlar">⚙</button>
@@ -313,6 +318,7 @@ let footstepTimer=0,portalCooldown=0;
 // ONLINE CO-OP bağlantısı
 let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new Map(),remoteMeshes=new Map();
 let netSendTimer=0,voiceStream=null,voicePeers=new Map(),voiceHeld=false;
+let shieldUntil=0,nextShotDamage=0,scanUntil=0,abilityCooldowns={Q:0,F:0},abilitySpeedUntil=0,rapidFireUntil=0;
 
  let mySpawn = { x: -8, z: 37 };
 
@@ -932,11 +938,8 @@ function spawnBot(x,z){
  scene.add(bot);
 
  bot.userData={
-  id:bots.length,
-  hp:100,
-  fire:1+Math.random()*1.4,
-  walk:Math.random()*6,
-  alive:true
+  id:bots.length,hp:100,fire:1+Math.random()*1.4,walk:Math.random()*6,
+  alive:true,targetTimer:0,targetX:x,targetZ:z
  };
 
  bots.push(bot);
@@ -1017,10 +1020,40 @@ function updateHud(){
  updateAmmo();
 }
 
+function useAbility(slot){
+ if(!game||abilityCooldowns[slot]>0)return;
+ const now=Date.now();
+ const nearBots=bots.filter(b=>b.userData.alive&&Math.hypot(b.position.x-player.position.x,b.position.z-player.position.z)<12);
+ const nearPlayers=[...remotePlayers.entries()].filter(([id,p])=>Math.hypot(Number(p.x)-player.position.x,Number(p.z)-player.position.z)<12);
+ const areaDamage=damage=>{
+  nearBots.forEach(b=>{if(online&&socket?.connected)socket.emit('botHit',{botId:b.userData.id,damage});else{b.userData.hp-=damage;if(b.userData.hp<=0){b.userData.alive=false;b.visible=false;kills++;}}});
+  nearPlayers.forEach(([id])=>socket?.emit('playerHit',{targetId:id,damage}));
+ };
+ let message='',cooldown=14;
+ if(selectedCharacter==='jett'&&slot==='Q'){
+  const x=player.position.x-Math.sin(player.rotation.y)*12,z=player.position.z-Math.cos(player.rotation.y)*12;
+  if(!collides(x,z))player.position.set(x,0,z);playSfx('teleport');message='JETT: IŞINLANMA';cooldown=10;
+ }else if(selectedCharacter==='jett'&&slot==='F'){nextShotDamage=100;message='JETT: SONRAKİ ATIŞ TEK VURUŞ';cooldown=18;
+ }else if(selectedCharacter==='heavy'&&slot==='Q'){shieldUntil=now+6000;message='HEAVY: ZIRH';cooldown=18;
+ }else if(selectedCharacter==='heavy'&&slot==='F'){areaDamage(60);playSfx('explosion');message='HEAVY: PATLAYICI';cooldown=20;
+ }else if(selectedCharacter==='special'&&slot==='Q'){if(online&&socket?.connected)socket.emit('healSelf',30);else{hp=Math.min(100,hp+30);hpEl.textContent=hp;}message='SPECIAL: CAN YENİLEME';cooldown=22;
+ }else if(selectedCharacter==='special'&&slot==='F'){scanUntil=now+8000;message='SPECIAL: DÜŞMAN TARAMASI';cooldown=20;
+ }else if(selectedCharacter==='viper'&&slot==='Q'){areaDamage(35);message='VIPER: ZEHİRLİ BULUT';cooldown=18;
+ }else if(selectedCharacter==='viper'&&slot==='F'){abilitySpeedUntil=now+7000;message='VIPER: HIZ TAKVİYESİ';cooldown=18;
+ }else if(selectedCharacter==='steve'&&slot==='Q'){jumping=true;jumpVelocity=10;message='STEVE: SÜPER ZIPLAMA';cooldown=12;
+ }else if(selectedCharacter==='steve'&&slot==='F'){ammo=specs[weaponName].mag;updateAmmo();message='STEVE: HIZLI DOLDURMA';cooldown=16;
+ }else if(selectedCharacter==='roblox'&&slot==='Q'){jumping=true;jumpVelocity=10;message='ROBLOX: SÜPER ZIPLAMA';cooldown=12;
+ }else if(selectedCharacter==='roblox'&&slot==='F'){shieldUntil=now+5000;message='ROBLOX: KALKAN';cooldown=18;
+ }else if(slot==='Q'){abilitySpeedUntil=now+6000;message='SOLDIER: ADRENALİN';cooldown=14;
+ }else{rapidFireUntil=now+6000;message='SOLDIER: HIZLI ATIŞ';cooldown=18;}
+ abilityCooldowns[slot]=cooldown;msg.textContent=message;setTimeout(()=>{if(msg.textContent===message)msg.textContent='';},1500);
+}
 function keydown(e){
  keys[e.code]=true;
  if(e.code==='KeyU'){startTalking();return;}
  if(e.code==='KeyT'&&!e.repeat){document.getElementById('chatInput')?.focus();return;}
+ if(e.code==='KeyQ'&&!e.repeat){useAbility('Q');return;}
+ if(e.code==='KeyF'&&!e.repeat){useAbility('F');return;}
  if(!game)return;
 
  if (e.code === 'KeyE' && !e.repeat && online && selectedGameMode === 'bomb') {
@@ -1143,6 +1176,7 @@ function shoot(){
  }
 
  ammo--;
+ const shotDamage=nextShotDamage||specs[weaponName].damage;nextShotDamage=0;
  playSfx('shot');
  if(online&&socket?.connected)socket.emit('weaponFired');
  shootCd=specs[weaponName].rate;
@@ -1218,7 +1252,7 @@ if (playerRayHit && (!botHit || playerRayHit.distance < botHit.distance)) {
   if (hitPlayerId && online && socket && socket.connected) {
     socket.emit('playerHit', {
       targetId: hitPlayerId,
-      damage: specs[weaponName].damage
+      damage: shotDamage
     });
     return;
   }
@@ -1235,9 +1269,9 @@ const hit = botHit;
 
   if(b.userData.alive){
    if(online&&socket&&socket.connected){
-    socket.emit('botHit',{botId:b.userData.id,damage:specs[weaponName].damage});
+    socket.emit('botHit',{botId:b.userData.id,damage:shotDamage});
    }else{
-    b.userData.hp-=specs[weaponName].damage;
+    b.userData.hp-=shotDamage;
     if(b.userData.hp<=0){
      b.userData.alive=false;
      b.visible=false;
@@ -1255,6 +1289,9 @@ function damagePlayer(d){
  hp=Math.max(0,hp-d);
  hpEl.textContent=hp;
 
+ if(Date.now()<shieldUntil)d=Math.ceil(d*.5);
+ hp=Math.max(0,hp-d);
+ hpEl.textContent=hp;
  if(hp<=0){
   if(online && selectedGameMode==='bomb'){
     game=false;
@@ -1300,6 +1337,10 @@ function update(dt){
  if(!game)return;
 
  shootCd=Math.max(0,shootCd-dt);
+ if(abilityCooldowns.Q>0)abilityCooldowns.Q=Math.max(0,abilityCooldowns.Q-dt);
+ if(abilityCooldowns.F>0)abilityCooldowns.F=Math.max(0,abilityCooldowns.F-dt);
+ document.getElementById('abilityQ').innerHTML='Q<small>'+(abilityCooldowns.Q>0?Math.ceil(abilityCooldowns.Q)+'s':'YETENEK 1')+'</small>';
+ document.getElementById('abilityF').innerHTML='F<small>'+(abilityCooldowns.F>0?Math.ceil(abilityCooldowns.F)+'s':'YETENEK 2')+'</small>';
 // ZIPLAMA
 if (keys.Space && !jumping) {
   jumping = true;
@@ -1331,7 +1372,7 @@ if (jumping) {
  f/=len;
  s/=len;
 
- const speed=(keys.ShiftLeft||touchSprint)?8:5.3;
+ const speed=(keys.ShiftLeft||touchSprint||abilitySpeedUntil>Date.now())?8:5.3;
 
  let sin=Math.sin(player.rotation.y);
  let cos=Math.cos(player.rotation.y);
@@ -1978,6 +2019,8 @@ document.getElementById('chatForm').addEventListener('submit',e=>{e.preventDefau
 document.getElementById('voiceTouch').addEventListener('pointerdown',startTalking);
 document.getElementById('voiceTouch').addEventListener('pointerup',stopTalking);
 document.getElementById('voiceTouch').addEventListener('pointercancel',stopTalking);
+document.getElementById('abilityQ').addEventListener('click',()=>useAbility('Q'));
+document.getElementById('abilityF').addEventListener('click',()=>useAbility('F'));
 document.getElementById('settingsButton').addEventListener('click',()=>{const p=document.getElementById('settingsPanel');p.style.display=p.style.display==='block'?'none':'block';});
 document.getElementById('closeSettings').addEventListener('click',()=>document.getElementById('settingsPanel').style.display='none');
 document.getElementById('mouseSensitivity').addEventListener('input',e=>mouseSensitivity=Number(e.target.value));
