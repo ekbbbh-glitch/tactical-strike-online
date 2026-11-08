@@ -488,18 +488,68 @@ function removePlayer(socket) {
 io.on('connection', socket => {
   console.log('Player connected:', socket.id);
 
-  socket.on('createRoom', data => {
+  socket.on('createRoom', (data, callback) => {
+  try {
     const room = createRoom(socket, data || {});
-    joinRoom(socket, room, data || {});
-  });
+    if (!room) {
+      if (typeof callback === 'function') {
+        callback({ ok: false, error: 'COULD NOT CREATE ROOM.' });
+      }
+      return;
+    }
 
-  socket.on('joinRoom', data => {
-    const code = String(data.code || data.roomCode || '')
+    joinRoom(socket, room, data || {});
+
+    if (typeof callback === 'function') {
+      callback({
+        ok: true,
+        code: room.code,
+        hostId: room.hostId,
+        players: Array.from(room.players.values()),
+        spawn: { x: -8, z: 37 }
+      });
+    }
+  } catch (error) {
+    console.error('Create room error:', error);
+    if (typeof callback === 'function') {
+      callback({ ok: false, error: 'ROOM CREATION FAILED.' });
+    }
+  }
+});
+
+socket.on('joinRoom', (data, callback) => {
+  try {
+    const code = String(data?.code || data?.roomCode || '')
       .trim()
       .toUpperCase();
 
-    joinRoom(socket, rooms.get(code), data || {});
-  });
+    const room = rooms.get(code);
+
+    if (!room) {
+      if (typeof callback === 'function') {
+        callback({ ok: false, error: 'ROOM NOT FOUND.' });
+      }
+      return;
+    }
+
+    joinRoom(socket, room, data || {});
+
+    if (typeof callback === 'function') {
+      callback({
+        ok: true,
+        code: room.code,
+        hostId: room.hostId,
+        players: Array.from(room.players.values()),
+        spawn: { x: -8, z: 37 }
+      });
+    }
+  } catch (error) {
+    console.error('Join room error:', error);
+    if (typeof callback === 'function') {
+      callback({ ok: false, error: 'COULD NOT JOIN ROOM.' });
+    }
+  }
+});
 
   socket.on('join', data => {
     const code = String(data.code || data.roomCode || '')
