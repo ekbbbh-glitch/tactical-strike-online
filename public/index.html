@@ -129,6 +129,7 @@ select{background:#e8edf0;min-width:190px}
  <div id="ammo">25 / 75<small>VANDAL</small></div>
  <div id="hint">WASD • MOUSE • LMB FIRE • R RELOAD</div>
  <div id="message"></div>
+ <div id="bombStatus" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:20px;font-weight:bold;z-index:20;"></div>
 </div>
 
 <div id="end">
@@ -187,6 +188,12 @@ const cross=document.getElementById('cross');
  let mapObjects = [];
 let weaponName='Vandal',ammo=25,reserve=75,hp=100;
  let selectedGameMode = 'deathmatch';
+ let myTeam = null;
+let bombState = {
+  planted: false,
+  site: null,
+  endsAt: null
+};
 let selectedMap = 'desert';
 
 const gameModeSelect = document.getElementById('gameMode');
@@ -765,6 +772,24 @@ function keydown(e){
 
  if(!game)return;
 
+ if (e.code === 'KeyE' && !e.repeat && online && selectedGameMode === 'bomb') {
+  const sites = [
+    { name: 'A', x: -25, z: 0 },
+    { name: 'B', x: 25, z: 0 }
+  ];
+
+  const site = sites.find(s =>
+    Math.hypot(player.position.x - s.x, player.position.z - s.z) <= 8
+  );
+
+  if (site) {
+    if (myTeam === 'attack' && !bombState.planted) {
+      socket.emit('plantBomb', { site: site.name });
+    } else if (myTeam === 'defense' && bombState.planted && bombState.site === site.name) {
+      socket.emit('defuseBomb');
+    }
+  }
+}
  if(e.code==='KeyR')reload();
 
  if(e.code==='Digit1')setWeapon('Vandal');
@@ -1229,6 +1254,15 @@ function updateRemotePlayers(){
   socket.on('lobbyUpdate', data => updateLobby(data));
 
   socket.on('gameStarted', data => {
+     const me = (data.players || []).find(p => p.id === socket.id);
+  myTeam = me ? me.team : null;
+  bombState = data.bomb || {
+    planted: false,
+    site: null,
+    endsAt: null
+  };
+     selectedGameMode = data.gameMode || 'deathmatch';
+  gameModeSelect.value = selectedGameMode;
     currentBotsEnabled = data.botsEnabled;
     lobby.style.display = 'none';
     startGame({ bots: currentBotsEnabled });
@@ -1289,7 +1323,24 @@ function updateRemotePlayers(){
     });
     updatePlayerCount();
   });
+socket.on('bombPlanted', data => {
+  bombState = data;
+  document.getElementById('bombStatus').textContent =
+    'BOMBA KURULDU! BÖLGE: ' + data.site;
+});
+  socket.on('bombDefusing', data => {
+  document.getElementById('bombStatus').textContent =
+    'BOMBA ETKİSİZLEŞTİRİLİYOR...';
+});
+  socket.on('bombExploded', data => {
+  document.getElementById('bombStatus').textContent =
+    'BOMBA PATLADI! SALDIRI TAKIMI KAZANDI!';
+});
 
+socket.on('bombDefused', data => {
+  document.getElementById('bombStatus').textContent =
+    'BOMBA ETKİSİZLEŞTİRİLDİ! SAVUNMA TAKIMI KAZANDI!';
+});
   socket.on('botUpdate', data => {
     const b = bots[data.botId];
     if (!b) return;
@@ -1338,7 +1389,9 @@ document.getElementById('botsNo').onclick = () => {
 
 document.getElementById('launchGame').onclick = () => {
   if (isRoomHost && socket) {
-    socket.emit('startMatch');
+    socket.emit('startMatch', {
+  gameMode: gameModeSelect.value
+});
   }
 };
 document.getElementById('joinRoom').onclick=()=>connectRoom('join');
