@@ -1705,7 +1705,7 @@ function drawMinimap(){
  for(const [id,p] of remotePlayers){
   const q=toMap(Number(p.x)||0,Number(p.z)||0);
   if(p.alive!==false&&Number(p.hp)!==0&&Math.hypot(q.x-cx,q.y-cy)<radius){
-   ctx.fillStyle=p.team===myTeam?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(q.x,q.y,Date.now()<scanUntil?7:4.5,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle=selectedGameMode==='ffa'?'#ff3434':(p.team===myTeam?'#168bff':'#ff3434');ctx.beginPath();ctx.arc(q.x,q.y,Date.now()<scanUntil?7:4.5,0,Math.PI*2);ctx.fill();
   }
  }
  // Direction pointer rotates with the player's facing direction.
@@ -2007,7 +2007,7 @@ if (['bomb','swiftplay','spike'].includes(selectedGameMode)) {
     if(selectedGameMode==='domination'&&data.domination)document.getElementById('bombStatus').textContent='CONTROL POINT: '+data.domination.owner.toUpperCase()+' • '+data.domination.progress+'%';
   });
   socket.on('escalationUpdate', data => {
-    if(data?.playerId===socket.id){const arsenal=['Şerif','Vandal','AWM'];setWeapon(arsenal[(data.level-1)%arsenal.length]);msg.textContent='WEAPON LEVEL '+data.level+' / 12';}
+    if(data?.team===myTeam){const arsenal=['Şerif','Vandal','AWM'];setWeapon(arsenal[(data.level-1)%arsenal.length]);msg.textContent='WEAPON LEVEL '+data.level+' / 12';}
   });
   socket.on('matchEnded', data => {
     game=false;document.exitPointerLock?.();
