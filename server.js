@@ -499,6 +499,67 @@ app.post('/api/device/name', async (req, res) => {
   }
 });
 
+
+const adminSessions = new Map();
+const adminLoginAttempts = new Map();
+const ADMIN_SESSION_MS = 2 * 60 * 60 * 1000;
+function adminCookieToken(req) {
+  const raw=String(req.headers.cookie||'');
+  const match=raw.match(/(?:^|;\\s*)ragex_admin=([a-f0-9]{64})(?:;|$)/i);
+  return match?match[1]:null;
+}
+function requireAdmin(req,res,next) {
+  const token=adminCookieToken(req),expires=token?adminSessions.get(token):null;
+  if(!token||!expires||expires<Date.now()){
+    if(token)adminSessions.delete(token);
+    return res.status(401).json({error:'Admin girişi gerekli.'});
+  }
+  next();
+}
+app.post('/api/admin/login',(req,res)=>{
+  const configured=process.env.ADMIN_PASSWORD;
+  if(!configured)return res.status(503).json({error:'Admin şifresi sunucu ortam değişkeninde ayarlanmamış.'});
+  const ip=String(req.ip||req.socket.remoteAddress||'unknown');
+  const now=Date.now(),entry=adminLoginAttempts.get(ip)||{count:0,until:now+15*60*1000};
+  if(entry.until<now){entry.count=0;entry.until=now+15*60*1000;}
+  if(entry.count>=5)return res.status(429).json({error:'Çok fazla deneme. 15 dakika sonra tekrar dene.'});
+  const supplied=String(req.body?.password||'');
+  const expectedBuffer=Buffer.from(configured),suppliedBuffer=Buffer.from(supplied);
+  const valid=expectedBuffer.length===suppliedBuffer.length&&crypto.timingSafeEqual(expectedBuffer,suppliedBuffer);
+  if(!valid){entry.count++;adminLoginAttempts.set(ip,entry);return res.status(401).json({error:'Şifre hatalı.'});}
+  adminLoginAttempts.delete(ip);
+  const token=crypto.randomBytes(32).toString('hex');
+  adminSessions.set(token,now+ADMIN_SESSION_MS);
+  res.setHeader('Set-Cookie',`ragex_admin=${token}; Max-Age=7200; Path=/api/admin; HttpOnly; Secure; SameSite=Strict`);
+  res.json({ok:true});
+});
+app.post('/api/admin/logout',(req,res)=>{
+  const token=adminCookieToken(req);if(token)adminSessions.delete(token);
+  res.setHeader('Set-Cookie','ragex_admin=; Max-Age=0; Path=/api/admin; HttpOnly; Secure; SameSite=Strict');
+  res.json({ok:true});
+});
+app.get('/api/admin/accounts',requireAdmin,async(req,res)=>{
+  if(!accountDb||!(await accountDbReady))return res.status(503).json({error:'Hesap veritabanı bağlı değil. DATABASE_URL ayarlanmalı.'});
+  try{
+    const result=await accountDb.query(`
+      SELECT a.player_name,a.created_at,a.last_seen_at,
+        COALESCE(v.visit_count,0)::int AS visit_count,
+        v.latest_ip,v.visits
+      FROM device_accounts a
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS visit_count,
+          (ARRAY_AGG(ip_address ORDER BY visited_at DESC))[1] AS latest_ip,
+          JSON_AGG(JSON_BUILD_OBJECT('ip_address',ip_address,'user_agent',user_agent,'visited_at',visited_at) ORDER BY visited_at DESC) AS visits
+        FROM (SELECT ip_address,user_agent,visited_at FROM ip_visit_logs
+              WHERE device_id=a.device_id ORDER BY visited_at DESC LIMIT 20) recent
+      ) v ON TRUE
+      ORDER BY a.last_seen_at DESC
+      LIMIT 1000
+    `);
+    res.json({ok:true,accounts:result.rows});
+  }catch(error){console.error('Admin account query failed:',error.message);res.status(500).json({error:'Hesap kayıtları alınamadı.'});}
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => {
