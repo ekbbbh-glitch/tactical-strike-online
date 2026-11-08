@@ -1179,7 +1179,7 @@ function shoot(){
  const shotDamage=nextShotDamage||specs[weaponName].damage;nextShotDamage=0;
  playSfx('shot');
  if(online&&socket?.connected)socket.emit('weaponFired');
- shootCd=specs[weaponName].rate;
+ shootCd=specs[weaponName].rate*(rapidFireUntil>Date.now()?.55:1);
  recoil=.09;
  // Ateş efekti
 if (weaponGroup) {
@@ -1286,9 +1286,6 @@ const hit = botHit;
 }
 
 function damagePlayer(d){
- hp=Math.max(0,hp-d);
- hpEl.textContent=hp;
-
  if(Date.now()<shieldUntil)d=Math.ceil(d*.5);
  hp=Math.max(0,hp-d);
  hpEl.textContent=hp;
@@ -1432,7 +1429,7 @@ if (keys.ShiftLeft && (f || s)) {
   netSendTimer+=dt;
   if(netSendTimer>=.05){
    netSendTimer=0;
-   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:weaponName,character:selectedCharacter});
+   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:weaponName,character:selectedCharacter,shield:Date.now()<shieldUntil});
   }
  }
  updateRemotePlayers();
@@ -1504,7 +1501,7 @@ function drawMinimap(){
   const p=toMap(x,z);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);ctx.fillStyle='#ffd52a';ctx.fillRect(-6,-6,12,12);ctx.restore();
   ctx.fillStyle='#fff2b0';ctx.font='bold 10px Arial';ctx.fillText(label+' SITE',p.x+8,p.y-7);
  }
- for(const [id,p] of remotePlayers){const q=toMap(Number(p.x)||0,Number(p.z)||0);if(Math.hypot(q.x-cx,q.y-cy)<radius){ctx.fillStyle=p.team===myTeam?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(q.x,q.y,4.5,0,Math.PI*2);ctx.fill();}}
+ for(const [id,p] of remotePlayers){const q=toMap(Number(p.x)||0,Number(p.z)||0);if(Math.hypot(q.x-cx,q.y-cy)<radius){ctx.fillStyle=p.team===myTeam?'#168bff':'#ff3434';ctx.beginPath();ctx.arc(q.x,q.y,Date.now()<scanUntil?7:4.5,0,Math.PI*2);ctx.fill();}}
  // Player arrow follows the direction the camera faces.
  ctx.save();ctx.translate(cx,cy);ctx.fillStyle='#f5f8ff';ctx.strokeStyle='#07131d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(8,9);ctx.lineTo(0,5);ctx.lineTo(-8,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
  ctx.restore();
@@ -1558,7 +1555,7 @@ async function startTalking(){
  voiceHeld=true;
  try{
   if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-  voiceStream.getAudioTracks().forEach(t=>t.enabled=true);
+  voiceStream.getAudioTracks().forEach(t=>t.enabled=voiceHeld);
   for(const id of remotePlayers.keys())await createVoiceOffer(id);
   setOnlineStatus('MIKROFON AÇIK — KONUŞMAK İÇİN U TUŞUNU BASILI TUT.');
  }catch(err){voiceHeld=false;setOnlineStatus('MİKROFON İZNİ VERİLMEDİ VEYA DESTEKLENMİYOR.');}
@@ -1741,6 +1738,7 @@ if (selectedGameMode === 'bomb') {
       remoteMeshes.delete(id);
     }
   });
+  socket.on('playerHealed', data => {if(data?.hp!=null){hp=Number(data.hp);hpEl.textContent=hp;}});
   socket.on('playerDamaged', data => {
     damagePlayer(Number(data?.damage) || 0);
 
@@ -1945,7 +1943,11 @@ socket.on('gameEnded', data => {
 
   socket.on('roomMessage', t => setOnlineStatus(t));
   socket.on('chatMessage', data => appendChat(data));
-  socket.on('weaponFired', () => playSfx('shot'));
+  socket.on('weaponFired', data => {
+    playSfx('shot');
+    const mesh=remoteMeshes.get(data?.playerId);
+    if(mesh?.userData.parts){const arm=mesh.userData.parts.rightArm;if(arm){arm.rotation.x=-1.1;setTimeout(()=>{arm.rotation.x=0;},180);}}
+  });
   socket.on('voiceSignal', async data => {
     if(!data?.from||!data.signal)return;
     const pc=ensureVoicePeer(data.from);
