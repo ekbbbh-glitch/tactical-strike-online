@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.8">
+<meta name="app-version" content="2026.11.08.9">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -690,7 +690,7 @@ function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
 function init(){
  scene=new THREE.Scene();
  scene.background=new THREE.Color(0x9ab4bd);
- scene.fog=new THREE.Fog(0x9ab4bd,55,155);
+ scene.fog=null;
 
  camera=new THREE.PerspectiveCamera(
   76,innerWidth/innerHeight,.1,250
@@ -1647,9 +1647,9 @@ function shoot(isBurstContinuation=false){
  const shotDamage=nextShotDamage||specs[weaponName].damage;nextShotDamage=0;
  playSfx('shot');
  if(online&&socket?.connected)socket.emit('weaponFired');
+ const profile=specs[weaponName];
  shootCd=(profile.burst?.075:profile.rate)*(rapidFireUntil>Date.now()?.55:1);
  if(!isBurstContinuation&&profile.burst)burstRemaining=2;
- const profile=specs[weaponName];
  recoil=Math.min(.34,recoil+(profile.recoil||.015)*3.2);
  const kick=(profile.recoil||.015)*(scoped?1.65:1);
  const yawKick=(Math.random()-.5)*(profile.side||.006)*(scoped?.55:1);
