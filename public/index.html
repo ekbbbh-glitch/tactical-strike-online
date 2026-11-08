@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.13">
+<meta name="app-version" content="2026.11.08.14">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -724,7 +724,7 @@ function init(){
  player.add(camera);
  camera.position.set(0,1.65,0);
 
- buildWeapon();
+ buildWeaponSafely();
 
  clock=new THREE.Clock();
  window.addEventListener('resize',resize);
@@ -744,7 +744,7 @@ function init(){
 
  window.addEventListener('keydown',e=>{
   const isTyping=e.target?.tagName==='INPUT'||e.target?.tagName==='TEXTAREA'||e.target?.isContentEditable;
-  if(!isTyping&&game&&(e.code==='Digit5'||e.code==='Numpad5'||e.key==='5')){
+  if(!isTyping&&game&&(e.code==='Digit5'||e.code==='Numpad5'||e.key==='5'||e.code==='Escape')){
     e.preventDefault();
     if(online)exitOnlineMatchToMenu();
     else returnToMenu();
@@ -777,12 +777,19 @@ function init(){
  });
 
  window.addEventListener('blur',()=>{
-  keys={};
+  keys={};touchMove={x:0,y:0};touchFire=false;touchSprint=false;lastMouseDown=false;
+ });
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){keys={};touchMove={x:0,y:0};touchFire=false;touchSprint=false;lastMouseDown=false;}
  });
 
  document.addEventListener('mousemove',mouseMove);
  document.addEventListener('mousedown',mouseDown);
  document.addEventListener('mouseup',mouseUp);
+ document.addEventListener('wheel',e=>{
+  if(!game||e.target.closest('input,textarea,select'))return;
+  e.preventDefault();cycleWeapon(e.deltaY>0?1:-1);
+ },{passive:false});
 
  document.addEventListener('pointerlockchange',()=>{
   locked=document.pointerLockElement===renderer.domElement;
@@ -1299,6 +1306,27 @@ function buildWeapon(){
  addBox(.18,-.48,-.52,.14,.1,.22,mats.skin);
  weaponGroup.position.set(0,0,0);
 }
+function buildWeaponSafely(){
+ try{buildWeapon();return true;}
+ catch(error){
+  console.error('Weapon model failed; using safe fallback:',error);
+  try{
+   if(weaponGroup&&camera)camera.remove(weaponGroup);
+   weaponGroup=new THREE.Group();camera.add(weaponGroup);
+   const p=specs[weaponName]||specs.Vandal;
+   const body=mat(p.color||0x35424a,.48,.45),dark=mats.black||mat(0x151b20,.6,.3);
+   const detail=mats.trim||mat(0xd49a48),pistol=p.kind==='pistol',sniper=p.kind==='sniper',shotgun=p.kind==='shotgun';
+   box(weaponGroup,.38,-.34,-.82,.24,.22,sniper?1.15:(pistol?.5:.86),body);
+   cylinder(weaponGroup,.38,-.31,sniper?-1.72:-1.42,shotgun?.065:.045,shotgun?.065:.045,sniper?.95:.58,dark,Math.PI/2);
+   box(weaponGroup,.38,-.48,-.48,.17,.3,.2,dark);
+   if(!pistol)box(weaponGroup,.38,-.36,-.25,.18,.2,.42,body);
+   reloadMag=box(weaponGroup,.38,-.57,-.82,pistol?.13:.16,pistol?.25:.36,.22,dark);
+   box(weaponGroup,.38,-.2,-.82,.13,.06,.72,detail);
+   if(p.scope)box(weaponGroup,.38,-.1,-.82,.14,.13,sniper?.42:.24,mats.glass||detail);
+   return false;
+  }catch(fallbackError){console.error('Weapon fallback failed:',fallbackError);return false;}
+ }
+}
 function updateAmmo(){
  const displayWeapon=weaponName==='Şerif'?'SHERIFF':weaponName.toUpperCase();
  ammoEl.innerHTML=`${ammo} / ${reserve}<small>${displayWeapon}${reloading?' • RELOADING':''}</small>`;
@@ -1318,7 +1346,7 @@ function setWeapon(n){
  const scopeSelect=document.getElementById('scopeWeaponSelect');
  if(scopeSelect)scopeSelect.value=n;
  refreshWeaponScopeSetting();
- buildWeapon();
+ buildWeaponSafely();
  if(weaponGroup)weaponGroup.visible=!thirdPerson;
  updateAmmo();
 }
@@ -1411,7 +1439,7 @@ buildMap();
   currentRankedMatch=false;
   online=false;
   try{Object.keys(keys||{}).forEach(k=>keys[k]=false);}catch(e){}
-  try{touchMove={x:0,y:0};}catch(e){}
+  try{touchMove={x:0,y:0};touchFire=false;touchSprint=false;lastMouseDown=false;climbing=false;unScope();}catch(e){}
   try{if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}}catch(e){}
   if(bombPrepInterval){clearInterval(bombPrepInterval);bombPrepInterval=null;}
   stopBombClock();
@@ -1511,7 +1539,12 @@ function keydown(e){
 
  if(e.code==='KeyC'&&!e.repeat){toggleCameraView();return;}
  if(e.code==='KeyR')reload();
- if(/^Digit[1-9]$/.test(e.code)){const slot=Number(e.code.slice(5))-1;if(WEAPON_NAMES[slot])setWeapon(WEAPON_NAMES[slot]);}
+ if(/^Digit[1-9]$/.test(e.code)||e.code==='Digit0'){
+  const slot=e.code==='Digit0'?9:Number(e.code.slice(5))-1;
+  if(WEAPON_NAMES[slot])setWeapon(WEAPON_NAMES[slot]);
+ }
+ if(e.code==='BracketRight'&&!e.repeat)cycleWeapon(1);
+ if(e.code==='BracketLeft'&&!e.repeat)cycleWeapon(-1);
 }
 
 let lastMouseDown=false;
@@ -1930,7 +1963,11 @@ function collides(x,z){
 }
 
 function toggleCameraView(){thirdPerson=!thirdPerson;if(weaponGroup)weaponGroup.visible=!thirdPerson;if(localAvatar)localAvatar.visible=thirdPerson;camera.position.set(0,thirdPerson?2.55:1.65,thirdPerson?5:0);camera.rotation.x=thirdPerson?-0.12:0;const b=document.getElementById('cameraTouch');if(b)b.innerHTML='<span class="sym">◉</span>'+(thirdPerson?'DIŞ':'İÇ');}
-function cycleWeapon(){setWeapon(WEAPON_NAMES[(WEAPON_NAMES.indexOf(weaponName)+1)%WEAPON_NAMES.length]);}
+function cycleWeapon(direction=1){
+ const current=Math.max(0,WEAPON_NAMES.indexOf(weaponName));
+ const next=(current+direction+WEAPON_NAMES.length)%WEAPON_NAMES.length;
+ setWeapon(WEAPON_NAMES[next]);
+}
 function setupTouchControls(){
  const pad=document.getElementById('movePad'), stick=document.getElementById('moveStick');
  if(!pad||!stick)return;
