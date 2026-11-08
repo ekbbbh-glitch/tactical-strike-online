@@ -202,7 +202,7 @@ body{overscroll-behavior:none}
  <label for="touchSensitivity">Mobil bakış hassasiyeti</label><input id="touchSensitivity" type="range" min="0.5" max="3.5" step="0.1" value="2.2">
  <label for="mobileButtonSize">Mobil tuş boyutu</label><input id="mobileButtonSize" type="range" min="48" max="88" step="2" value="64">
  <button id="layoutEditButton" type="button">TUŞ YERLERİNİ DÜZENLE</button><p class="setting-note">Düzenle modunda tuşları taşı ve kaydet. Maç sırasında yanlışlıkla yerleri değişmez.</p><label for="renderQuality">Görüntü kalitesi</label><select id="renderQuality"><option value="auto">Otomatik / Dengeli</option><option value="high">Yüksek</option><option value="low">Performans</option></select>
- <button id="returnMenuSettings" style="width:100%;margin-top:12px;background:#b94a43;color:white;">MENÜYE DÖN</button>
+ <button type="button" id="returnMenuSettings" style="width:100%;margin-top:12px;background:#b94a43;color:white;">MENÜYE DÖN</button>
  <button id="closeSettings">KAPAT</button>
 </div>
 
@@ -1139,7 +1139,6 @@ buildMap();
 function exitOnlineMatchToMenu(){
  game=false;
  online=false;
- if(socket && socket.connected) socket.disconnect();
  if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}
  if(bombPrepInterval){clearInterval(bombPrepInterval);bombPrepInterval=null;}
  stopBombClock();
@@ -1147,7 +1146,13 @@ function exitOnlineMatchToMenu(){
  document.getElementById('settingsPanel').style.display='none';
  hud.style.display='none';
  end.style.display='none';
+ lobby.style.display='none';
  menu.style.display='flex';
+ remotePlayers.clear();
+ remoteMeshes.forEach(mesh=>scene&&scene.remove(mesh));
+ remoteMeshes.clear();
+ // Leave the room explicitly; keep the socket alive until the next connection attempt.
+ if(socket && socket.connected) socket.emit('leaveRoom');
 }
 function updateHud(){
  hpEl.textContent=hp;
@@ -2069,6 +2074,24 @@ socket.on('bombReset', data => {
 
 socket.on('roundStarting', data => {
   game=true; hp=100; hpEl.textContent=100; end.style.display='none'; hud.style.display='block';
+  // Rebuild the complete player snapshot at every new round so respawned players are visible again.
+  remotePlayers.clear();
+  remoteMeshes.forEach(mesh=>scene&&scene.remove(mesh));
+  remoteMeshes.clear();
+  (data.players || []).forEach(p => {
+    if (p.id === socket.id) {
+      if (player) {
+        player.position.set(Number(p.x)||0, Number(p.y)||0, Number(p.z)||0);
+        player.rotation.y=Number(p.ry)||0;
+        camera.rotation.x=Number(p.rx)||0;
+      }
+      mySpawn={x:Number(p.x)||0,z:Number(p.z)||0};
+      hp=Number(p.hp)||100;
+      hpEl.textContent=hp;
+    } else if (Number(p.hp)>0) {
+      remotePlayers.set(p.id,p);
+    }
+  });
   if(matchMedia('(pointer:fine)').matches && renderer?.domElement?.requestPointerLock && !locked) renderer.domElement.requestPointerLock();
   stopBombClock();
   if (bombPrepInterval) clearInterval(bombPrepInterval);
@@ -2200,13 +2223,7 @@ document.getElementById('launchGame').onclick = () => {
 document.getElementById('joinRoom').onclick=()=>connectRoom('join');
 document.getElementById('again').onclick=startGame;
 
-document.getElementById('back').onclick=()=>{
- game=false;
- end.style.display='none';
- hud.style.display='none';
- menu.style.display='flex';
- document.exitPointerLock?.();
-};
+document.getElementById('back').onclick=exitOnlineMatchToMenu;
 
 document.getElementById('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=document.getElementById('chatInput');const text=input.value.trim();if(text&&socket?.connected){socket.emit('chatMessage',text.slice(0,120));input.value='';}});
 document.getElementById('voiceTouch').addEventListener('pointerdown',startTalking);
@@ -2215,7 +2232,7 @@ document.getElementById('voiceTouch').addEventListener('pointercancel',stopTalki
 document.getElementById('abilityQ').addEventListener('click',()=>useAbility('Q'));
 document.getElementById('abilityF').addEventListener('click',()=>useAbility('F'));
 document.getElementById('settingsButton').addEventListener('click',()=>{const p=document.getElementById('settingsPanel');p.style.display=p.style.display==='block'?'none':'block';});
-document.getElementById('returnMenuSettings').addEventListener('click',exitOnlineMatchToMenu);
+document.getElementById('returnMenuSettings').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();exitOnlineMatchToMenu();});
 document.getElementById('closeSettings').addEventListener('click',()=>{if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}document.getElementById('settingsPanel').style.display='none';});
 document.getElementById('mouseSensitivity').addEventListener('input',e=>mouseSensitivity=Number(e.target.value));
 document.getElementById('touchSensitivity').addEventListener('input',e=>touchSensitivity=Number(e.target.value));
