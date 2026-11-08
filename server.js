@@ -201,6 +201,7 @@ function join(sock, room, name, character, cb) {
     ry: 0,
     rx: 0,
     hp: 100,
+    alive: true,
     kills: 0,
     weapon: 'Vandal',
     team
@@ -253,7 +254,7 @@ function scheduleRespawn(room, player) {
       const list=current.team==='attack'?ATTACK_SPAWNS:DEFENSE_SPAWNS;
       spawn=list[Math.floor(Math.random()*list.length)];
     }
-    current.x=spawn.x;current.y=0;current.z=spawn.z;current.ry=0;current.rx=0;current.hp=100;
+    current.x=spawn.x;current.y=0;current.z=spawn.z;current.ry=0;current.rx=0;current.hp=100;current.alive=true;
     io.to(room.code).emit('playerRespawned',{player:{...current},delay});
     io.to(room.code).emit('playersUpdate',roomPlayers(room));
   },delay);
@@ -524,7 +525,7 @@ io.on('connection', socket => {
     room.roundActive = false;
     room.roundWins = { attack: 0, defense: 0 };
     room.score={attack:0,defense:0};room.escalationLevels={attack:0,defense:0};room.domination={owner:'neutral',progress:0};
-    for(const p of room.players.values()){p.kills=0;p.hp=100;}
+    for(const p of room.players.values()){p.kills=0;p.hp=100;p.alive=true;}
     if(room.matchTimer)clearTimeout(room.matchTimer);if(room.dominationTimer)clearInterval(room.dominationTimer);
 
     if (['bomb','swiftplay','spike'].includes(room.gameMode)) {
@@ -830,6 +831,7 @@ io.on('connection', socket => {
     if (!damage) return;
     if (target.shieldUntil > Date.now()) damage = Math.ceil(damage * 0.5);
     target.hp = Math.max(0, target.hp - damage);
+    if(target.hp<=0)target.alive=false;
 
     io.to(target.id).emit('playerDamaged', {
       damage,
