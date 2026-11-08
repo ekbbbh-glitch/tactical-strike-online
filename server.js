@@ -5,7 +5,14 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 1e5 });
+const io = new Server(server, {
+  cors: { origin: '*' },
+  maxHttpBufferSize: 1e5,
+  pingInterval: 20000,
+  pingTimeout: 60000,
+  connectTimeout: 30000,
+  connectionStateRecovery: { maxDisconnectionDuration: 120000, skipMiddlewares: true }
+});
 const PORT = process.env.PORT || 3000;
 const rooms = new Map();
 
@@ -89,6 +96,7 @@ function createRoom(code) {
   return {
     code,
     players: new Map(),
+    disconnectTimers: new Map(),
     hostId: null,
     started: false,
     botsEnabled: true,
@@ -156,6 +164,9 @@ function sendGameStarted(room) {
 function join(sock, room, name, character, cb) {
   sock.join(room.code);
   sock.data.roomCode = room.code;
+  const pendingDisconnect = room.disconnectTimers?.get(sock.id);
+  if (pendingDisconnect) { clearTimeout(pendingDisconnect); room.disconnectTimers.delete(sock.id); }
+  if (room.hostId && !room.players.has(room.hostId)) room.hostId = sock.id;
 
   const attackCount = [...room.players.values()]
     .filter(p => p.team === 'attack').length;
@@ -744,44 +755,36 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     const code = socket.data.roomCode;
     if (!code) return;
-
     const room = rooms.get(code);
     if (!room) return;
 
-    room.players.delete(socket.id);
+    // Keep the player/room briefly so Socket.IO can restore a dropped mobile connection.
+    const timer = setTimeout(() => {
+      room.disconnectTimers.delete(socket.id);
+      if (socket.connected) return;
+      room.players.delete(socket.id);
 
-    if (room.bomb.carrierId === socket.id) {
-      resetBomb(room);
-      io.to(code).emit('bombReset', {
-        round: room.round,
-        bomb: room.bomb
-      });
-    }
-
-    if (room.bomb.defuserId === socket.id) {
-      if (room.defuseTimer) clearTimeout(room.defuseTimer);
-      room.defuseTimer = null;
-      room.bomb.defuserId = null;
-    }
-
-    io.to(code).emit('playerLeft', socket.id);
-
-    if (room.players.size === 0) {
-      clearRoomTimers(room);
-      rooms.delete(code);
-      return;
-    }
-
-    if (room.hostId === socket.id) {
-      room.hostId = room.players.keys().next().value;
-    }
-
-    if (room.started && room.gameMode === 'bomb') {
-      checkTeamElimination(room);
-    }
-
-    sendLobbyUpdate(room);
-    io.to(code).emit('playersUpdate', roomPlayers(room));
+      if (room.bomb.carrierId === socket.id) {
+        resetBomb(room);
+        io.to(code).emit('bombReset', { round: room.round, bomb: room.bomb });
+      }
+      if (room.bomb.defuserId === socket.id) {
+        if (room.defuseTimer) clearTimeout(room.defuseTimer);
+        room.defuseTimer = null;
+        room.bomb.defuserId = null;
+      }
+      io.to(code).emit('playerLeft', socket.id);
+      if (room.players.size === 0) {
+        clearRoomTimers(room);
+        rooms.delete(code);
+        return;
+      }
+      if (room.hostId === socket.id) room.hostId = room.players.keys().next().value;
+      if (room.started && room.gameMode === 'bomb') checkTeamElimination(room);
+      sendLobbyUpdate(room);
+      io.to(code).emit('playersUpdate', roomPlayers(room));
+    }, 125000);
+    room.disconnectTimers.set(socket.id, timer);
   });
 });
 
