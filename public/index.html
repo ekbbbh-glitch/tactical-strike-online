@@ -111,10 +111,13 @@ body{overscroll-behavior:none}
   <p>
   <label for="gameMode">GAME MODE</label><br>
   <select id="gameMode">
-    <option value="deathmatch">Team Deathmatch</option>
-    <option value="ffa">Free For All</option>
-    <option value="bomb">Bomb Defusal</option>
-    <option value="domination">Domination</option>
+    <option value="deathmatch">Team Deathmatch — 100 Kills</option>
+    <option value="ffa">Free For All — 40 Kills</option>
+    <option value="bomb">Bomb Defusal — 12 Rounds</option>
+    <option value="domination">Domination — Control Point</option>
+    <option value="swiftplay">Swiftplay — First to 5</option>
+    <option value="spike">Spike Rush — First to 4</option>
+    <option value="escalation">Escalation — Weapon Race</option>
   </select>
 </p>
 
@@ -1448,6 +1451,9 @@ function damagePlayer(d,serverApplied=false){
     document.getElementById('again').style.display='none';
     document.getElementById('back').style.display='inline-block';
     end.style.display='flex';
+  }else if(online){
+    game=false;
+    msg.textContent='ELIMINATED — RESPAWNING...';
   }else{
     game=false;
     document.exitPointerLock?.();
@@ -1663,11 +1669,9 @@ function drawMinimap(){
   if(!geometry.boundingBox)geometry.computeBoundingBox();
   const b=geometry.boundingBox;
   if(!b)continue;
-  const points=[];
-  for(const x of [b.min.x,b.max.x])for(const z of [b.min.z,b.max.z]){
-   const v=obj.localToWorld(new THREE.Vector3(x,0,z));
-   points.push(toMap(v.x,v.z));
-  }
+  // Ordered perimeter avoids self-crossing minimap polygons.
+  const corners=[[b.min.x,b.min.z],[b.max.x,b.min.z],[b.max.x,b.max.z],[b.min.x,b.max.z]];
+  const points=corners.map(([x,z])=>{const v=obj.localToWorld(new THREE.Vector3(x,0,z));return toMap(v.x,v.z);});
   if(points.length!==4)continue;
   const minX=Math.min(...points.map(p=>p.x)),maxX=Math.max(...points.map(p=>p.x));
   const minY=Math.min(...points.map(p=>p.y)),maxY=Math.max(...points.map(p=>p.y));
@@ -1947,6 +1951,17 @@ if (selectedGameMode === 'bomb') {
       msg.textContent = '';
     }, 900);
   });
+  socket.on('playerRespawned', data => {
+    const p=data?.player;if(!p)return;
+    if(p.id===socket.id){
+      game=true;end.style.display='none';hud.style.display='block';hp=100;hpEl.textContent=hp;
+      player.position.set(Number(p.x)||0,Number(p.y)||0,Number(p.z)||0);
+      player.rotation.set(0,Number(p.ry)||0,0);camera.rotation.set(Number(p.rx)||0,0,0);
+      if(matchMedia('(pointer:fine)').matches&&renderer?.domElement?.requestPointerLock&&!locked)renderer.domElement.requestPointerLock();
+      msg.textContent='READY — RESPAWNED';setTimeout(()=>{if(msg.textContent==='READY — RESPAWNED')msg.textContent='';},1000);
+    }else{remotePlayers.set(p.id,p);updateRemotePlayers();}
+    updateHud();
+  });
   socket.on('playerEliminated', data => {
   const mesh = remoteMeshes.get(data.playerId);
 
@@ -1964,6 +1979,25 @@ if (selectedGameMode === 'bomb') {
     setTimeout(() => msg.textContent = '', 1000);
   }
 });
+  socket.on('matchScore', data => {
+    const score=data?.score||{},el=document.getElementById('round');
+    if(el){
+      if(selectedGameMode==='ffa'){const me=(data.players||[]).find(p=>p.id===socket.id);el.textContent='FREE FOR ALL • '+(me?.kills||0)+' / 40 KILLS';}
+      else if(selectedGameMode==='escalation')el.textContent='ESCALATION • '+(data.escalationLevels?.[myTeam]||0)+' / 12';
+      else el.textContent=selectedGameMode.toUpperCase()+' • '+(score.attack||0)+' - '+(score.defense||0);
+    }
+    if(selectedGameMode==='domination'&&data.domination)document.getElementById('bombStatus').textContent='CONTROL POINT: '+data.domination.owner.toUpperCase()+' • '+data.domination.progress+'%';
+  });
+  socket.on('escalationUpdate', data => {
+    if(data?.playerId===socket.id){const arsenal=['Şerif','Vandal','AWM'];setWeapon(arsenal[Math.min(2,Math.floor((data.level-1)/4))]);msg.textContent='WEAPON LEVEL '+data.level+' / 12';}
+  });
+  socket.on('matchEnded', data => {
+    game=false;document.exitPointerLock?.();
+    const won=data.winner==='draw'?null:(selectedGameMode==='ffa'?data.winner===socket.id:data.winner===myTeam);
+    const score=data.score||{};
+    const detail=selectedGameMode==='ffa'?'MATCH COMPLETE • '+(data.players||[]).sort((a,b)=>(b.kills||0)-(a.kills||0)).slice(0,3).map((p,i)=>(i+1)+'. '+p.name+' '+(p.kills||0)).join('  '):'MATCH COMPLETE • '+(score.attack||0)+' - '+(score.defense||0);
+    showRoundResult(won,detail,true);
+  });
   socket.on('playersUpdate', list => {
     (list || []).forEach(p => {
       if (p.id === socket.id && player && p.hp > 0) {
@@ -2128,10 +2162,11 @@ socket.on('roundStarting', data => {
   if (bombPrepInterval) clearInterval(bombPrepInterval);
   let seconds = data.prepareSeconds || 5;
   const status = document.getElementById('bombStatus');
-  status.textContent='ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
-  bombPrepInterval = setInterval(() => {
+  const roundLimit=data.totalRounds||12;
+  status.textContent='ROUND '+data.round+'/'+roundLimit+' - PREPARE! '+seconds;
+  bombPrepInterval=setInterval(()=>{
     seconds--;
-    if (seconds > 0) status.textContent='ROUND ' + data.round + '/12 - PREPARE! ' + seconds;
+    if(seconds>0)status.textContent='ROUND '+data.round+'/'+roundLimit+' - PREPARE! '+seconds;
     else { clearInterval(bombPrepInterval); bombPrepInterval = null; }
   }, 1000);
 });
@@ -2143,7 +2178,7 @@ socket.on('roundStarted', data => {
   }
 
   document.getElementById('bombStatus').textContent =
-    'ROUND ' + data.round + '/12 STARTED!';
+    'ROUND ' + data.round + '/' + (data.totalRounds || 12) + ' STARTED!';
 });
 
 socket.on('roundOver', data => {
