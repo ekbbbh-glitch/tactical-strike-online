@@ -1165,7 +1165,7 @@ function updateHud(){
 }
 
 function useAbility(slot){
- if(!game||abilityCooldowns[slot]>0)return;
+ if(!game||selectedGameMode==='ffa'||abilityCooldowns[slot]>0)return;
  const now=Date.now();
  const nearBots=bots.filter(b=>b.userData.alive&&Math.hypot(b.position.x-player.position.x,b.position.z-player.position.z)<12);
  const nearPlayers=[...remotePlayers.entries()].filter(([id,p])=>Math.hypot(Number(p.x)-player.position.x,Number(p.z)-player.position.z)<12);
