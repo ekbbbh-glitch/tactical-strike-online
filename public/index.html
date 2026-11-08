@@ -176,7 +176,8 @@ const msg=document.getElementById('message');
 const scopeEl=document.getElementById('scope');
 const cross=document.getElementById('cross');
 
-let scene,camera,renderer,clock,player,weaponGroup;
+ let scene,camera,renderer,clock,player,weaponGroup;
+ let mapObjects = [];
 let weaponName='Vandal',ammo=25,reserve=75,hp=100;
  let selectedGameMode = 'deathmatch';
 let selectedMap = 'desert';
@@ -485,78 +486,83 @@ end.style.display = 'none';
 }
  
 
+
 function buildMap() {
-  const groundColors = {
-    desert: 0xb4a078,
-    snow: 0xeaf4fa,
-    factory: 0x555b60,
-    city: 0x777777
-  };
+  // Önce eski haritayı temizle
+  mapObjects.forEach(obj => scene.remove(obj));
+  mapObjects = [];
 
-  const ground = mat(groundColors[selectedMap] || 0xb4a078);
-  const wall = mat(0x414b55);
-
-  // Zemin
-  box(scene, 0, -.35, 0, 132, .7, 132, ground);
-
-  // Dış sınırlar
-  for (const x of [-65, 65]) {
-    box(scene, x, 3, 0, 2, 6, 130, wall);
-  }
-
-  for (const z of [-65, 65]) {
-    box(scene, 0, 3, z, 130, 6, 2, wall);
-  }
+  const before = new Set(scene.children);
 
   if (selectedMap === 'desert') {
     buildDesertMap();
-    return;
-  }
+  } else {
+    const colors = {
+      snow: 0xeaf4fa,
+      factory: 0x555b60,
+      city: 0x777777
+    };
 
-  if (selectedMap === 'snow') {
-    const ice = mat(0x9fc9dc);
-    const snow = mat(0xffffff);
+    const ground = mat(colors[selectedMap] || 0x777777);
+    const wall = mat(0x414b55);
 
-    for (const [x,z] of [[-30,-25],[30,-25],[-30,25],[30,25]]) {
-      box(scene,x,2,z,12,4,12,ice);
-      box(scene,x,4.1,z,13,.3,13,snow);
+    box(scene, 0, -.35, 0, 132, .7, 132, ground);
+
+    for (const x of [-65, 65]) {
+      box(scene, x, 3, 0, 2, 6, 130, wall);
     }
 
-    for (const [x,z] of [[-10,0],[10,0],[0,-18],[0,18]]) {
-      box(scene,x,1,z,7,2,3,ice);
+    for (const z of [-65, 65]) {
+      box(scene, 0, 3, z, 130, 6, 2, wall);
     }
-  }
 
-  if (selectedMap === 'factory') {
-    const metal = mat(0x343c43,.4,.7);
-    const orange = mat(0xd47a32);
+    if (selectedMap === 'snow') {
+      const ice = mat(0x9fc9dc);
 
-    box(scene,-35,5,-25,22,10,18,metal);
-    box(scene,35,5,25,22,10,18,metal);
-    box(scene,0,7,0,30,1,8,metal);
+      for (const [x,z] of [[-30,-25],[30,-25],[-30,25],[30,25]]) {
+        box(scene,x,2,z,12,4,12,ice);
+      }
 
-    for (const [x,z] of [[-12,-20],[12,-20],[-12,20],[12,20]]) {
-      box(scene,x,1.5,z,9,3,4,orange);
-    }
-  }
-
-  if (selectedMap === 'city') {
-    const building = mat(0x777b82);
-    const glass = mat(0x284b65);
-
-    for (const [x,z] of [[-42,-35],[42,-35],[-42,35],[42,35]]) {
-      box(scene,x,8,z,17,16,15,building);
-
-      for (let y=5;y<=12;y+=4) {
-        box(scene,x,y,z-7.6,12,1.5,.15,glass);
+      for (const [x,z] of [[-10,0],[10,0],[0,-18],[0,18]]) {
+        box(scene,x,1,z,7,2,3,ice);
       }
     }
 
-    for (const [x,z] of [[-12,0],[12,0],[0,-12],[0,12]]) {
-      box(scene,x,1.5,z,6,3,6,building);
+    if (selectedMap === 'factory') {
+      const metal = mat(0x343c43,.4,.7);
+      const orange = mat(0xd47a32);
+
+      box(scene,-35,5,-25,22,10,18,metal);
+      box(scene,35,5,25,22,10,18,metal);
+      box(scene,0,7,0,30,1,8,metal);
+
+      for (const [x,z] of [[-12,-20],[12,-20],[-12,20],[12,20]]) {
+        box(scene,x,1.5,z,9,3,4,orange);
+      }
+    }
+
+    if (selectedMap === 'city') {
+      const building = mat(0x777b82);
+      const glass = mat(0x284b65);
+
+      for (const [x,z] of [[-42,-35],[42,-35],[-42,35],[42,35]]) {
+        box(scene,x,8,z,17,16,15,building);
+
+        for (let y=5;y<=12;y+=4) {
+          box(scene,x,y,z-7.6,12,1.5,.15,glass);
+        }
+      }
+
+      for (const [x,z] of [[-12,0],[12,0],[0,-12],[0,12]]) {
+        box(scene,x,1.5,z,6,3,6,building);
+      }
     }
   }
+
+  // Yeni harita nesnelerini kaydet
+  mapObjects = scene.children.filter(obj => !before.has(obj));
 }
+
 
 
 
@@ -692,7 +698,9 @@ function spawnBot(x,z){
 
  function startGame(options = {}){
  if(!renderer)init();
-
+selectedMap = mapSelect.value;
+selectedGameMode = gameModeSelect.value;
+buildMap();
  menu.style.display='none';
  end.style.display='none';
  hud.style.display='block';
