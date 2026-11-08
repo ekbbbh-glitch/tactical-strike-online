@@ -120,6 +120,9 @@ body{overscroll-behavior:none}
 #sprintTouch{background:#2787a4!important}#interactTouch{background:#d39a35!important}
 @media (pointer:coarse),(max-width:800px){#mobileControls{display:block}#hint{display:none}#miniMap{width:140px;height:140px;right:10px;top:72px}#players{top:220px;right:10px;font-size:10px}#ammo{bottom:18px;right:12px;font-size:18px}#health{bottom:18px;left:12px}}
 
+#menuMusicToggle{display:block;width:100%;margin:0 0 14px;padding:10px 14px;background:#203d50;color:#fff;border:1px solid #83b7d0;border-radius:8px;font-weight:700;letter-spacing:.5px}
+#menuMusicToggle[aria-pressed="true"]{background:#17634b;border-color:#6bd6a8}
+#rageXMusicPlayer{position:fixed;width:1px;height:1px;left:-20px;bottom:-20px;opacity:.01;pointer-events:none;overflow:hidden}
 </style>
 </head>
 <body>
@@ -128,6 +131,7 @@ body{overscroll-behavior:none}
 <div id="menu">
  <div class="panel">
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px"><label for="languageSelect" id="languageLabel">LANGUAGE</label><select id="languageSelect" style="width:auto;min-width:140px"><option value="en">English</option><option value="tr">Türkçe</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="ja">日本語</option><option value="ko">한국어</option></select></div>
+  <button id="menuMusicToggle" type="button" aria-pressed="true">MENÜ MÜZİĞİ: AÇIK</button>
   <div class="tag">ONLINE FPS • TACTICAL COMBAT • 3D</div>
   <h1>RAGE X</h1>
   <div class="sub">ROUND ZERO // TACTICAL OPERATIONS</div>
@@ -2518,6 +2522,43 @@ lookPad.addEventListener('pointerdown',e=>{lookPointer=e.pointerId;lastLookX=e.c
 lookPad.addEventListener('pointermove',e=>{if(lookPointer!==e.pointerId||!game)return;const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;lastLookX=e.clientX;lastLookY=e.clientY;player.rotation.y-=dx*.004*(touchSensitivity/2.2);camera.rotation.x=Math.max(-1.48,Math.min(1.48,camera.rotation.x-dy*.004*(touchSensitivity/2.2)));});
 lookPad.addEventListener('pointerup',()=>lookPointer=null);lookPad.addEventListener('pointercancel',()=>lookPointer=null);
 document.getElementById('jumpTouch').addEventListener('pointerdown',()=>keys.Space=true);document.getElementById('jumpTouch').addEventListener('pointerup',()=>keys.Space=false);document.getElementById('jumpTouch').addEventListener('pointercancel',()=>keys.Space=false);
+// YouTube menu soundtrack. The official player is used; playback loops continuously.
+const RAGEX_MUSIC_VIDEO='FSeGsLA8NuU';
+let rageXMusicPlayer=null;
+let rageXMusicReady=false;
+let rageXMusicEnabled=true;
+try{rageXMusicEnabled=localStorage.getItem('rageXMenuMusic')!=='off';}catch(e){}
+const musicToggle=document.getElementById('menuMusicToggle');
+function updateMusicButton(){
+  if(!musicToggle)return;
+  musicToggle.textContent=rageXMusicEnabled?'MENÜ MÜZİĞİ: AÇIK':'MENÜ MÜZİĞİ: KAPALI';
+  musicToggle.setAttribute('aria-pressed',String(rageXMusicEnabled));
+}
+function playMenuMusic(){
+  if(!rageXMusicEnabled||!rageXMusicReady||!rageXMusicPlayer)return;
+  try{rageXMusicPlayer.setVolume(55);rageXMusicPlayer.playVideo();}catch(e){}
+}
+function pauseMenuMusic(){if(rageXMusicReady&&rageXMusicPlayer){try{rageXMusicPlayer.pauseVideo();}catch(e){}}}
+function onYouTubeIframeAPIReady(){
+  rageXMusicPlayer=new YT.Player('rageXMusicPlayer',{height:'1',width:'1',videoId:RAGEX_MUSIC_VIDEO,
+    playerVars:{autoplay:0,controls:0,disablekb:1,loop:1,playlist:RAGEX_MUSIC_VIDEO,playsinline:1,rel:0},
+    events:{onReady:()=>{rageXMusicReady=true;playMenuMusic();},onStateChange:event=>{if(event.data===YT.PlayerState.ENDED&&rageXMusicEnabled){rageXMusicPlayer.seekTo(0,true);rageXMusicPlayer.playVideo();}},onError:()=>{if(musicToggle)musicToggle.textContent='MÜZİK YÜKLENEMEDİ';}}
+  });
+}
+window.onYouTubeIframeAPIReady=onYouTubeIframeAPIReady;
+const musicFrame=document.createElement('div');musicFrame.id='rageXMusicPlayer';document.body.appendChild(musicFrame);
+const ytApi=document.createElement('script');ytApi.src='https://www.youtube.com/iframe_api';document.head.appendChild(ytApi);
+updateMusicButton();
+musicToggle.addEventListener('click',()=>{
+  rageXMusicEnabled=!rageXMusicEnabled;
+  try{localStorage.setItem('rageXMenuMusic',rageXMusicEnabled?'on':'off');}catch(e){}
+  updateMusicButton();
+  if(rageXMusicEnabled)playMenuMusic();else pauseMenuMusic();
+});
+const menuMusicObserver=new MutationObserver(()=>{
+  if(getComputedStyle(menu).display!=='none')playMenuMusic();else pauseMenuMusic();
+});
+menuMusicObserver.observe(menu,{attributes:true,attributeFilter:['style']});
 setupTouchControls();
 init();
 
