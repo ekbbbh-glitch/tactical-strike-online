@@ -1263,6 +1263,8 @@ function updateRemotePlayers(){
   };
      selectedGameMode = data.gameMode || 'deathmatch';
   gameModeSelect.value = selectedGameMode;
+   selectedMap = data.map || 'desert';
+mapSelect.value = selectedMap;
     currentBotsEnabled = data.botsEnabled;
     lobby.style.display = 'none';
     startGame({ bots: currentBotsEnabled });
@@ -1389,9 +1391,12 @@ document.getElementById('botsNo').onclick = () => {
 
 document.getElementById('launchGame').onclick = () => {
   if (isRoomHost && socket) {
-    socket.emit('startMatch', {
-  gameMode: gameModeSelect.value
-});
+   socket.emit('startMatch', {
+  gameMode: gameModeSelect.value,
+  map: mapSelect.value
+}); 
+  
+
   }
 };
 document.getElementById('joinRoom').onclick=()=>connectRoom('join');
