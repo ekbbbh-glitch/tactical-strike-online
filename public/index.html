@@ -344,13 +344,38 @@ function cylinder(parent,x,y,z,r1,r2,len,material,rotZ=0){
   const torso=box(character, 0, 1.05, 0, 0.65, 0.8, 0.35, outfitMaterial);
   torso.material=bodyMaterial;
   box(character, 0, 1.65, 0, 0.42, 0.42, 0.42, mats.skin);
-  // Distinct cosmetic silhouettes; the torso and marker retain team colors.
-  if(characterType==='jett') box(character,0,1.92,0,.5,.12,.5,mat(0xdcefff));
-  if(characterType==='viper') box(character,0,1.65,0,.48,.18,.46,mat(0x263d2a));
-  if(characterType==='heavy') box(character,0,1.68,0,.52,.5,.5,mat(0x505b68));
-  if(characterType==='special') box(character,0,1.9,0,.48,.16,.48,mat(0x263c42));
-  if(characterType==='steve'||characterType==='roblox') box(character,0,1.65,0,.44,.44,.44,mat(0xd6a77d));
-  if(characterType==='soldier') box(character,0,1.91,0,.46,.12,.46,mats.black);
+  // Large, recognizable character-specific gear for other players.
+  // Team colors remain visible on the body while each agent has a distinct silhouette.
+  if(characterType==='jett'){
+    box(character,0,1.94,0,.58,.16,.58,mat(0xdcefff));
+    box(character,0,1.73,.235,.38,.12,.08,mat(0x8fc8f0));
+    box(character,-.43,1.28,0,.28,.22,.3,mat(0xdcefff));
+    box(character,.43,1.28,0,.28,.22,.3,mat(0xdcefff));
+  } else if(characterType==='viper'){
+    box(character,0,1.68,0,.5,.28,.48,mat(0x263d2a));
+    box(character,0,1.66,.255,.38,.1,.035,mat(0x7bd34b));
+    box(character,-.43,1.28,0,.3,.25,.32,mat(0x426c4a));
+    box(character,.43,1.28,0,.3,.25,.32,mat(0x426c4a));
+  } else if(characterType==='heavy'){
+    box(character,0,1.68,0,.58,.52,.56,mat(0x505b68));
+    box(character,0,1.38,.205,.48,.28,.08,mat(0x697887));
+    box(character,-.48,1.22,0,.38,.38,.38,mat(0x505b68));
+    box(character,.48,1.22,0,.38,.38,.38,mat(0x505b68));
+  } else if(characterType==='special'){
+    box(character,0,1.94,0,.56,.2,.56,mat(0x263c42));
+    box(character,0,1.66,.235,.4,.16,.06,mat(0x72b9c8));
+    box(character,-.43,1.27,0,.3,.22,.3,mat(0x263c42));
+    box(character,.43,1.27,0,.3,.22,.3,mat(0x263c42));
+  } else if(characterType==='steve'){
+    box(character,0,1.65,.235,.4,.4,.08,mat(0xd6a77d));
+    box(character,0,1.91,0,.46,.12,.46,mat(0x3b70b5));
+  } else if(characterType==='roblox'){
+    box(character,0,1.65,.235,.4,.4,.08,mat(0xd6a77d));
+    box(character,0,1.92,0,.5,.14,.5,mat(0xb52c2c));
+  } else {
+    box(character,0,1.91,0,.52,.18,.52,mat(0x354b35));
+    box(character,0,1.78,.24,.38,.1,.05,mat(0x202a30));
+  }
 
   const leftLeg=box(character, -0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
   const rightLeg=box(character, 0.2, 0.35, 0, 0.22, 0.7, 0.25, mats.dark);
