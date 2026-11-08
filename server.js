@@ -212,7 +212,7 @@ function startBombRound(room) {
     defenseWins: room.roundWins.defense
   });
 
-  io.to(room.code).emit('bombReset', {
+   io.to(room.code).emit('bombReset', {
     round: room.round,
     bomb: room.bomb
   });
