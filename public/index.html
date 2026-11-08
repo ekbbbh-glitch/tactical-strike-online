@@ -272,10 +272,11 @@ const targets=[
 ['label[for="characterSelect"]','CHOOSE YOUR AGENT'],...['Tactical Soldier','Heavy Soldier','Special Forces','Jett-inspired Agent','Viper-inspired Agent','Block Adventurer','Classic Block Avatar'].map(k=>['#characterSelect option',k,'option']),
 ['label[for="weapon"]','STARTING WEAPON'],['#start','START MATCH'],['#menu .small b','CONTROLS:'],['#menu .small:last-of-type','Original fan-made prototype. No official Riot Games or Valorant assets are used.']
 ];
+for(const [selector,key,kind] of targets){if(kind==='option')document.querySelectorAll(selector).forEach(el=>{el.dataset.baseText=el.dataset.baseText||el.textContent.trim();});}
 function applyMenuLanguage(lang){
  const idx=Math.max(0,LANGS.indexOf(lang));
  for(const [selector,key,kind] of targets){
-  const els=kind==='option'?[...document.querySelectorAll(selector)].filter(e=>e.textContent.trim()===key):[document.querySelector(selector)];
+  const els=kind==='option'?[...document.querySelectorAll(selector)].filter(e=>e.dataset.baseText===key):[document.querySelector(selector)];
   for(const el of els){if(!el||!TEXT[key])continue;const value=TEXT[key][idx]||TEXT[key][0];if(kind==='placeholder')el.placeholder=value;else el.textContent=value;}
  }
  document.documentElement.lang=lang;document.getElementById('menu').dir=lang==='ar'?'rtl':'ltr';
