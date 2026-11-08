@@ -1695,10 +1695,22 @@ function updateRemotePlayers(){
 
   socket = io(url, {
     transports: ['websocket', 'polling'],
-    timeout: 10000
+    timeout: 20000,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    randomizationFactor: 0.25
   });
 
   socket.on('connect', () => {
+    if(socket.recovered){
+      online=true;
+      setOnlineStatus('CONNECTION RESTORED.');
+      msg.textContent='CONNECTION RESTORED';
+      setTimeout(()=>{if(msg.textContent==='CONNECTION RESTORED')msg.textContent='';},1800);
+      return;
+    }
     socket.emit(
       action === 'create' ? 'createRoom' : 'joinRoom',
       { code, name, character: selectedCharacter },
@@ -2028,17 +2040,18 @@ socket.on('gameEnded', data => {
     }catch(err){console.warn('Voice signal error',err);}
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', (reason) => {
     stopTalking();voicePeers.forEach(pc=>pc.close());voicePeers.clear();
     online = false;
     stopBombClock();
-    if (bombPrepInterval) {
-      clearInterval(bombPrepInterval);
-      bombPrepInterval = null;
-    }
-    lobby.style.display = 'none';
-    setOnlineStatus('SERVER DISCONNECTED. PLEASE RECONNECT.');
+    if (bombPrepInterval) { clearInterval(bombPrepInterval); bombPrepInterval = null; }
+    if(game){msg.textContent='CONNECTION LOST — RECONNECTING...';setOnlineStatus('RECONNECTING TO SERVER...');}
+    else {lobby.style.display='none';setOnlineStatus('CONNECTION LOST — RECONNECTING...');}
+    console.warn('Socket disconnected:',reason);
   });
+  socket.io.on('reconnect_attempt',attempt=>setOnlineStatus('RECONNECTING... '+attempt));
+  socket.io.on('reconnect_failed',()=>setOnlineStatus('RECONNECT FAILED. CHECK YOUR INTERNET.'));
+  socket.io.on('reconnect',()=>{if(!socket.recovered)setOnlineStatus('RECONNECTED. TRY JOINING THE ROOM AGAIN.');});
 }
 function resize(){
  if(!camera||!renderer)return;
