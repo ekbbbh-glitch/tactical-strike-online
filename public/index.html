@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101820">
-<meta name="app-version" content="2026.11.08.12">
+<meta name="app-version" content="2026.11.08.13">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
@@ -1185,167 +1185,120 @@ function showRoundResult(won,detail,final=false){
 }
 
 function buildWeapon(){
- if(weaponGroup) camera.remove(weaponGroup);
+ if(weaponGroup)camera.remove(weaponGroup);
  reloadMag=null;reloadMagBase=null;
-
- weaponGroup = new THREE.Group();
+ weaponGroup=new THREE.Group();
  camera.add(weaponGroup);
-
- const gunMetal = mats.gun;
- const black = mats.black;
- const dark = mats.dark;
- const trim = mats.trim;
-
- if(weaponName === 'Vandal'){
-
-  // Ana gövde
-  box(weaponGroup,.38,-.34,-.85,.24,.22,.82,gunMetal);
-
-  // Namlu
-  cylinder(weaponGroup,.38,-.31,-1.48,.045,.045,.72,black,Math.PI/2);
-  cylinder(weaponGroup,.38,-.31,-1.85,.065,.065,.12,trim,Math.PI/2);
-
-  // Dipçik
-  box(weaponGroup,.38,-.36,-.32,.18,.2,.45,dark);
-
-  // Şarjör
-  reloadMag=box(weaponGroup,.38,-.56,-.85,.15,.35,.23,black);
-
-  // Kabza
-  box(weaponGroup,.38,-.52,-.58,.16,.32,.2,dark);
-
-  // Üst ray
-  box(weaponGroup,.38,-.21,-.82,.16,.07,.7,trim);
-
-  // Dürbün
-  box(weaponGroup,.38,-.12,-.88,.15,.13,.3,black);
-  cylinder(weaponGroup,.38,-.12,-1.05,.08,.08,.08,trim,Math.PI/2);
-
-  // Namlu altı tutacak
-  box(weaponGroup,.38,-.52,-1.12,.14,.28,.18,dark);
-
-  // Yan detaylar
-  box(weaponGroup,.25,-.31,-.8,.04,.1,.5,trim);
-  box(weaponGroup,.51,-.31,-.8,.04,.1,.5,trim);
-
- }else if(weaponName === 'Şerif'){
-
-  // Tabanca gövdesi
-  box(weaponGroup,.38,-.34,-.75,.2,.2,.48,gunMetal);
-
-  // Uzun namlu
-  cylinder(weaponGroup,.38,-.31,-1.12,.045,.045,.48,black,Math.PI/2);
-
-  // Kabza
-  box(weaponGroup,.38,-.55,-.68,.17,.36,.2,dark);
-
-  // Tetik koruması
-  box(weaponGroup,.38,-.49,-.87,.2,.05,.18,trim);
-
-  // Sheriff'e özel kompakt refleks nişangâhı
-  box(weaponGroup,.38,-.21,-.78,.1,.06,.25,black);
-  box(weaponGroup,.38,-.12,-.79,.12,.09,.18,trim);
-  cylinder(weaponGroup,.38,-.105,-.88,.045,.045,.025,mats.glass,Math.PI/2);
-
-  // Sürgü detayları
-  box(weaponGroup,.26,-.34,-.75,.04,.1,.3,trim);
-  reloadMag=cylinder(weaponGroup,.49,-.43,-.75,.105,.105,.22,black,Math.PI/2);
-
- }else if(weaponName==='AWM'){
-
-  // Ağır silah gövdesi
-  box(weaponGroup,.38,-.34,-.88,.24,.22,1,gunMetal);
-
-  // Uzun namlu
-  cylinder(weaponGroup,.38,-.31,-1.72,.05,.05,1,black,Math.PI/2);
-  cylinder(weaponGroup,.38,-.31,-2.2,.075,.075,.16,trim,Math.PI/2);
-
-  // Dipçik
-  box(weaponGroup,.38,-.36,-.35,.2,.22,.4,dark);
-
-  // Şarjör
-  reloadMag=box(weaponGroup,.38,-.57,-.9,.17,.38,.25,black);
-
-  // Kabza
-  box(weaponGroup,.38,-.53,-.6,.16,.3,.2,dark);
-
-  // Üst ray
-  box(weaponGroup,.38,-.2,-.9,.16,.08,.8,trim);
-
-  // Dürbün
-  cylinder(weaponGroup,.38,-.1,-.9,.1,.1,.4,black,Math.PI/2);
-
-  // Ön tutacak
-  box(weaponGroup,.38,-.52,-1.15,.15,.3,.2,dark);
- }else{
-  const profile=specs[weaponName];
-  const bodyMat=mat(profile.color||0x303a3d,.38,.62),accent=mat(0x171e23,.32,.72),detail=mat(0x8b8065,.5,.55);
-  const isPistol=profile.kind==='pistol',isSniper=profile.kind==='sniper',isShotgun=profile.kind==='shotgun',isLMG=profile.kind==='lmg';
-  const length=isPistol?.48:isSniper?1.32:isShotgun?1.0:isLMG?1.08:.88;
-  box(weaponGroup,.38,-.34,-.82,.22,.22,length,bodyMat);
-  cylinder(weaponGroup,.38,-.31,-.82-length*.72,isShotgun?.075:.045,isShotgun?.075:.045,isShotgun?.18:.48,accent,Math.PI/2);
-  box(weaponGroup,.38,-.48,-.48,.17,.3,.2,accent);
-  if(!isPistol)box(weaponGroup,.38,-.37,-.25,.18,.2,.42,bodyMat);
-  if(isLMG){cylinder(weaponGroup,.38,-.55,-.8,.23,.23,.22,accent,Math.PI/2);box(weaponGroup,.38,-.63,-.8,.22,.28,.24,detail);}
-  else if(isShotgun){box(weaponGroup,.38,-.52,-.8,.19,.28,.32,accent);box(weaponGroup,.38,-.36,-.15,.17,.16,.4,detail);}
-  else if(isPistol){reloadMag=box(weaponGroup,.38,-.53,-.7,.13,.25,.17,accent);}
-  else if(profile.kind==='smg'){reloadMag=box(weaponGroup,.38,-.56,-.78,.15,.32,.2,accent);box(weaponGroup,.38,-.2,-.38,.16,.12,.3,detail);}
-  else {reloadMag=box(weaponGroup,.38,-.57,-.82,.16,.36,.22,accent);box(weaponGroup,.38,-.51,-1.02,.14,.22,.18,detail);}
-  box(weaponGroup,.38,-.2,-.82,.13,.06,length*.82,accent);
-  if(profile.scope){
-    const opticRadius=isSniper?.105:isLMG?.075:isPistol?.045:isShotgun?.055:.065;
-    const opticStyle=({
-      Phantom:'micro',Bulldog:'holo',Guardian:'prism',Operator:'long',Marshal:'compact',
-      Classic:'dot',Ghost:'micro',Frenzy:'open',Spectre:'holo',Stinger:'reflex',
-      Judge:'open',Bucky:'reflex',Ares:'tube',Odin:'tube',M416:'prism',AKM:'open',
-      'SCAR-L':'holo',UMP45:'micro',Vector:'dot',Kar98k:'long',M24:'compact',
-      'DP-28':'tube','S12K':'reflex'
-    })[weaponName]||'tube';
-    if(opticStyle==='long'){
-      box(weaponGroup,.38,-.105,-.82,.15,.1,.5,detail);
-      cylinder(weaponGroup,.38,-.105,-.82,.105,.105,.62,accent,Math.PI/2);
-      cylinder(weaponGroup,.38,-.105,-1.14,opticRadius,opticRadius,.04,mats.glass,Math.PI/2);
-      cylinder(weaponGroup,.38,-.105,-.5,opticRadius*1.2,opticRadius*1.2,.04,detail,Math.PI/2);
-    }else if(opticStyle==='holo'){
-      box(weaponGroup,.38,-.1,-.82,.19,.18,.28,accent);
-      box(weaponGroup,.38,-.1,-.82,.14,.12,.22,mats.glass);
-      box(weaponGroup,.38,-.005,-.82,.2,.025,.3,detail);
-    }else if(opticStyle==='prism'){
-      box(weaponGroup,.38,-.1,-.82,.17,.19,.3,detail);
-      box(weaponGroup,.38,-.1,-.82,.12,.13,.22,mats.glass);
-      box(weaponGroup,.38,-.205,-.82,.12,.035,.24,accent);
-    }else if(opticStyle==='open'){
-      box(weaponGroup,.38,-.1,-.82,.13,.035,.24,accent);
-      box(weaponGroup,.38,-.015,-.82,.025,.16,.24,detail);
-      box(weaponGroup,.38,-.1,-.82,.1,.025,.18,mats.glass);
-    }else if(opticStyle==='dot'||opticStyle==='micro'||opticStyle==='reflex'){
-      box(weaponGroup,.38,-.12,-.82,.12,.045,.18,accent);
-      cylinder(weaponGroup,.38,-.075,-.82,opticRadius,opticRadius,.035,mats.glass,Math.PI/2);
-      if(opticStyle==='reflex')box(weaponGroup,.38,-.015,-.82,.025,.12,.2,detail);
-    }else{
-      box(weaponGroup,.38,-.11,-.82,.12,.08,.28,detail);
-      cylinder(weaponGroup,.38,-.105,-.82,.09,.09,isSniper?.42:.25,accent,Math.PI/2);
-      cylinder(weaponGroup,.38,-.105,-.82-(isSniper?.23:.14),opticRadius,opticRadius,.035,mats.glass,Math.PI/2);
-      cylinder(weaponGroup,.38,-.105,-.82+(isSniper?.23:.14),opticRadius*1.18,opticRadius*1.18,.035,detail,Math.PI/2);
-    }
-  }else{
-    box(weaponGroup,.38,-.12,-.82,.08,.12,.12,detail);
-    box(weaponGroup,.38,-.12,-.82-length*.42,.08,.12,.1,detail);
-  }
-  if(profile.silenced)cylinder(weaponGroup,.38,-.31,-.82-length*.78,.075,.075,.32,accent,Math.PI/2);
-  box(weaponGroup,.25,-.34,-.82,.035,.09,length*.55,detail);
-  if(!isPistol)box(weaponGroup,.51,-.34,-.82,.035,.09,length*.55,accent);
+ const profile=specs[weaponName]||specs.Vandal;
+ const kind=profile.kind;
+ const pistol=kind==='pistol',sniper=kind==='sniper',shotgun=kind==='shotgun',lmg=kind==='lmg',smg=kind==='smg';
+ const base=mat(profile.color||0x35424a,.34,.72);
+ const dark=mat(0x111a22,.42,.58);
+ const metal=mat(0x7d8b96,.27,.82);
+ const pearl=mat(0xdce8ed,.24,.55);
+ const cyan=new THREE.MeshStandardMaterial({color:0x50eaff,emissive:0x087d9b,emissiveIntensity:1.35,metalness:.48,roughness:.22});
+ const violet=new THREE.MeshStandardMaterial({color:0x9c7bff,emissive:0x392080,emissiveIntensity:.85,metalness:.42,roughness:.25});
+ const glass=new THREE.MeshStandardMaterial({color:0x8cecff,emissive:0x164b68,emissiveIntensity:.35,transparent:true,opacity:.48,metalness:.55,roughness:.12});
+ const addBox=(x,y,z,sx,sy,sz,m)=>box(weaponGroup,x,y,z,sx,sy,sz,m);
+ const addTube=(x,y,z,r,len,m,segments=16)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,segments),m);mesh.rotation.x=Math.PI/2;mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;weaponGroup.add(mesh);return mesh;};
+ const addRing=(x,y,z,r,t,m)=>{const mesh=new THREE.Mesh(new THREE.TorusGeometry(r,t,8,20),m);mesh.rotation.y=Math.PI/2;mesh.position.set(x,y,z);weaponGroup.add(mesh);return mesh;};
+ const receiverLen=pistol?.48:sniper?1.05:shotgun?.88:lmg?1.0:smg?.72:.86;
+ const frontZ=-.84-receiverLen*.55;
+ const barrelLen=sniper?1.02:shotgun?.48:lmg?.62:pistol?.38:.62;
+ const muzzleZ=frontZ-barrelLen-.12;
+ // Ana gövde: ayrı üst kapak, alt gövde ve metal yan plakalar
+ addBox(.38,-.34,-.82,.25,.23,receiverLen,base);
+ addBox(.38,-.225,-.82,.205,.055,receiverLen*.88,metal);
+ addBox(.245,-.34,-.82,.035,.135,receiverLen*.76,dark);
+ addBox(.515,-.34,-.82,.035,.135,receiverLen*.76,metal);
+ addBox(.38,-.255,-.82,.12,.035,receiverLen*.7,cyan);
+ // Ön el kundağı ve havalandırma kanalları
+ if(!pistol){
+   const handguardLen=sniper?.48:shotgun?.42:lmg?.46:.38;
+   addBox(.38,-.34,frontZ+.12,.29,.25,handguardLen,base);
+   for(let n=0;n<5;n++){
+     const z=frontZ+.12-handguardLen*.38+n*handguardLen*.19;
+     addBox(.226,-.34,z,.018,.105,.075,metal);
+     addBox(.534,-.34,z,.018,.105,.075,dark);
+   }
+   addBox(.38,-.19,frontZ+.12,.17,.045,handguardLen*.92,dark);
  }
-
- // El ve tutuş
-
- // El ve tutuş
- box(weaponGroup,.18,-.48,-.52,.14,.1,.22,mats.skin);
-
- // Silahın konumu
+ // Namlu, ağızlık ve halkalar
+ addTube(.38,-.315,muzzleZ+barrelLen*.48,shotgun?.065:.043,barrelLen,dark,20);
+ addTube(.38,-.315,muzzleZ,shotgun?.085:.06,.17,metal,20);
+ addTube(.38,-.315,muzzleZ-.09,shotgun?.072:.049,.055,cyan,20);
+ addRing(.38,-.315,muzzleZ-.105,shotgun?.072:.049,.012,metal);
+ // Dipçik: sınıfa göre farklı uzunluk ve form
+ if(!pistol){
+   const stockLen=sniper?.52:lmg?.3:shotgun?.24:.36;
+   addBox(.38,-.36,-.22,.205,.19,stockLen,dark);
+   addBox(.38,-.36,-.22+stockLen*.22,.225,.205,.075,metal);
+   addBox(.38,-.36,-.22+stockLen*.48,.18,.12,.045,cyan);
+ }
+ // Kabza ve tetik korkuluğu
+ addBox(.38,-.535,-.52,.17,.32,.2,dark);
+ addBox(.38,-.61,-.53,.145,.09,.18,base);
+ const guard=new THREE.Mesh(new THREE.TorusGeometry(.105,.018,8,18),metal);
+ guard.position.set(.38,-.48,-.72);guard.rotation.x=Math.PI/2;weaponGroup.add(guard);
+ addBox(.38,-.43,-.73,.035,.11,.12,metal);
+ // Şarjör: türe göre kutu, eğimli büyük şarjör veya tambur
+ if(pistol){
+   reloadMag=addBox(.38,-.57,-.72,.135,.29,.16,dark);
+   addBox(.38,-.705,-.72,.12,.035,.14,metal);
+ }else if(lmg&&weaponName==='DP-28'){
+   const drum=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.13,24),metal);
+   drum.rotation.z=Math.PI/2;drum.position.set(.38,-.55,-.82);weaponGroup.add(drum);reloadMag=drum;
+   addRing(.38,-.55,-.82,.15,.018,cyan);
+ }else if(lmg){
+   reloadMag=addBox(.38,-.59,-.82,.22,.38,.25,dark);
+   addBox(.38,-.78,-.82,.19,.035,.22,metal);
+ }else if(shotgun){
+   reloadMag=addTube(.38,-.53,-.82,.09,.52,dark,18);
+   addRing(.38,-.53,-.82,.085,.012,cyan);
+ }else{
+   reloadMag=addBox(.38,-.59,-.82,.16,.34,.22,dark);
+   addBox(.38,-.765,-.82,.145,.035,.2,metal);
+   addBox(.38,-.59,-.82,.035,.25,.225,cyan);
+ }
+ // Raylı üst gövde, nişangah ve optik
+ addBox(.38,-.185,-.82,.115,.045,receiverLen*.8,dark);
+ addBox(.38,-.15,-.82,.09,.025,receiverLen*.7,metal);
+ if(profile.scope){
+   const zoom=profile.zoom||1;
+   if(sniper||zoom>1.65){
+     addBox(.38,-.105,-.82,.16,.08,.38,dark);
+     addTube(.38,-.105,-.82,.095,.42,metal);
+     addTube(.38,-.105,-1.04,.082,.035,glass);
+     addTube(.38,-.105,-.60,.09,.035,cyan);
+     addRing(.38,-.105,-1.06,.085,.012,violet);
+   }else{
+     addBox(.38,-.105,-.82,.16,.12,.22,dark);
+     addBox(.38,-.09,-.82,.105,.09,.17,glass);
+     addBox(.38,-.025,-.82,.17,.025,.23,cyan);
+     addBox(.38,-.17,-.82,.17,.025,.23,violet);
+   }
+ }else{
+   addBox(.38,-.12,-.82,.055,.12,.06,metal);
+   addBox(.38,-.12,-.82-receiverLen*.35,.055,.12,.06,metal);
+ }
+ // Spectrum esintili, özgün ışıklı kaplama: yan şeritler ve enerji çekirdeği
+ addBox(.245,-.265,-.82,.012,.025,receiverLen*.56,cyan);
+ addBox(.515,-.265,-.82,.012,.025,receiverLen*.56,violet);
+ addBox(.38,-.205,-.82,.075,.018,receiverLen*.42,pearl);
+ for(let n=0;n<3;n++){
+   const z=-.62-n*.17;
+   const node=new THREE.Mesh(new THREE.SphereGeometry(.025,10,8),n%2?violet:cyan);
+   node.position.set(.38,-.205,z);weaponGroup.add(node);
+ }
+ // Küçük mekanik ayrıntılar: pimler, kurma kolu ve yan panel
+ for(const side of [-1,1]){
+   const pin=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.025,12),metal);
+   pin.rotation.z=Math.PI/2;pin.position.set(.38+side*.145,-.34,-.72);weaponGroup.add(pin);
+   addBox(.38+side*.145,-.30,-.94,.025,.055,.19,side<0?cyan:violet);
+ }
+ addBox(.18,-.48,-.52,.14,.1,.22,mats.skin);
  weaponGroup.position.set(0,0,0);
 }
-
 function updateAmmo(){
  const displayWeapon=weaponName==='Şerif'?'SHERIFF':weaponName.toUpperCase();
  ammoEl.innerHTML=`${ammo} / ${reserve}<small>${displayWeapon}${reloading?' • RELOADING':''}</small>`;
