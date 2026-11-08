@@ -4,12 +4,27 @@
  <meta name="google-site-verification" content="f-7aqUQdwwaiGFW9d9TWmQe8-MJZyxw_hltzDnIhUBM" />
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101820">
+<meta name="app-version" content="2026.11.08.2">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/rage-x.svg" type="image/svg+xml">
 <title>Rage X - Tactical FPS</title>
  <meta name="description" content="Rage X is an online tactical 3D FPS game. Create a room and join the battle.">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#fff;font-family:Arial,Helvetica,sans-serif}
 canvas{display:block}
+#menu .panel{max-height:90vh;overflow-y:auto;padding:12px 16px 18px 0;scrollbar-width:thin}
+#appInstallArea{margin:18px 0 12px;padding:14px;border:1px solid #718b9b66;background:rgba(3,12,20,.58);max-width:560px}
+#appInstallArea h3{margin:0 0 8px;color:#ffc45c;letter-spacing:2px;font-size:14px}
+#appInstallArea p{margin:5px 0 10px;color:#b8c9d2;font-size:12px;line-height:1.5}
+#installConsent{display:flex;gap:10px;align-items:flex-start;margin-top:8px;font-size:12px;color:#c4d2da;line-height:1.4}
+#installConsent button{margin:0;padding:9px 12px;font-size:11px;white-space:nowrap}
+#installAppButton:disabled{opacity:.45;cursor:not-allowed}
+#updateNotice{display:none;position:fixed;z-index:60;top:14px;left:50%;transform:translateX(-50%);width:min(92vw,460px);padding:14px 16px;background:#102331;border:1px solid #e7a83e;box-shadow:0 10px 35px #000b;text-align:center;color:#fff}
+#updateNotice p{margin:0 0 8px;font-weight:700}
+#updateNotice button{margin:0;padding:9px 15px}
+@media(max-width:600px){#menu{padding:3vw}#menu .panel{max-height:94vh;width:100%;padding-right:6px}#installConsent{flex-wrap:wrap}}
 #menu{position:fixed;inset:0;z-index:5;background:linear-gradient(115deg,rgba(8,16,28,.97),rgba(18,38,52,.88)),radial-gradient(circle at 75% 30%,#31556a,transparent 40%);display:flex;align-items:center;padding:6vw}
 .panel{max-width:610px}
 h1{font-size:clamp(42px,7vw,86px);letter-spacing:5px;margin:0 0 8px;color:#f5f7fa;text-shadow:0 5px 30px #000}
@@ -108,6 +123,7 @@ body{overscroll-behavior:none}
 </head>
 <body>
 
+<div id="updateNotice" role="status"><p id="updateMessage">A new RAGE X update is ready.</p><button id="applyUpdateButton">UPDATE GAME</button></div>
 <div id="menu">
  <div class="panel">
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px"><label for="languageSelect" id="languageLabel">LANGUAGE</label><select id="languageSelect" style="width:auto;min-width:140px"><option value="en">English</option><option value="tr">Türkçe</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="ja">日本語</option><option value="ko">한국어</option></select></div>
@@ -169,6 +185,13 @@ body{overscroll-behavior:none}
    <option>AWM</option>
   </select></p>
   <button id="start">START MATCH</button>
+  <section id="appInstallArea">
+   <h3 id="installHeading">GET RAGE X</h3>
+   <p id="installDescription">Install the game on your phone or computer. You can still play in your browser.</p>
+   <button id="installAppButton" disabled>DOWNLOAD / INSTALL GAME</button>
+   <div id="installConsent"><span id="installConsentText">Allow essential preferences so this device can remember installation and update choices. No advertising cookies are used.</span><button id="allowInstallConsent">ALLOW COOKIES</button></div>
+   <p id="installHelp" style="display:none"></p>
+  </section>
   <p class="small"><b>CONTROLS:</b> WASD move • Mouse aim • Left click fire • Right click scope • R reload • 1/2/3 switch weapon • Shift sprint • E interact</p>
   <p class="small">Original fan-made prototype. No official Riot Games or Valorant assets are used.</p>
  </div>
@@ -309,6 +332,39 @@ function applyMenuLanguage(lang){
 }
 try{languageSelect.value=localStorage.getItem('rageXLanguage')||'en';}catch(e){languageSelect.value='en';}
 languageSelect.addEventListener('change',()=>applyMenuLanguage(languageSelect.value));applyMenuLanguage(languageSelect.value);
+
+const installCopy=[
+['GET RAGE X','Install the game on your phone or computer. You can still play in your browser.','DOWNLOAD / INSTALL GAME','Allow essential preferences so this device can remember installation and update choices. No advertising cookies are used.','ALLOW COOKIES','PREFERENCES SAVED','If install does not open automatically, use your browser menu and choose “Install app” or “Add to Home Screen”.','A new RAGE X update is ready.','UPDATE GAME','APP INSTALLED'],
+['RAGE X’İ İNDİR','Oyunu telefonuna veya bilgisayarına kur. İstersen tarayıcıdan oynamaya devam edebilirsin.','OYUNU İNDİR / KUR','Bu cihazın kurulum ve güncelleme tercihini hatırlaması için gerekli tercih depolamasına izin ver. Reklam çerezi kullanılmaz.','ÇEREZLERE İZİN VER','TERCİHLER KAYDEDİLDİ','Kurulum açılmazsa tarayıcı menüsünden “Uygulamayı yükle” veya “Ana ekrana ekle” seçeneğini kullan.','Yeni bir RAGE X güncellemesi hazır.','OYUNU GÜNCELLE','UYGULAMA KURULU'],
+['DESCARGAR RAGE X','Instala el juego en tu móvil u ordenador. También puedes seguir jugando en el navegador.','DESCARGAR / INSTALAR','Permite guardar las preferencias esenciales de instalación y actualización. No usamos cookies publicitarias.','ACEPTAR COOKIES','PREFERENCIAS GUARDADAS','Si no se abre la instalación, usa el menú del navegador y elige “Instalar aplicación” o “Añadir a pantalla de inicio”.','Hay una nueva actualización de RAGE X.','ACTUALIZAR JUEGO','APLICACIÓN INSTALADA'],
+['TÉLÉCHARGER RAGE X','Installez le jeu sur votre téléphone ou ordinateur. Vous pouvez aussi jouer dans le navigateur.','TÉLÉCHARGER / INSTALLER','Autorisez l’enregistrement des préférences essentielles d’installation et de mise à jour. Aucun cookie publicitaire.','AUTORISER LES COOKIES','PRÉFÉRENCES ENREGISTRÉES','Si l’installation ne démarre pas, ouvrez le menu du navigateur et choisissez « Installer » ou « Ajouter à l’écran d’accueil ».','Une mise à jour de RAGE X est prête.','METTRE À JOUR','APPLICATION INSTALLÉE'],
+['RAGE X HERUNTERLADEN','Installiere das Spiel auf deinem Handy oder Computer. Du kannst weiterhin im Browser spielen.','SPIEL HERUNTERLADEN / INSTALLIEREN','Erlaube das Speichern notwendiger Installations- und Update-Einstellungen. Keine Werbe-Cookies.','COOKIES ERLAUBEN','EINSTELLUNGEN GESPEICHERT','Falls die Installation nicht automatisch startet, öffne das Browsermenü und wähle „App installieren“.','Ein neues RAGE X-Update ist verfügbar.','SPIEL AKTUALISIEREN','APP INSTALLIERT'],
+['BAIXAR RAGE X','Instale o jogo no celular ou computador. Você também pode continuar jogando no navegador.','BAIXAR / INSTALAR JOGO','Permita salvar as preferências essenciais de instalação e atualização. Não usamos cookies de publicidade.','PERMITIR COOKIES','PREFERÊNCIAS SALVAS','Se a instalação não abrir, use o menu do navegador e escolha “Instalar app” ou “Adicionar à tela inicial”.','Uma nova atualização do RAGE X está pronta.','ATUALIZAR JOGO','APLICATIVO INSTALADO'],
+['СКАЧАТЬ RAGE X','Установите игру на телефон или компьютер. Вы также можете играть в браузере.','СКАЧАТЬ / УСТАНОВИТЬ','Разрешите сохранить необходимые настройки установки и обновлений. Рекламные cookie не используются.','РАЗРЕШИТЬ COOKIE','НАСТРОЙКИ СОХРАНЕНЫ','Если установка не открылась, выберите в меню браузера «Установить приложение».','Доступно новое обновление RAGE X.','ОБНОВИТЬ ИГРУ','ПРИЛОЖЕНИЕ УСТАНОВЛЕНО'],
+['تنزيل RAGE X','ثبّت اللعبة على هاتفك أو حاسوبك. ويمكنك الاستمرار في اللعب من المتصفح.','تنزيل / تثبيت اللعبة','اسمح بحفظ تفضيلات التثبيت والتحديث الضرورية. لا نستخدم ملفات تعريف ارتباط إعلانية.','السماح بملفات تعريف الارتباط','تم حفظ التفضيلات','إذا لم يبدأ التثبيت، افتح قائمة المتصفح واختر تثبيت التطبيق.','يتوفر تحديث جديد للعبة RAGE X.','تحديث اللعبة','التطبيق مثبت'],
+['RAGE Xをダウンロード','スマートフォンまたはPCにゲームをインストールできます。ブラウザーでも引き続きプレイできます。','ダウンロード / インストール','インストールと更新の設定を保存するための必須設定を許可します。広告Cookieは使用しません。','Cookieを許可','設定を保存しました','自動で開かない場合は、ブラウザーのメニューから「アプリをインストール」を選択してください。','RAGE Xの新しいアップデートがあります。','ゲームを更新','アプリをインストール済み'],
+['RAGE X 다운로드','휴대폰이나 PC에 게임을 설치하세요. 브라우저에서도 계속 플레이할 수 있습니다.','게임 다운로드 / 설치','설치 및 업데이트 설정을 기억하는 데 필요한 기본 설정 저장을 허용합니다. 광고 쿠키는 사용하지 않습니다.','쿠키 허용','설정 저장됨','설치 창이 열리지 않으면 브라우저 메뉴에서 앱 설치를 선택하세요.','새 RAGE X 업데이트가 준비되었습니다.','게임 업데이트','앱 설치됨']
+];
+const installIndex=()=>Math.max(0,LANGS.indexOf(languageSelect.value));
+function updateInstallLanguage(){const t=installCopy[installIndex()];['installHeading','installDescription','installAppButton','installConsentText','allowInstallConsent','installHelp','updateMessage','applyUpdateButton'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=t[i];});if(localStorage.getItem('rageXInstallConsent')==='yes')document.getElementById('allowInstallConsent').textContent=t[5];}
+languageSelect.addEventListener('change',updateInstallLanguage);updateInstallLanguage();
+const installButton=document.getElementById('installAppButton'),consentRow=document.getElementById('installConsent'),helpLine=document.getElementById('installHelp'),updateNotice=document.getElementById('updateNotice');
+let deferredInstallPrompt=null,serviceWorkerRegistration=null;
+function hasInstallConsent(){try{return localStorage.getItem('rageXInstallConsent')==='yes';}catch(e){return false;}}
+function refreshInstallState(){installButton.disabled=!hasInstallConsent();if(hasInstallConsent())consentRow.style.display='none';}
+refreshInstallState();
+document.getElementById('allowInstallConsent').addEventListener('click',()=>{try{localStorage.setItem('rageXInstallConsent','yes');}catch(e){}refreshInstallState();updateInstallLanguage();});
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;});
+window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;installButton.disabled=true;installButton.textContent=installCopy[installIndex()][9];});
+installButton.addEventListener('click',async()=>{if(!hasInstallConsent())return;if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;}else{helpLine.style.display='block';helpLine.textContent=installCopy[installIndex()][6];}});
+document.getElementById('applyUpdateButton').addEventListener('click',()=>{if(serviceWorkerRegistration?.waiting)serviceWorkerRegistration.waiting.postMessage('SKIP_WAITING');else location.reload();});
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+ navigator.serviceWorker.register('/sw.js').then(reg=>{serviceWorkerRegistration=reg;if(reg.waiting&&navigator.serviceWorker.controller)updateNotice.style.display='block';reg.addEventListener('updatefound',()=>{const worker=reg.installing;worker?.addEventListener('statechange',()=>{if(worker.state==='installed'&&navigator.serviceWorker.controller)updateNotice.style.display='block';});});reg.update().catch(()=>{});}).catch(err=>console.warn('PWA registration failed:',err));
+ navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload());
+}
+async function checkForNewGameVersion(){try{const r=await fetch('/?version-check='+Date.now(),{cache:'no-store'});if(!r.ok)return;const doc=new DOMParser().parseFromString(await r.text(),'text/html');const latest=doc.querySelector('meta[name="app-version"]')?.content;const current=document.querySelector('meta[name="app-version"]')?.content;if(latest&&current&&latest!==current)updateNotice.style.display='block';}catch(e){}}
+checkForNewGameVersion();setInterval(checkForNewGameVersion,60000);
+
 
 const menu=document.getElementById('menu');
  const lobby = document.getElementById('lobby');
