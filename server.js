@@ -6,6 +6,7 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: { origin: '*' },
   maxHttpBufferSize: 1e5
@@ -13,10 +14,13 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 const rooms = new Map();
+
 const MAX_PLAYERS = 10;
 const BOT_COUNT = 8;
 const TOTAL_ROUNDS = 12;
 const PREP_TIME = 5000;
+const BOMB_TIME = 45000;
+const DEFUSE_TIME = 5000;
 
 const SPAWN_POINTS = [
   { x: -55, z: -55 },
@@ -47,6 +51,8 @@ const DEFENSE_SPAWNS = [
   { x: 50, z: 42 }
 ];
 
+const BOMB_SPAWN = { x: -48, z: -48 };
+
 const BOMB_SITES = {
   A: { x: -25, z: 0 },
   B: { x: 25, z: 0 }
@@ -74,6 +80,7 @@ function createRoom(code) {
     started: false,
     botsEnabled: true,
     bots: [],
+
     gameMode: 'deathmatch',
     map: 'desert',
 
@@ -87,14 +94,54 @@ function createRoom(code) {
       defuserId: null
     },
 
+    bombTimer: null,
+    defuseTimer: null,
+    roundTimer: null,
+    roundToken: 0,
+
     round: 1,
     roundOver: false,
     roundActive: false,
+
     roundWins: {
       attack: 0,
       defense: 0
-    },
-    roundTimer: null
+    }
+  };
+}
+
+function clearBombTimers(room) {
+  if (room.bombTimer) {
+    clearTimeout(room.bombTimer);
+    room.bombTimer = null;
+  }
+
+  if (room.defuseTimer) {
+    clearTimeout(room.defuseTimer);
+    room.defuseTimer = null;
+  }
+}
+
+function clearRoomTimers(room) {
+  clearBombTimers(room);
+
+  if (room.roundTimer) {
+    clearTimeout(room.roundTimer);
+    room.roundTimer = null;
+  }
+}
+
+function resetBomb(room) {
+  clearBombTimers(room);
+
+  room.bomb = {
+    planted: false,
+    pickedUp: false,
+    carrierId: null,
+    site: null,
+    endsAt: null,
+    planterId: null,
+    defuserId: null
   };
 }
 
@@ -104,7 +151,8 @@ function lobbyData(room) {
     players: roomPlayers(room),
     hostId: room.hostId,
     started: room.started,
-    botsEnabled: room.botsEnabled
+    botsEnabled: room.botsEnabled,
+    gameMode: room.gameMode
   };
 }
 
@@ -133,11 +181,14 @@ function join(sock, room, name, cb) {
   const p = {
     id: sock.id,
     name: cleanName(name),
+
     x: spawn.x,
     y: 0,
     z: spawn.z,
+
     ry: 0,
     rx: 0,
+
     hp: 100,
     weapon: 'Vandal',
     team
@@ -145,30 +196,28 @@ function join(sock, room, name, cb) {
 
   room.players.set(sock.id, p);
 
-  if (!room.hostId) room.hostId = sock.id;
+  if (!room.hostId) {
+    room.hostId = sock.id;
+  }
 
   cb({
     ok: true,
     ...lobbyData(room),
     bots: room.bots,
-    spawn: { x: p.x, z: p.z }
+    spawn: {
+      x: p.x,
+      z: p.z
+    }
   });
 
   sock.to(room.code).emit('playerJoined', p);
-  sendLobbyUpdate(room);
-  io.to(room.code).emit('playersUpdate', roomPlayers(room));
-}
 
-function resetBomb(room) {
-  room.bomb = {
-    planted: false,
-    pickedUp: false,
-    carrierId: null,
-    site: null,
-    endsAt: null,
-    planterId: null,
-    defuserId: null
-  };
+  sendLobbyUpdate(room);
+
+  io.to(room.code).emit(
+    'playersUpdate',
+    roomPlayers(room)
+  );
 }
 
 function startBombRound(room) {
@@ -176,6 +225,11 @@ function startBombRound(room) {
 
   room.roundOver = false;
   room.roundActive = false;
+
+  room.roundToken++;
+
+  const currentToken = room.roundToken;
+
   resetBomb(room);
 
   let attackIndex = 0;
@@ -191,18 +245,23 @@ function startBombRound(room) {
       const spawn = ATTACK_SPAWNS[
         attackIndex++ % ATTACK_SPAWNS.length
       ];
+
       player.x = spawn.x;
       player.z = spawn.z;
     } else {
       const spawn = DEFENSE_SPAWNS[
         defenseIndex++ % DEFENSE_SPAWNS.length
       ];
+
       player.x = spawn.x;
       player.z = spawn.z;
     }
   }
 
-  io.to(room.code).emit('playersUpdate', roomPlayers(room));
+  io.to(room.code).emit(
+    'playersUpdate',
+    roomPlayers(room)
+  );
 
   io.to(room.code).emit('roundStarting', {
     round: room.round,
@@ -212,15 +271,19 @@ function startBombRound(room) {
     defenseWins: room.roundWins.defense
   });
 
-   io.to(room.code).emit('bombReset', {
+  io.to(room.code).emit('bombReset', {
     round: room.round,
     bomb: room.bomb
   });
 
-  clearTimeout(room.roundTimer);
+  if (room.roundTimer) {
+    clearTimeout(room.roundTimer);
+  }
 
   room.roundTimer = setTimeout(() => {
-    if (!room.started || room.roundOver) return;
+    if (!room.started) return;
+    if (room.roundOver) return;
+    if (room.roundToken !== currentToken) return;
 
     room.roundActive = true;
 
@@ -228,6 +291,7 @@ function startBombRound(room) {
       round: room.round,
       totalRounds: TOTAL_ROUNDS
     });
+
   }, PREP_TIME);
 }
 
@@ -237,6 +301,10 @@ function finishBombRound(room, winner, reason) {
 
   room.roundOver = true;
   room.roundActive = false;
+
+  // Eski bomba ve etkisizleştirme zamanlayıcılarını iptal et.
+  room.roundToken++;
+  clearBombTimers(room);
 
   if (winner === 'attack' || winner === 'defense') {
     room.roundWins[winner]++;
@@ -253,11 +321,17 @@ function finishBombRound(room, winner, reason) {
 
   if (room.round >= TOTAL_ROUNDS) {
     room.started = false;
-    clearTimeout(room.roundTimer);
+    room.roundActive = false;
+
+    if (room.roundTimer) {
+      clearTimeout(room.roundTimer);
+      room.roundTimer = null;
+    }
 
     io.to(room.code).emit('gameEnded', {
       attackWins: room.roundWins.attack,
       defenseWins: room.roundWins.defense,
+
       winner:
         room.roundWins.attack > room.roundWins.defense
           ? 'attack'
@@ -275,6 +349,7 @@ function finishBombRound(room, winner, reason) {
 
     room.round++;
     startBombRound(room);
+
   }, PREP_TIME);
 }
 
@@ -288,7 +363,9 @@ function checkTeamElimination(room) {
   const aliveDefense = [...room.players.values()]
     .filter(p => p.team === 'defense' && p.hp > 0).length;
 
-  if (aliveAttack === 0) {
+  if (aliveAttack === 0 && aliveDefense === 0) {
+    finishBombRound(room, 'draw', 'elimination');
+  } else if (aliveAttack === 0) {
     finishBombRound(room, 'defense', 'elimination');
   } else if (aliveDefense === 0) {
     finishBombRound(room, 'attack', 'elimination');
@@ -297,12 +374,16 @@ function checkTeamElimination(room) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/health', (req, res) =>
-  res.json({ ok: true, rooms: rooms.size })
-);
+app.get('/health', (req, res) => {
+  res.json({
+    ok: true,
+    rooms: rooms.size
+  });
+});
 
 io.on('connection', socket => {
 
+  // ODA OLUŞTURMA
   socket.on('createRoom', (data = {}, cb = () => {}) => {
     let code;
 
@@ -311,10 +392,13 @@ io.on('connection', socket => {
     } while (rooms.has(code));
 
     const room = createRoom(code);
+
     rooms.set(code, room);
+
     join(socket, room, data.name, cb);
   });
 
+  // ODAYA KATILMA
   socket.on('joinRoom', (data = {}, cb = () => {}) => {
     const code = String(data.code || '')
       .toUpperCase()
@@ -323,41 +407,48 @@ io.on('connection', socket => {
 
     const room = rooms.get(code);
 
-    if (!room)
+    if (!room) {
       return cb({
         ok: false,
         error: 'Bu oda bulunamadı. Oda kodunu kontrol et.'
       });
+    }
 
-    if (room.started)
+    if (room.started) {
       return cb({
         ok: false,
         error: 'Bu odada oyun zaten başlamış.'
       });
+    }
 
-    if (room.players.size >= MAX_PLAYERS)
+    if (room.players.size >= MAX_PLAYERS) {
       return cb({
         ok: false,
         error: 'Oda dolu (en fazla 10 oyuncu).'
       });
+    }
 
     join(socket, room, data.name, cb);
   });
 
+  // BOT AYARI
   socket.on('setBotMode', enabled => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || room.started || room.hostId !== socket.id) return;
+    if (!room || room.started) return;
+    if (room.hostId !== socket.id) return;
 
     room.botsEnabled = enabled === true;
+
     sendLobbyUpdate(room);
   });
 
-  // OYUNU BASLATMA
+  // OYUNU BAŞLATMA
   socket.on('startMatch', (data = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || room.started || room.hostId !== socket.id) return;
+    if (!room || room.started) return;
+    if (room.hostId !== socket.id) return;
 
     const allowedModes = [
       'deathmatch',
@@ -373,8 +464,13 @@ io.on('connection', socket => {
       'city'
     ];
 
-    const requestedMode = String(data.gameMode || 'deathmatch');
-    const requestedMap = String(data.map || 'desert');
+    const requestedMode = String(
+      data.gameMode || 'deathmatch'
+    );
+
+    const requestedMap = String(
+      data.map || 'desert'
+    );
 
     room.gameMode = allowedModes.includes(requestedMode)
       ? requestedMode
@@ -395,26 +491,34 @@ io.on('connection', socket => {
 
     room.bots = room.gameMode === 'bomb'
       ? []
-      : (room.botsEnabled
-          ? Array.from({ length: BOT_COUNT }, () => ({
-              hp: 100,
-              dead: false
-            }))
-          : []);
+      : (
+          room.botsEnabled
+            ? Array.from(
+                { length: BOT_COUNT },
+                () => ({
+                  hp: 100,
+                  dead: false
+                })
+              )
+            : []
+        );
 
     room.started = true;
+
+    resetBomb(room);
 
     if (room.gameMode === 'bomb') {
       startBombRound(room);
     } else {
       room.roundActive = true;
-      resetBomb(room);
     }
 
     io.to(room.code).emit('gameStarted', {
-      botsEnabled: room.gameMode === 'bomb'
-        ? false
-        : room.botsEnabled,
+      botsEnabled:
+        room.gameMode === 'bomb'
+          ? false
+          : room.botsEnabled,
+
       bots: room.bots,
       gameMode: room.gameMode,
       map: room.map,
@@ -422,23 +526,29 @@ io.on('connection', socket => {
       bomb: room.bomb,
       round: room.round
     });
+
+    sendLobbyUpdate(room);
   });
 
   // BOMBAYI ALMA
   socket.on('pickBomb', () => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || !room.started || room.gameMode !== 'bomb') return;
+    if (!room || !room.started) return;
+    if (room.gameMode !== 'bomb') return;
     if (!room.roundActive || room.roundOver) return;
 
     const player = room.players.get(socket.id);
 
-    if (!player || player.team !== 'attack' || player.hp <= 0) return;
+    if (!player) return;
+    if (player.team !== 'attack') return;
+    if (player.hp <= 0) return;
+
     if (room.bomb.pickedUp || room.bomb.planted) return;
 
     const distance = Math.hypot(
-      player.x - (-48),
-      player.z - (-48)
+      player.x - BOMB_SPAWN.x,
+      player.z - BOMB_SPAWN.z
     );
 
     if (distance > 6) return;
@@ -453,35 +563,44 @@ io.on('connection', socket => {
   });
 
   // BOMBAYI KURMA
-  socket.on('plantBomb', data => {
+  socket.on('plantBomb', (data = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || !room.started || room.gameMode !== 'bomb') return;
-    if (!room.roundActive || room.roundOver || room.bomb.planted) return;
+    if (!room || !room.started) return;
+    if (room.gameMode !== 'bomb') return;
+    if (!room.roundActive || room.roundOver) return;
+    if (room.bomb.planted) return;
 
     const player = room.players.get(socket.id);
 
-    if (!player || player.team !== 'attack' || player.hp <= 0) return;
+    if (!player) return;
+    if (player.team !== 'attack') return;
+    if (player.hp <= 0) return;
 
-    if (!room.bomb.pickedUp ||
-        room.bomb.carrierId !== socket.id) return;
+    if (!room.bomb.pickedUp) return;
+    if (room.bomb.carrierId !== socket.id) return;
 
     const siteName = String(data?.site || '').toUpperCase();
     const site = BOMB_SITES[siteName];
 
     if (!site) return;
 
-    if (Math.hypot(
+    const distance = Math.hypot(
       player.x - site.x,
       player.z - site.z
-    ) > 8) return;
+    );
+
+    if (distance > 8) return;
 
     room.bomb.planted = true;
     room.bomb.pickedUp = false;
     room.bomb.carrierId = null;
+
     room.bomb.site = siteName;
     room.bomb.planterId = socket.id;
-    room.bomb.endsAt = Date.now() + 45000;
+    room.bomb.endsAt = Date.now() + BOMB_TIME;
+
+    const currentToken = room.roundToken;
 
     io.to(room.code).emit('bombPlanted', {
       planted: true,
@@ -490,45 +609,68 @@ io.on('connection', socket => {
       planterId: socket.id
     });
 
-    setTimeout(() => {
-      if (!room.started || room.roundOver || !room.bomb.planted) return;
+    clearBombTimers(room);
+
+    room.bombTimer = setTimeout(() => {
+      if (!room.started || room.roundOver) return;
+      if (room.roundToken !== currentToken) return;
+      if (!room.bomb.planted) return;
+
+      room.bombTimer = null;
 
       finishBombRound(room, 'attack', 'explosion');
+
       io.to(room.code).emit('bombExploded', {
         winner: 'attack'
       });
-    }, 45000);
+
+    }, BOMB_TIME);
   });
 
-  // BOMBAYI ETKISIZLESTIRME
+  // BOMBAYI ETKİSİZLEŞTİRME
   socket.on('defuseBomb', () => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || !room.started || room.gameMode !== 'bomb') return;
-    if (!room.roundActive || !room.bomb.planted || room.roundOver) return;
+    if (!room || !room.started) return;
+    if (room.gameMode !== 'bomb') return;
+
+    if (!room.roundActive || room.roundOver) return;
+    if (!room.bomb.planted) return;
     if (room.bomb.defuserId) return;
 
     const player = room.players.get(socket.id);
 
-    if (!player || player.team !== 'defense' || player.hp <= 0) return;
+    if (!player) return;
+    if (player.team !== 'defense') return;
+    if (player.hp <= 0) return;
 
     const site = BOMB_SITES[room.bomb.site];
+
     if (!site) return;
 
-    if (Math.hypot(
+    const distance = Math.hypot(
       player.x - site.x,
       player.z - site.z
-    ) > 8) return;
+    );
+
+    if (distance > 8) return;
 
     room.bomb.defuserId = socket.id;
 
+    const currentToken = room.roundToken;
+
     io.to(room.code).emit('bombDefusing', {
       playerId: socket.id,
-      duration: 5000
+      duration: DEFUSE_TIME
     });
 
-    setTimeout(() => {
-      if (!room.started || room.roundOver || !room.bomb.planted) return;
+    room.defuseTimer = setTimeout(() => {
+      if (!room.started || room.roundOver) return;
+      if (room.roundToken !== currentToken) return;
+      if (!room.bomb.planted) return;
+      if (room.bomb.defuserId !== socket.id) return;
+
+      room.defuseTimer = null;
 
       const currentPlayer = room.players.get(socket.id);
 
@@ -537,66 +679,79 @@ io.on('connection', socket => {
         return;
       }
 
-      if (Math.hypot(
+      const currentDistance = Math.hypot(
         currentPlayer.x - site.x,
         currentPlayer.z - site.z
-      ) > 8) {
+      );
+
+      if (currentDistance > 8) {
         room.bomb.defuserId = null;
         return;
       }
 
       room.bomb.planted = false;
+      room.bomb.defuserId = null;
 
       finishBombRound(room, 'defense', 'defused');
 
       io.to(room.code).emit('bombDefused', {
         winner: 'defense'
       });
-    }, 5000);
+
+    }, DEFUSE_TIME);
   });
 
   // OYUNCU KONUMU
-  socket.on('playerState', state => {
+  socket.on('playerState', (state = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
     if (!room || !room.started) return;
 
-    const p = room.players.get(socket.id);
-    if (!p) return;
+    const player = room.players.get(socket.id);
 
-    for (const k of ['x', 'y', 'z', 'ry', 'rx']) {
-      const n = Number(state[k]);
+    if (!player) return;
 
-      if (Number.isFinite(n)) {
-        p[k] = Math.max(-1000, Math.min(1000, n));
+    for (const key of ['x', 'y', 'z', 'ry', 'rx']) {
+      const number = Number(state[key]);
+
+      if (Number.isFinite(number)) {
+        player[key] = Math.max(
+          -1000,
+          Math.min(1000, number)
+        );
       }
     }
 
-    p.name = cleanName(state.name);
-    p.weapon = String(state.weapon || 'Vandal').slice(0, 12);
+    player.name = cleanName(state.name);
 
-    socket.to(room.code).emit('playersUpdate', [p]);
+    player.weapon = String(
+      state.weapon || 'Vandal'
+    ).slice(0, 12);
+
+    socket.to(room.code).emit('playersUpdate', [player]);
   });
 
   // BOT HASARI
-  socket.on('botHit', data => {
+  socket.on('botHit', (data = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
-    if (!room || !room.started || !room.botsEnabled) return;
+    if (!room || !room.started) return;
+    if (!room.botsEnabled) return;
 
     const id = Math.floor(Number(data?.botId));
+
     const damage = Math.max(
       0,
       Math.min(100, Number(data?.damage) || 0)
     );
 
-    if (!Number.isInteger(id) ||
-        id < 0 ||
-        id >= room.bots.length ||
-        !damage) return;
+    if (!Number.isInteger(id)) return;
+    if (id < 0 || id >= room.bots.length) return;
+    if (!damage) return;
 
     const bot = room.bots[id];
-    if (bot.dead) return;
+
+    if (!bot || bot.dead) return;
 
     bot.hp = Math.max(0, bot.hp - damage);
     bot.dead = bot.hp <= 0;
@@ -609,21 +764,36 @@ io.on('connection', socket => {
   });
 
   // OYUNCU HASARI
-  socket.on('playerHit', data => {
+  socket.on('playerHit', (data = {}) => {
     const room = rooms.get(socket.data.roomCode);
 
     if (!room || !room.started) return;
-    if (room.gameMode === 'bomb' &&
-        (!room.roundActive || room.roundOver)) return;
+
+    if (
+      room.gameMode === 'bomb' &&
+      (!room.roundActive || room.roundOver)
+    ) {
+      return;
+    }
 
     const attacker = room.players.get(socket.id);
-    const target = room.players.get(String(data?.targetId || ''));
 
-    if (!attacker || !target || attacker.id === target.id) return;
+    const target = room.players.get(
+      String(data?.targetId || '')
+    );
+
+    if (!attacker || !target) return;
+    if (attacker.id === target.id) return;
+
     if (attacker.hp <= 0 || target.hp <= 0) return;
 
-    // TAKIM ARKADASINA HASAR VERILMEZ
-    if (attacker.team === target.team) return;
+    // Bomba ve ele geçirme modlarında takım arkadaşına hasar verilmez.
+    if (
+      ['bomb', 'domination'].includes(room.gameMode) &&
+      attacker.team === target.team
+    ) {
+      return;
+    }
 
     const damage = Math.max(
       0,
@@ -653,9 +823,32 @@ io.on('connection', socket => {
         killerId: attacker.id,
         killerName: attacker.name
       });
+
+      // Bomba taşıyıcısı ölürse bomba yeniden başlangıç noktasına döner.
+      if (room.bomb.carrierId === target.id) {
+        resetBomb(room);
+
+        io.to(room.code).emit('bombReset', {
+          round: room.round,
+          bomb: room.bomb
+        });
+      }
+
+      // Etkisizleştirme yapan oyuncu ölürse işlem iptal edilir.
+      if (room.bomb.defuserId === target.id) {
+        if (room.defuseTimer) {
+          clearTimeout(room.defuseTimer);
+          room.defuseTimer = null;
+        }
+
+        room.bomb.defuserId = null;
+      }
     }
 
-    io.to(room.code).emit('playersUpdate', roomPlayers(room));
+    io.to(room.code).emit(
+      'playersUpdate',
+      roomPlayers(room)
+    );
 
     checkTeamElimination(room);
   });
@@ -663,17 +856,45 @@ io.on('connection', socket => {
   // OYUNCU AYRILDI
   socket.on('disconnect', () => {
     const code = socket.data.roomCode;
+
     if (!code) return;
 
     const room = rooms.get(code);
+
     if (!room) return;
 
+    const leavingPlayer = room.players.get(socket.id);
+
     room.players.delete(socket.id);
+
+    // Bomba taşıyıcısı ayrılırsa bomba başlangıç noktasına döner.
+    if (
+      room.bomb.carrierId === socket.id
+    ) {
+      resetBomb(room);
+
+      io.to(code).emit('bombReset', {
+        round: room.round,
+        bomb: room.bomb
+      });
+    }
+
+    // Bombayı etkisizleştiren oyuncu ayrılırsa işlem iptal edilir.
+    if (
+      room.bomb.defuserId === socket.id
+    ) {
+      if (room.defuseTimer) {
+        clearTimeout(room.defuseTimer);
+        room.defuseTimer = null;
+      }
+
+      room.bomb.defuserId = null;
+    }
 
     io.to(code).emit('playerLeft', socket.id);
 
     if (room.players.size === 0) {
-      clearTimeout(room.roundTimer);
+      clearRoomTimers(room);
       rooms.delete(code);
       return;
     }
@@ -682,15 +903,25 @@ io.on('connection', socket => {
       room.hostId = room.players.keys().next().value;
     }
 
-    if (room.started && room.gameMode === 'bomb') {
+    if (
+      room.started &&
+      room.gameMode === 'bomb'
+    ) {
       checkTeamElimination(room);
     }
 
     sendLobbyUpdate(room);
-    io.to(code).emit('playersUpdate', roomPlayers(room));
+
+    io.to(code).emit(
+      'playersUpdate',
+      roomPlayers(room)
+    );
   });
+
 });
 
-server.listen(PORT, '0.0.0.0', () =>
-  console.log(`TACTICAL STRIKE server listening on port ${PORT}`)
-);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(
+    `TACTICAL STRIKE server listening on port ${PORT}`
+  );
+});
