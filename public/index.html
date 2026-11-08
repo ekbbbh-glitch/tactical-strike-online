@@ -569,7 +569,15 @@ async function registerDeviceVisit(){
   const response=await fetch('/api/device/visit',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({consent:true})});
   if(!response.ok)throw new Error(response.status===503?'Sunucu veritabanı henüz bağlanmadı.':'Cihaz hesabı kaydedilemedi.');
   const data=await response.json();deviceAccountReady=true;
-  if(data.name)applySavedPlayerName(data.name);else setAccountStatus('Bu cihaz için henüz oyuncu adı seçilmedi.');
+  if(data.name)applySavedPlayerName(data.name);
+  else{
+   const localName=localStorage.getItem('rageXPlayerName');
+   if(localName){
+    const save=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name:localName})});
+    const saved=await save.json();
+    if(save.ok)applySavedPlayerName(saved.name||localName);else applySavedPlayerName(localName);
+   }else setAccountStatus('Bu cihaz için henüz oyuncu adı seçilmedi.');
+  }
  }catch(error){
   deviceAccountReady=false;const localName=localStorage.getItem('rageXPlayerName');if(localName)applySavedPlayerName(localName);
   setAccountStatus((error.message||'Sunucu hesabına ulaşılamadı.')+' Yerel misafir hesabı kullanılabilir.');
@@ -577,7 +585,9 @@ async function registerDeviceVisit(){
 }
 function showPrivacyConsent(){document.getElementById('privacyConsent').style.display='flex';}
 async function choosePrivacyConsent(accepted){
+ const wasAccepted=localStorage.getItem(DEVICE_CONSENT_KEY)==='accepted';
  localStorage.setItem(DEVICE_CONSENT_KEY,accepted?'accepted':'declined');
+ if(!accepted&&wasAccepted){try{await fetch('/api/device/revoke',{method:'POST',credentials:'same-origin'});}catch(e){}}
  document.getElementById('privacyConsent').style.display='none';
  if(accepted)await registerDeviceVisit();
  else{deviceAccountReady=false;const n=localStorage.getItem('rageXPlayerName');if(n)applySavedPlayerName(n);setAccountStatus('Misafir modu: sunucu cihaz hesabı ve IP ziyaret kaydı kapalı.');}
