@@ -1376,16 +1376,17 @@ function setWeapon(n){
  updateAmmo();
 }
 
-function spawnBot(x,z){
- const bot=makeBlockCharacter(true);
+function spawnBot(x,z,team=null){
+ const bot=makeBlockCharacter(true,team);
  bot.position.set(x,0,z);
  scene.add(bot);
-
+ const id=bots.length;
  bot.userData={
-  id:bots.length,hp:100,fire:1+Math.random()*1.4,walk:Math.random()*6,
-  alive:true,targetTimer:0,targetX:x,targetZ:z
+  id,hp:100,fire:1+Math.random()*1.4,walk:Math.random()*6,
+  alive:true,targetTimer:0,targetX:x,targetZ:z,path:[],pathTimer:0,
+  lastKnownPlayer:null,lastKnownUntil:0,defuseProgress:0,
+  bombCarrier:id===0,bombPlanSite:null,plantProgress:0
  };
-
  bots.push(bot);
 }
 
@@ -1405,7 +1406,10 @@ function spawnBot(x,z){
 selectedMap = mapSelect.value;
 selectedGameMode = gameModeSelect.value;
 if(!online&&selectedGameMode==='bomb'){
- const bindMap=selectedMap==='bind';mySpawn=bindMap?{x:0,z:72}:{x:-78,z:-73};
+ const bindMap=selectedMap==='bind';
+ let sideCount=0;try{sideCount=Number(localStorage.getItem('rageXBotBombSide')||0)||0;localStorage.setItem('rageXBotBombSide',String(sideCount+1));}catch(e){}
+ myTeam=sideCount%2===0?'attack':'defense';
+ mySpawn=myTeam==='attack'?(bindMap?{x:0,z:72}:{x:-78,z:-73}):(bindMap?{x:0,z:-82}:{x:78,z:73});
 }
 buildMap();
   createBombMesh();
@@ -1441,16 +1445,19 @@ buildMap();
  bots=[];
 
  setWeapon(document.getElementById('weapon').value);
- if(!online && selectedGameMode==='bomb'){myTeam='attack';localBombEndsAt=null;localBombDefuseProgress=0;document.getElementById('bombStatus').textContent='🔵 SALDIRI • MAVİ HALKA: SENİN DOĞMA NOKTAN | KIRMIZI HALKALAR: BOTLAR';}
+ if(!online && selectedGameMode==='bomb'){localBombEndsAt=null;localBombDefuseProgress=0;document.getElementById('bombStatus').textContent=(myTeam==='attack'?'🔵 SALDIRI TAKIMI':'🔵 SAVUNMA TAKIMI')+' • MAVİ: SEN | KIRMIZI: BOTLAR';}
 
  if ((!['bomb','swiftplay','spike'].includes(selectedGameMode) || (!online && selectedGameMode === 'bomb')) && (!online || options.bots !== false)) {
+  const bindMap=selectedMap==='bind';
   const bombBotSpawns=selectedMap==='bind'?[[-48,-20],[-42,-12],[-54,-16],[-38,-24],[48,-20],[42,-12],[54,-16],[38,-24]]:[[-44,2],[-38,10],[-48,10],[-36,-4],[44,-2],[38,-10],[48,-10],[36,4]];
+  const botAttackSpawns=bindMap?[[-12,82],[12,82],[-18,88],[18,88],[-6,72],[6,72],[-22,76],[22,76]]:[[-88,-88],[-78,-88],[-68,-88],[-88,-78],[-78,-78],[-68,-78],[-88,-68],[-78,-68]];
   const regularBotSpawns=[[-25,-22],[25,-22],[-29,25],[28,25],[0,-32],[0,1],[-46,8],[46,-8]];
-  (selectedGameMode==='bomb'&&!online?bombBotSpawns:regularBotSpawns).forEach(p=>spawnBot(...p));
+  const chosenSpawns=selectedGameMode==='bomb'&&!online?(myTeam==='attack'?bombBotSpawns:botAttackSpawns):regularBotSpawns;
+  chosenSpawns.forEach(p=>spawnBot(p[0],p[1],selectedGameMode==='bomb'&&!online?(myTeam==='attack'?'defense':'attack'):null));
   if(selectedGameMode==='bomb'&&!online){
    bombSpawnMarkers.forEach(m=>scene.remove(m));bombSpawnMarkers=[];
    const marker=(x,z,color)=>{const m=new THREE.Mesh(new THREE.RingGeometry(2.2,2.8,32),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,transparent:true,opacity:.95}));m.rotation.x=-Math.PI/2;m.position.set(x,.08,z);scene.add(m);bombSpawnMarkers.push(m);};
-   marker(mySpawn.x,mySpawn.z,0x22ddff);bombBotSpawns.forEach(([x,z])=>marker(x,z,0xff4545));
+   marker(mySpawn.x,mySpawn.z,0x22ddff);chosenSpawns.forEach(([x,z])=>marker(x,z,0xff4545));
   }
 }
 
@@ -1544,15 +1551,21 @@ function keydown(e){
  if (e.code === 'KeyE' && !e.repeat && !preRoundEndsAt && ['bomb','swiftplay','spike'].includes(selectedGameMode)) {
   if(!online && selectedGameMode==='bomb'){
    const spawn=getClientBombSpawn(),sites=getClientBombSites();
-   if(!bombState.pickedUp&&!bombState.planted&&Math.hypot(player.position.x-spawn.x,player.position.z-spawn.z)<=7){
+   if(myTeam==='attack'&&!bombState.pickedUp&&!bombState.planted&&Math.hypot(player.position.x-spawn.x,player.position.z-spawn.z)<=7){
     bombState.pickedUp=true;bombState.carrierId='local-player';if(bombMesh)bombMesh.visible=false;
     document.getElementById('bombStatus').textContent='BOMBA ALINDI • A veya B BÖLGESİNE GİT VE E BAS';playSfx('pickup');
-   }else if(bombState.pickedUp&&!bombState.planted){
-    const site=sites.find(s=>Math.hypot(player.position.x-s.x,player.position.z-s.z)<=9);
+   }else if(myTeam==='attack'&&bombState.pickedUp&&!bombState.planted){
+    const site=sites.find(v=>Math.hypot(player.position.x-v.x,player.position.z-v.z)<=9);
     if(site){bombState.pickedUp=false;bombState.planted=true;bombState.site=site.name;localBombEndsAt=Date.now()+35000;
      if(bombMesh){bombMesh.visible=true;bombMesh.position.set(site.x,0,site.z);}
      document.getElementById('bombStatus').textContent='BOMBA KURULDU: '+site.name+' • 35s';playSfx('plant');
     }else{document.getElementById('bombStatus').textContent='BOMBA KURMAK İÇİN A VEYA B BÖLGESİNE YAKLAŞ';}
+   }else if(myTeam==='defense'&&bombState.planted){
+    const site=sites.find(v=>v.name===bombState.site);
+    if(site&&Math.hypot(player.position.x-site.x,player.position.z-site.z)<=7){
+     localBombDefuseProgress=0;document.getElementById('bombStatus').textContent='İMHA EDİLİYOR... E TUŞUNA BASILI TUT';
+     const started=performance.now(),tick=()=>{if(!game||!bombState.planted||myTeam!=='defense')return;if(!keys.KeyE){localBombDefuseProgress=0;return;}if(Math.hypot(player.position.x-site.x,player.position.z-site.z)>7){localBombDefuseProgress=0;return;}localBombDefuseProgress=(performance.now()-started)/1000;if(localBombDefuseProgress>=6){bombState.planted=false;localBombEndsAt=null;if(bombMesh)bombMesh.visible=false;game=false;showRoundResult(true,'BOMBAYI İMHA ETTİN • SAVUNMA KAZANDI',true);return;}requestAnimationFrame(tick);};requestAnimationFrame(tick);
+    }else{document.getElementById('bombStatus').textContent='BOMBAYI İMHA ETMEK İÇİN A/B ALANINA GİT';}
    }
    return;
   }
@@ -1804,59 +1817,102 @@ function damagePlayer(d,serverApplied=false){
 
 function moveBotWithCollision(bot,dx,dz){
  const startX=bot.position.x,startZ=bot.position.z;
- const distance=Math.hypot(dx,dz);
- const steps=Math.max(1,Math.ceil(distance/.22));
+ const distance=Math.hypot(dx,dz),steps=Math.max(1,Math.ceil(distance/.2));
  const sx=dx/steps,sz=dz/steps;
  for(let i=0;i<steps;i++){
-  const nextX=bot.position.x+sx;
-  if(!collides(nextX,bot.position.z))bot.position.x=nextX;
-  const nextZ=bot.position.z+sz;
-  if(!collides(bot.position.x,nextZ))bot.position.z=nextZ;
+  const nx=bot.position.x+sx,nz=bot.position.z+sz;
+  if(!collides(nx,bot.position.z))bot.position.x=nx;
+  if(!collides(bot.position.x,nz))bot.position.z=nz;
  }
  return Math.hypot(bot.position.x-startX,bot.position.z-startZ)>.001;
 }
+
+// Grid A* navigation: bots route around solid map geometry instead of pushing into walls.
+function findBotPath(bot,targetX,targetZ){
+ const step=4,min=-96,max=96,count=Math.floor((max-min)/step)+1;
+ const toCell=v=>Math.max(0,Math.min(count-1,Math.round((v-min)/step)));
+ const key=(x,z)=>z*count+x,fromKey=k=>({x:k%count,z:Math.floor(k/count)});
+ let sx=toCell(bot.position.x),sz=toCell(bot.position.z),gx=toCell(targetX),gz=toCell(targetZ);
+ const valid=(x,z)=>x>=0&&z>=0&&x<count&&z<count&&!collides(min+x*step,min+z*step);
+ if(!valid(gx,gz)){let found=false;for(let r=1;r<6&&!found;r++)for(let dz=-r;dz<=r&&!found;dz++)for(let dx=-r;dx<=r&&!found;dx++){if(Math.abs(dx)!==r&&Math.abs(dz)!==r)continue;const x=gx+dx,z=gz+dz;if(valid(x,z)){gx=x;gz=z;found=true;}}if(!found)return [];}
+ if(!valid(sx,sz)){let found=false;for(let r=1;r<6&&!found;r++)for(let dz=-r;dz<=r&&!found;dz++)for(let dx=-r;dx<=r&&!found;dx++){const x=sx+dx,z=sz+dz;if(valid(x,z)){sx=x;sz=z;found=true;}}if(!found)return [];}
+ const start=key(sx,sz),goal=key(gx,gz),open=[start],came=new Map(),g=new Map([[start,0]]),closed=new Set();
+ const heuristic=(x,z)=>Math.abs(x-gx)+Math.abs(z-gz);
+ while(open.length){
+  open.sort((a,b)=>(g.get(a)+heuristic(fromKey(a).x,fromKey(a).z))-(g.get(b)+heuristic(fromKey(b).x,fromKey(b).z)));
+  const cur=open.shift();if(cur===goal){const path=[];let k=goal;while(k!==start){const p=fromKey(k);path.push({x:min+p.x*step,z:min+p.z*step});k=came.get(k);if(k===undefined)return [];}return path.reverse();}
+  if(closed.has(cur))continue;closed.add(cur);const p=fromKey(cur);
+  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+   const x=p.x+dx,z=p.z+dz;if(!valid(x,z))continue;
+   if(dx&&dz&&(!valid(p.x+dx,p.z)||!valid(p.x,p.z+dz)))continue;
+   const nk=key(x,z),cost=g.get(cur)+(dx&&dz?1.414:1);if(cost>=(g.get(nk)??Infinity))continue;
+   came.set(nk,cur);g.set(nk,cost);open.push(nk);
+  }
+ }
+ return [];
+}
+function moveBotTo(bot,x,z,dt,speed=2.2){
+ const u=bot.userData;
+ if(!u.path||u.pathTimer<=0||Math.hypot((u.pathTargetX??999)-x,(u.pathTargetZ??999)-z)>5){
+  u.path=findBotPath(bot,x,z);u.pathTimer=.9;u.pathTargetX=x;u.pathTargetZ=z;
+ }
+ u.pathTimer-=dt;
+ while(u.path?.length&&Math.hypot(u.path[0].x-bot.position.x,u.path[0].z-bot.position.z)<1.35)u.path.shift();
+ const next=u.path?.[0]||{x,z},dx=next.x-bot.position.x,dz=next.z-bot.position.z,d=Math.hypot(dx,dz)||1;
+ const moved=moveBotWithCollision(bot,dx/d*speed*dt,dz/d*speed*dt);
+ if(!moved&&u.path?.length){u.pathTimer=0;}
+ bot.rotation.y=Math.atan2(-dx,-dz);
+ return Math.hypot(x-bot.position.x,z-bot.position.z);
+}
 function updateBots(dt){
+ const sites=getClientBombSites(),bombSpawn=getClientBombSpawn();
  bots.forEach(b=>{
-  if(!b.userData.alive)return;
+  const u=b.userData;if(!u.alive)return;
+  u.walk+=dt*7;
+  if(u.parts){const swing=Math.sin(u.walk)*.5;u.parts.leftLeg.rotation.x=swing;u.parts.rightLeg.rotation.x=-swing;u.parts.leftArm.rotation.x=-swing*.6;u.parts.rightArm.rotation.x=swing*.6;}
   const dx=player.position.x-b.position.x,dz=player.position.z-b.position.z,dist=Math.hypot(dx,dz);
-  b.userData.walk+=dt*7;
-  if(!online&&selectedGameMode==='bomb'&&bombState.planted){
-   const site=getClientBombSites().find(s=>s.name===bombState.site)||getClientBombSites()[0];
-   const sx=site.x-b.position.x,sz=site.z-b.position.z,sd=Math.hypot(sx,sz);
-   if(sd<=7){localBombDefuseProgress+=dt;if(localBombDefuseProgress>=6){localBombEndsAt=null;bombState.planted=false;game=false;if(bombMesh)bombMesh.visible=false;showRoundResult(false,'BOTLAR BOMBAYI ÇÖZDÜ • SAVUNMA TAKIMI KAZANDI',true);}return;}
-   moveBotWithCollision(b,sx/(sd||1)*dt*1.35,sz/(sd||1)*dt*1.35);b.rotation.y=Math.atan2(-sx,-sz);return;
+  const origin=new THREE.Vector3(b.position.x,1.35,b.position.z);
+  const rayDir=new THREE.Vector3(dx,0,dz);
+  const canSee=dist<28&&rayDir.lengthSq()>0&&!new THREE.Raycaster(origin,rayDir.clone().normalize(),0,dist).intersectObjects(mapObjects,true).length;
+  if(canSee){u.lastKnownPlayer={x:player.position.x,z:player.position.z};u.lastKnownUntil=performance.now()+3200;}
+  // Attack bots carry the bomb, find a site and plant it; defenders navigate to the planted device and defuse.
+  if(!online&&selectedGameMode==='bomb'&&myTeam==='defense'&&u.bombCarrier){
+   if(!bombState.pickedUp&&!bombState.planted){
+    const d=moveBotTo(b,bombSpawn.x,bombSpawn.z,dt,2.4);
+    if(d<=5){bombState.pickedUp=true;bombState.carrierId='bot-'+u.id;if(bombMesh)bombMesh.visible=false;u.bombPlanSite=sites[Math.floor(Math.random()*sites.length)].name;document.getElementById('bombStatus').textContent='BOT BOMBA ALDI • '+u.bombPlanSite+' BÖLGESİNE GİDİYOR';playSfx('pickup');}
+    return;
+   }
+   if(bombState.pickedUp&&bombState.carrierId==='bot-'+u.id){
+    const site=sites.find(v=>v.name===u.bombPlanSite)||sites[0],d=moveBotTo(b,site.x,site.z,dt,2.15);
+    if(d<=5){u.plantProgress+=dt;if(u.plantProgress>=2.5){bombState.pickedUp=false;bombState.planted=true;bombState.site=site.name;localBombEndsAt=Date.now()+35000;u.plantProgress=0;if(bombMesh){bombMesh.visible=true;bombMesh.position.set(site.x,0,site.z);}document.getElementById('bombStatus').textContent='BOT BOMBA KURDU: '+site.name+' • 35s';playSfx('plant');}}
+    return;
+   }
   }
-  if(b.userData.parts){const swing=Math.sin(b.userData.walk)*.5;b.userData.parts.leftLeg.rotation.x=swing;b.userData.parts.rightLeg.rotation.x=-swing;b.userData.parts.leftArm.rotation.x=-swing*.6;b.userData.parts.rightArm.rotation.x=swing*.6;}
-  // Patrol randomly; only fire when the player is in line of sight.
-  if(b.userData.targetTimer<=0||Math.hypot(b.userData.targetX-b.position.x,b.userData.targetZ-b.position.z)<2){
-   b.userData.targetX=(Math.random()-.5)*150;b.userData.targetZ=(Math.random()-.5)*150;b.userData.targetTimer=3+Math.random()*5;
+  if(!online&&selectedGameMode==='bomb'&&myTeam==='attack'&&bombState.planted){
+   const site=sites.find(v=>v.name===bombState.site)||sites[0],d=moveBotTo(b,site.x,site.z,dt,2.35);
+   if(d<=4){u.defuseProgress+=dt;if(u.defuseProgress>=6){localBombEndsAt=null;bombState.planted=false;game=false;if(bombMesh)bombMesh.visible=false;showRoundResult(false,'BOTLAR BOMBAYI İMHA ETTİ • SAVUNMA KAZANDI',true);}}
+   return;
   }
-  b.userData.targetTimer-=dt;
-  const direction=new THREE.Vector3(dx,0,dz),origin=new THREE.Vector3(b.position.x,1.35,b.position.z);
-  const canSee=dist<30&&direction.lengthSq()>0&&!new THREE.Raycaster(origin,direction.clone().normalize(),0,dist).intersectObjects(mapObjects,true).length;
+  // Bots remember a player only briefly after direct visual contact; hidden players are not tracked.
+  const recentlySeen=u.lastKnownPlayer&&performance.now()<u.lastKnownUntil;
   if(canSee){
    b.rotation.y=Math.atan2(-dx,-dz);
-   // Bot ability: occasionally dash sideways when spotted, rather than rushing the player.
-   b.userData.abilityTimer=(b.userData.abilityTimer??(5+Math.random()*5))-dt;
-   if(b.userData.abilityTimer<=0&&dist<20){
-    const side=(Math.random()<.5?-1:1)*4.5;
-    const dashX=Math.cos(b.rotation.y)*side;
-    const dashZ=-Math.sin(b.rotation.y)*side;
-    moveBotWithCollision(b,dashX,dashZ);
-    b.userData.abilityTimer=8+Math.random()*7;
-    b.userData.walk+=2.5;
-   }
-   b.userData.fire-=dt;
-   if(b.userData.fire<=0){b.userData.fire=1+Math.random()*1.2;if(Math.random()<Math.max(.12,.62-dist*.012))damagePlayer(5+Math.floor(Math.random()*8));}
+   u.fire-=dt;
+   if(u.fire<=0){u.fire=1+Math.random()*1.35;if(Math.random()<Math.max(.1,.48-dist*.011))damagePlayer(5+Math.floor(Math.random()*7));}
+   if(dist>7)moveBotTo(b,player.position.x,player.position.z,dt,1.65);
+  }else if(recentlySeen){
+   const last=u.lastKnownPlayer,d=moveBotTo(b,last.x,last.z,dt,1.45);
+   if(d<2){u.lastKnownUntil=0;u.lastKnownPlayer=null;}
   }else{
-   const wx=b.userData.targetX-b.position.x,wz=b.userData.targetZ-b.position.z,wd=Math.hypot(wx,wz)||1;
-   const moved=moveBotWithCollision(b,wx/wd*dt*1.05,wz/wd*dt*1.05);b.rotation.y=Math.atan2(-wx,-wz);
-   if(!moved)b.userData.targetTimer=0;
+   if(u.targetTimer<=0||Math.hypot(u.targetX-b.position.x,u.targetZ-b.position.z)<2){
+    for(let tries=0;tries<8;tries++){const tx=(Math.random()-.5)*170,tz=(Math.random()-.5)*170;if(!collides(tx,tz)){u.targetX=tx;u.targetZ=tz;break;}}
+    u.targetTimer=5+Math.random()*7;u.pathTimer=0;
+   }
+   u.targetTimer-=dt;moveBotTo(b,u.targetX,u.targetZ,dt,1.25);
   }
-  b.position.y=Math.abs(Math.sin(b.userData.walk))*.04;
+  b.position.y=Math.abs(Math.sin(u.walk))*.04;
  });
 }
-
 function update(dt){
  if(!game)return;
  if(preRoundEndsAt){
@@ -1867,7 +1923,7 @@ function update(dt){
  if(!online&&selectedGameMode==='bomb'&&bombState.planted&&localBombEndsAt){
   const left=Math.max(0,Math.ceil((localBombEndsAt-Date.now())/1000));
   document.getElementById('bombStatus').textContent='BOMBA KURULDU: '+bombState.site+' • '+left+'s';
-  if(left<=0){localBombEndsAt=null;bombState.planted=false;game=false;showRoundResult(true,'BOMBA PATLADI • SALDIRI TAKIMI KAZANDI',true);if(bombMesh)bombMesh.visible=false;}
+  if(left<=0){localBombEndsAt=null;bombState.planted=false;game=false;showRoundResult(myTeam==='attack','BOMBA PATLADI • SALDIRI TAKIMI KAZANDI',true);if(bombMesh)bombMesh.visible=false;}
  }
  if(!climbing&&player.position.y>0){const onDeck=watchtowerDecks.some(t=>Math.abs(player.position.x-t.x)<1.65&&Math.abs(player.position.z-t.z)<1.65);if(onDeck)player.position.y=5.85;else player.position.y=Math.max(0,player.position.y-10*dt);}
  if(reloading&&reloadMag&&reloadMagBase){const p=Math.min(1,(performance.now()-reloadAnimStart)/1050);const swing=Math.sin(p*Math.PI);reloadMag.position.y=reloadMagBase.position.y-swing*.62;reloadMag.rotation.x=reloadMagBase.rotation.x+swing*.75;if(weaponGroup)weaponGroup.rotation.z=swing*.12;}
