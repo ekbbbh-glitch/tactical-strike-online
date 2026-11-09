@@ -2379,7 +2379,8 @@ function moveBotTo(bot,x,z,dt,speed=2.2){
  while(u.path?.length&&Math.hypot(u.path[0].x-bot.position.x,u.path[0].z-bot.position.z)<1.35)u.path.shift();
  const next=u.path?.[0]||{x,z},dx=next.x-bot.position.x,dz=next.z-bot.position.z,d=Math.hypot(dx,dz)||1;
  const moved=moveBotWithCollision(bot,dx/d*speed*dt,dz/d*speed*dt);
- if(!moved&&u.path?.length){u.pathTimer=0;}
+ // If a bot is blocked, throttle path recalculation instead of running A* every frame.
+ if(!moved&&u.path?.length){u.pathTimer=.25;}
  bot.rotation.y=Math.atan2(-dx,-dz);
  return Math.hypot(x-bot.position.x,z-bot.position.z);
 }
