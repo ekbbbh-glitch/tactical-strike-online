@@ -53,7 +53,7 @@ const WORLD_LIMIT = 97;
 
 const CHARACTERS = ['soldier', 'heavy', 'special', 'jett', 'viper', 'steve', 'roblox'];
 const ALLOWED_MODES = ['deathmatch', 'ffa', 'bomb', 'domination', 'swiftplay', 'spike', 'escalation'];
-const ALLOWED_MAPS = ['desert', 'snow', 'factory', 'city', 'icebox', 'bind'];
+const ALLOWED_MAPS = ['desert', 'snow', 'factory', 'city', 'icebox', 'bind', 'ragetown'];
 
 const SPAWN_POINTS = [
   { x: -82, z: -82 }, { x: 82, z: -82 },
@@ -85,10 +85,13 @@ const BIND_ATTACK_SPAWNS=[{x:-7,z:86},{x:0,z:86},{x:7,z:86},{x:-14,z:80},{x:14,z
 const BIND_DEFENSE_SPAWNS=[{x:-8,z:-86},{x:0,z:-86},{x:8,z:-86},{x:-15,z:-80},{x:15,z:-80}];
 const BIND_BOMB_SPAWN={x:0,z:76};
 const BIND_BOMB_SITES={A:{x:-46,z:-18},B:{x:46,z:-18}};
-function getSpawnPoints(map){return map==='bind'?[...BIND_ATTACK_SPAWNS,...BIND_DEFENSE_SPAWNS]:SPAWN_POINTS;}
-function getTeamSpawns(map,team){return map==='bind'?(team==='attack'?BIND_ATTACK_SPAWNS:BIND_DEFENSE_SPAWNS):(team==='attack'?ATTACK_SPAWNS:DEFENSE_SPAWNS);}
-function getBombSpawn(map){return map==='bind'?BIND_BOMB_SPAWN:BOMB_SPAWN;}
-function getBombSites(map){return map==='bind'?BIND_BOMB_SITES:BOMB_SITES;}
+const RAGETOWN_ATTACK_SPAWNS=[{x:-9,z:84},{x:0,z:84},{x:9,z:84},{x:-15,z:88},{x:15,z:88}];
+const RAGETOWN_DEFENSE_SPAWNS=[{x:-9,z:-84},{x:0,z:-84},{x:9,z:-84},{x:-15,z:-88},{x:15,z:-88}];
+const RAGETOWN_BOMB_SPAWN={x:0,z:82};const RAGETOWN_BOMB_SITES={A:{x:-46,z:-18},B:{x:46,z:-18}};
+function getSpawnPoints(map){return map==='bind'?[...BIND_ATTACK_SPAWNS,...BIND_DEFENSE_SPAWNS]:map==='ragetown'?[...RAGETOWN_ATTACK_SPAWNS,...RAGETOWN_DEFENSE_SPAWNS]:SPAWN_POINTS;}
+function getTeamSpawns(map,team){return map==='bind'?(team==='attack'?BIND_ATTACK_SPAWNS:BIND_DEFENSE_SPAWNS):map==='ragetown'?(team==='attack'?RAGETOWN_ATTACK_SPAWNS:RAGETOWN_DEFENSE_SPAWNS):(team==='attack'?ATTACK_SPAWNS:DEFENSE_SPAWNS);}
+function getBombSpawn(map){return map==='bind'?BIND_BOMB_SPAWN:map==='ragetown'?RAGETOWN_BOMB_SPAWN:BOMB_SPAWN;}
+function getBombSites(map){return map==='bind'?BIND_BOMB_SITES:map==='ragetown'?RAGETOWN_BOMB_SITES:BOMB_SITES;}
 
 const makeCode = () =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
