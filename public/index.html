@@ -1920,6 +1920,11 @@ buildMap();
  menu.style.display='none';
  end.style.display='none';
  hud.style.display='block';
+ hud.style.visibility='visible';
+ hud.style.opacity='1';
+ hud.setAttribute('aria-hidden','false');
+ if(scopeEl)scopeEl.style.display='none';
+ if(cross)cross.style.display='block';
 
  game=true;
  preRoundEndsAt=(!online&&selectedGameMode==='bomb')?performance.now()+5000:0;
@@ -2877,6 +2882,11 @@ function updateRemotePlayers(){
 socket.on('gameStarted', async data => {
   try {
   currentRankedMatch=data.ranked===true;
+  // Ranked/Unranked geçişlerinde menüden kalan gizli HUD durumunu temizle.
+  hud.style.display='block';
+  hud.style.visibility='visible';
+  hud.style.opacity='1';
+  hud.setAttribute('aria-hidden','false');
   const me = (data.players || []).find(p => p.id === socket.id);
 
   myTeam = me ? me.team : null;
@@ -3159,6 +3169,9 @@ socket.on('roundStarting', data => {
   game=true;
   end.style.display='none';
   hud.style.display='block';
+  hud.style.visibility='visible';
+  hud.style.opacity='1';
+  hud.setAttribute('aria-hidden','false');
   // Reset local movement and rebuild every player's authoritative round-start state.
   Object.keys(keys).forEach(k=>keys[k]=false);
   touchMove={x:0,y:0};
