@@ -21,6 +21,7 @@ const io = new Server(server, {
 });
 const PORT = process.env.PORT || 3000;
 const rooms = new Map();
+const onlineDeviceSockets = new Map();
 
 const MAX_PLAYERS = 10;
 const BOT_COUNT = 8;
@@ -525,7 +526,7 @@ app.get('/api/social/state',requireSocial,async(req,res)=>{
     const member=[...room.players.values()].find(p=>p.deviceId===f.device_id);
     if(member&&!room.started){team={code:room.code,host:room.hostId===member.id};break;}
    }
-   return {id:f.device_id,name:f.player_name,team};
+   return {id:f.device_id,name:f.player_name,online:onlineDeviceSockets.has(f.device_id),team};
   });
   res.json({ok:true,deviceId:id,friends:friendList,incoming:incoming.rows,outgoing:outgoing.rows});
  }catch(e){console.error('Social state failed:',e.message);res.status(500).json({error:'Arkadaş listesi alınamadı.'});}
@@ -647,7 +648,7 @@ io.on('connection', socket => {
   const cookieHeader=String(socket.handshake.headers.cookie||'');
   const deviceMatch=cookieHeader.match(/(?:^|;\s*)ragex_device=([a-f0-9-]{36})(?:;|$)/i);
   socket.data.deviceId=deviceMatch?deviceMatch[1]:null;
-  if(socket.data.deviceId)socket.join('user:'+socket.data.deviceId);
+  if(socket.data.deviceId){socket.join('user:'+socket.data.deviceId);let active=onlineDeviceSockets.get(socket.data.deviceId);if(!active){active=new Set();onlineDeviceSockets.set(socket.data.deviceId,active);}active.add(socket.id);}
   socket.on('social:voice-signal',async data=>{
     const from=socket.data.deviceId,target=String(data?.targetDeviceId||''),signal=data?.signal;
     if(!from||!target||target===from||!signal||typeof signal!=='object')return;
@@ -1129,6 +1130,8 @@ io.on('connection', socket => {
   });
 
   socket.on('disconnect', () => {
+    const deviceId=socket.data.deviceId,active=deviceId?onlineDeviceSockets.get(deviceId):null;
+    if(active){active.delete(socket.id);if(!active.size)onlineDeviceSockets.delete(deviceId);}
     const code = socket.data.roomCode;
     if (!code) return;
     const room = rooms.get(code);
