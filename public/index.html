@@ -869,7 +869,7 @@ async function registerDeviceVisit(){
 }
 const adminPanel=document.getElementById('adminPanel');
 const adminStatus=document.getElementById('adminStatus');
-function showAdminPanel(){adminPanel.style.display='flex';document.getElementById('adminPassword').focus();}
+function showAdminPanel(){adminPanel.style.display='flex';loadAdminAccounts().then(()=>{if(document.getElementById('adminLoginArea').style.display!=='none')document.getElementById('adminPassword').focus();});}
 function hideAdminPanel(){adminPanel.style.display='none';}
 function adminText(tag,value){const el=document.createElement(tag);el.textContent=value==null?'—':String(value);return el;}
 function adminDate(value){if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?String(value):d.toLocaleString('tr-TR');}
