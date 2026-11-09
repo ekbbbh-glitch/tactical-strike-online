@@ -689,6 +689,142 @@ let socket=null,online=false,roomCode='',playerName='Oyuncu',remotePlayers=new M
 const DEVICE_CONSENT_KEY='rageXPrivacyConsentV1';
 let deviceAccountReady=false;
 let deviceAccountSaved=false;
+
+let socialSocket=null,socialDeviceId=null,socialFriendsCache=[],activeSocialFriend=null,socialVoiceStream=null,socialVoicePeers=new Map(),socialVoicePressed=false;
+function socialStatus(message){const el=document.getElementById('socialStatus');if(el)el.textContent=message;}
+async function socialFetch(url,options={}){
+ const response=await fetch(url,{credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
+ const data=await response.json().catch(()=>({error:'Sunucu yanıtı okunamadı.'}));
+ if(!response.ok)throw new Error(data.error||'İşlem başarısız.');
+ return data;
+}
+function socialText(tag,value){const el=document.createElement(tag);el.textContent=value==null?'':String(value);return el;}
+function renderSocialState(data){
+ socialDeviceId=data.deviceId||socialDeviceId;
+ socialFriendsCache=data.friends||[];
+ document.getElementById('myTeamName').textContent=playerName||'Oyuncu';
+ const friends=document.getElementById('friendList');friends.replaceChildren();
+ const team=document.getElementById('teamMembers');team.replaceChildren();
+ const me=document.createElement('div');me.className='friend-card';me.append(socialText('b',playerName+' • SEN'));team.append(me);
+ if(!socialFriendsCache.length)friends.append(socialText('small','Henüz arkadaşın yok.'));
+ socialFriendsCache.forEach(friend=>{
+  const card=document.createElement('div');card.className='friend-card';
+  const info=document.createElement('span');info.append(socialText('b',friend.name),socialText('small',friend.team?'Takımda • Oda '+friend.team.code:'Çevrim içi durumu alınamadı'));
+  const actions=document.createElement('span');actions.className='friend-actions';
+  const chat=document.createElement('button');chat.type='button';chat.textContent='SOHBET';chat.addEventListener('click',()=>selectSocialFriend(friend));
+  actions.append(chat);
+  if(friend.team){const join=document.createElement('button');join.type='button';join.textContent='TAKIMA KATIL';join.addEventListener('click',()=>{document.getElementById('roomCode').value=friend.team.code;connectRoom('join');});actions.append(join);}
+  card.append(info,actions);friends.append(card);
+  if(friend.team){const member=socialText('div',friend.name+' • ODA '+friend.team.code);member.className='friend-card';team.append(member);}
+ });
+ const requests=document.getElementById('friendRequests');requests.replaceChildren();
+ (data.incoming||[]).forEach(request=>{
+  const row=document.createElement('div');row.className='friend-card';row.append(socialText('span',request.player_name+' seni arkadaş eklemek istiyor.'));
+  const accept=document.createElement('button');accept.textContent='KABUL ET';accept.addEventListener('click',()=>respondFriend(request.id,true));
+  const reject=document.createElement('button');reject.textContent='RED ET';reject.addEventListener('click',()=>respondFriend(request.id,false));
+  row.append(accept,reject);requests.append(row);
+ });
+}
+async function refreshSocialState(){
+ if(!deviceAccountReady||!deviceAccountSaved)return;
+ try{const data=await socialFetch('/api/social/state');renderSocialState(data);if(activeSocialFriend)await loadSocialMessages(false);}
+ catch(error){socialStatus(error.message);}
+}
+async function requestFriend(){
+ const name=document.getElementById('friendNameInput').value.trim();if(!name){socialStatus('Arkadaşının oyuncu adını yaz.');return;}
+ try{const data=await socialFetch('/api/social/request',{method:'POST',body:JSON.stringify({name})});socialStatus(data.message||'İstek gönderildi.');document.getElementById('friendNameInput').value='';await refreshSocialState();}
+ catch(error){socialStatus(error.message);}
+}
+async function respondFriend(requestId,accept){
+ try{await socialFetch('/api/social/respond',{method:'POST',body:JSON.stringify({requestId,accept})});socialStatus(accept?'Arkadaşlık isteği kabul edildi.':'Arkadaşlık isteği reddedildi.');await refreshSocialState();}
+ catch(error){socialStatus(error.message);}
+}
+async function selectSocialFriend(friend){
+ activeSocialFriend=friend;
+ document.getElementById('activeFriendLabel').textContent='Sohbet: '+friend.name;
+ await loadSocialMessages(true);
+}
+async function loadSocialMessages(clear){
+ if(!activeSocialFriend)return;
+ try{
+  const data=await socialFetch('/api/social/messages?friend='+encodeURIComponent(activeSocialFriend.id));
+  const log=document.getElementById('socialChatLog');
+  if(clear)log.replaceChildren();
+  log.replaceChildren();
+  (data.messages||[]).forEach(message=>{
+   const line=document.createElement('div'),name=socialText('b',message.sender_id===socialDeviceId?'Sen: ':activeSocialFriend.name+': ');
+   const body=socialText('span',message.body);line.append(name,body);log.append(line);
+  });
+  log.scrollTop=log.scrollHeight;
+ }catch(error){socialStatus(error.message);}
+}
+async function sendSocialMessage(event){
+ event.preventDefault();if(!activeSocialFriend){socialStatus('Önce arkadaş listesinden bir kişi seç.');return;}
+ const input=document.getElementById('socialChatInput'),text=input.value.trim();if(!text)return;
+ try{await socialFetch('/api/social/messages',{method:'POST',body:JSON.stringify({friend:activeSocialFriend.id,text})});input.value='';await loadSocialMessages(false);}
+ catch(error){socialStatus(error.message);}
+}
+function emitSocialSignal(friendId,signal){if(socialSocket?.connected)socialSocket.emit('social:voice-signal',{targetDeviceId:friendId,signal});}
+function getSocialPeer(friendId){
+ if(socialVoicePeers.has(friendId))return socialVoicePeers.get(friendId);
+ const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+ socialVoicePeers.set(friendId,pc);
+ if(socialVoiceStream)socialVoiceStream.getAudioTracks().forEach(track=>pc.addTrack(track,socialVoiceStream));
+ pc.onicecandidate=e=>{if(e.candidate)emitSocialSignal(friendId,{candidate:e.candidate});};
+ pc.ontrack=e=>{let audio=document.getElementById('social-audio-'+friendId);if(!audio){audio=document.createElement('audio');audio.id='social-audio-'+friendId;audio.autoplay=true;audio.playsInline=true;document.body.append(audio);}audio.srcObject=e.streams[0];audio.play().catch(()=>{});};
+ pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState)){pc.close();socialVoicePeers.delete(friendId);document.getElementById('social-audio-'+friendId)?.remove();}};
+ return pc;
+}
+async function handleSocialSignal(data){
+ if(!data?.fromDeviceId||!data.signal)return;
+ const pc=getSocialPeer(data.fromDeviceId),signal=data.signal;
+ try{
+  if(signal.description){
+   await pc.setRemoteDescription(signal.description);
+   if(signal.description.type==='offer'){const answer=await pc.createAnswer();await pc.setLocalDescription(answer);emitSocialSignal(data.fromDeviceId,{description:pc.localDescription});}
+  }else if(signal.candidate){await pc.addIceCandidate(signal.candidate);}
+ }catch(error){console.warn('Friend voice signaling failed:',error);}
+}
+async function initSocial(){
+ if(!deviceAccountReady||!deviceAccountSaved)return;
+ await refreshSocialState();
+ if(!socialSocket){
+  socialSocket=io(window.location.origin,{transports:['websocket','polling'],reconnection:true});
+  socialSocket.on('social:voice-signal',handleSocialSignal);
+  socialSocket.on('connect',()=>socialStatus('Arkadaş sistemi bağlı.'));
+  socialSocket.on('connect_error',()=>socialStatus('Arkadaş sunucusuna bağlanılamadı.'));
+ }
+}
+async function setSocialVoice(pressed){
+ if(pressed===socialVoicePressed)return;
+ socialVoicePressed=pressed;
+ const button=document.getElementById('socialVoiceButton'),status=document.getElementById('socialVoiceStatus');
+ if(!pressed){socialVoiceStream?.getAudioTracks().forEach(t=>t.enabled=false);button.textContent='🎙 SESLİ SOHBETİ AÇ';status.textContent='Mikrofon kapalı';return;}
+ if(!navigator.mediaDevices?.getUserMedia){socialVoicePressed=false;status.textContent='Bu tarayıcı mikrofonu desteklemiyor.';return;}
+ try{
+  if(!socialSocket?.connected)await new Promise((resolve,reject)=>{if(!socialSocket)socialSocket=io(window.location.origin);socialSocket.once('connect',resolve);socialSocket.once('connect_error',reject);});
+  if(!socialVoiceStream)socialVoiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  socialVoiceStream.getAudioTracks().forEach(t=>t.enabled=true);
+  button.textContent='🎙 KONUŞUYORSUN';status.textContent='Mikrofon açık • Bırakınca kapanır';
+  for(const friend of socialFriendsCache){
+   if(socialDeviceId&&socialDeviceId<friend.id){
+    const pc=getSocialPeer(friend.id),offer=await pc.createOffer();await pc.setLocalDescription(offer);emitSocialSignal(friend.id,{description:pc.localDescription});
+   }
+  }
+ }catch(error){socialVoicePressed=false;status.textContent='Mikrofon izni verilemedi veya bağlantı kurulamadı.';console.warn(error);}
+}
+document.getElementById('sendFriendRequest').addEventListener('click',requestFriend);
+document.getElementById('friendNameInput').addEventListener('keydown',e=>{if(e.key==='Enter')requestFriend();});
+document.getElementById('socialChatForm').addEventListener('submit',sendSocialMessage);
+const socialVoiceButton=document.getElementById('socialVoiceButton');
+socialVoiceButton.addEventListener('pointerdown',e=>{e.preventDefault();setSocialVoice(true);});
+['pointerup','pointercancel','pointerleave'].forEach(type=>socialVoiceButton.addEventListener(type,()=>setSocialVoice(false)));
+document.addEventListener('keydown',e=>{if(e.code==='KeyV'&&!e.repeat&&!game&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||'')){setSocialVoice(true);}});
+document.addEventListener('keyup',e=>{if(e.code==='KeyV')setSocialVoice(false);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)setSocialVoice(false);});
+setInterval(()=>{if(deviceAccountReady&&deviceAccountSaved){refreshSocialState();}},6000);
+setInterval(()=>{if(activeSocialFriend&&deviceAccountReady)loadSocialMessages(false);},2500);
+
 function setAccountStatus(message){const el=document.getElementById('accountStatus');if(el)el.textContent=message;}
 function applySavedPlayerName(name){
  const input=document.getElementById('playerName');if(!input)return;
@@ -700,13 +836,13 @@ async function registerDeviceVisit(){
   const response=await fetch('/api/device/visit',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({consent:true})});
   if(!response.ok)throw new Error(response.status===503?'Sunucu veritabanı henüz bağlanmadı.':'Cihaz hesabı kaydedilemedi.');
   const data=await response.json();deviceAccountReady=true;
-  if(data.name)applySavedPlayerName(data.name);
+  if(data.name){applySavedPlayerName(data.name);setTimeout(initSocial,0);}
   else{
    const localName=localStorage.getItem('rageXPlayerName');
    if(localName){
     const save=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name:localName})});
     const saved=await save.json();
-    if(save.ok)applySavedPlayerName(saved.name||localName);else applySavedPlayerName(localName);
+    if(save.ok)applySavedPlayerName(saved.name||localName);setTimeout(initSocial,0);}else applySavedPlayerName(localName);
    }else setAccountStatus('Bu cihaz için henüz oyuncu adı seçilmedi.');
   }
  }catch(error){
@@ -791,7 +927,7 @@ document.getElementById('savePlayerName').addEventListener('click',async()=>{
   try{
    const response=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name})});
    const data=await response.json();if(!response.ok)throw new Error(data.error||'Oyuncu adı kaydedilemedi.');
-   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);
+   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);setTimeout(initSocial,0);
   }catch(error){setAccountStatus(error.message||'Kayıt başarısız.');}
  }else{localStorage.setItem('rageXPlayerName',name);applySavedPlayerName(name);setAccountStatus('Oyuncu adı bu tarayıcıya kaydedildi (misafir hesabı).');}
 });
