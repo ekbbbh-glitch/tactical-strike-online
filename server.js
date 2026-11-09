@@ -51,6 +51,19 @@ const BOMB_TIME = 45000;
 const DEFUSE_TIME = 5000;
 const WORLD_LIMIT = 97;
 
+// Server-side limits for hits reported by clients. These mirror the client weapon profiles.
+const WEAPON_HIT_PROFILES = {
+  Vandal:{range:85,damage:34}, Phantom:{range:82,damage:31}, Bulldog:{range:76,damage:35},
+  Guardian:{range:105,damage:65}, Operator:{range:180,damage:150}, Marshal:{range:155,damage:95},
+  Classic:{range:48,damage:26}, Ghost:{range:58,damage:32}, Frenzy:{range:42,damage:25},
+  'Şerif':{range:75,damage:72}, Spectre:{range:55,damage:26}, Stinger:{range:48,damage:27},
+  Judge:{range:24,damage:12}, Bucky:{range:20,damage:16}, Ares:{range:88,damage:30},
+  Odin:{range:92,damage:38}, M416:{range:90,damage:36}, AKM:{range:82,damage:43},
+  'SCAR-L':{range:88,damage:38}, UMP45:{range:60,damage:39}, Vector:{range:45,damage:28},
+  Kar98k:{range:160,damage:95}, M24:{range:170,damage:110}, AWM:{range:150,damage:100},
+  'DP-28':{range:95,damage:45}, S12K:{range:25,damage:15}
+};
+
 const CHARACTERS = ['soldier', 'heavy', 'special', 'jett', 'viper', 'steve', 'roblox'];
 const ALLOWED_MODES = ['deathmatch', 'ffa', 'bomb', 'domination', 'swiftplay', 'spike', 'escalation'];
 const ALLOWED_MAPS = ['desert', 'snow', 'factory', 'city', 'icebox', 'bind', 'ragetown'];
@@ -944,7 +957,10 @@ io.on('connection', socket => {
 
   socket.on('weaponFired', () => {
     const room=rooms.get(socket.data.roomCode);
-    if(room?.started&&room.players.has(socket.id))socket.to(room.code).emit('weaponFired',{playerId:socket.id});
+    const player=room?.players.get(socket.id);
+    if(!room?.started||!player||player.hp<=0)return;
+    player.lastWeaponFiredAt=Date.now();
+    socket.to(room.code).emit('weaponFired',{playerId:socket.id});
   });
 
   socket.on('healSelf', amount => {
@@ -1100,16 +1116,19 @@ io.on('connection', socket => {
 
     if (room.gameMode !== 'ffa' && attacker.team === target.team) return;
 
-    const distance = Math.hypot(
-      attacker.x - target.x,
-      attacker.z - target.z
-    );
+    const dx=target.x-attacker.x,dz=target.z-attacker.z;
+    const distance=Math.hypot(dx,dz);
+    const profile=WEAPON_HIT_PROFILES[attacker.weapon];
+    const now=Date.now();
+    // A client-reported hit is accepted only immediately after a server-observed shot.
+    if(!profile||!attacker.lastWeaponFiredAt||now-attacker.lastWeaponFiredAt>450)return;
+    if(distance>profile.range)return;
+    const facing=(-Math.sin(attacker.ry)*dx-Math.cos(attacker.ry)*dz)/Math.max(distance,.001);
+    if(facing<.15)return;
 
-    if (distance > 150) return;
-
-    let damage = finiteClamped(data.damage, 0, 100, 0);
-    if (!damage) return;
-    if (target.shieldUntil > Date.now()) damage = Math.ceil(damage * 0.5);
+    let damage=finiteClamped(data.damage,0,profile.damage,0);
+    if(!damage)return;
+    if(target.shieldUntil>now)damage=Math.ceil(damage*.5);
     target.hp = Math.max(0, target.hp - damage);
     if(target.hp<=0)target.alive=false;
 
