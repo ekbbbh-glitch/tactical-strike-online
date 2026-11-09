@@ -1647,8 +1647,16 @@ buildMap();
   // Maçtan çıkışı tek noktadan yönet; temizlikteki hata menünün açılmasını engellemesin.
   game=false;
   currentRankedMatch=false;
-  try{if(socket?.connected)socket.emit('leaveRoom');}catch(e){}
+  // Eski çevrim içi oturumu kapat; bot maçından kalan durum yeni odaya taşınmasın.
+  const previousSocket=socket;
+  socket=null;
+  try{if(previousSocket?.connected){previousSocket.emit('leaveRoom');previousSocket.disconnect();}}catch(e){}
   online=false;
+  roomCode='';
+  isRoomHost=false;
+  try{bots.forEach(b=>scene&&scene.remove(b));bots=[];}catch(e){bots=[];}
+  try{voicePeers.forEach(pc=>pc.close());voicePeers.clear();stopTalking();}catch(e){}
+  try{remotePlayers.clear();remoteMeshes.forEach(mesh=>scene&&scene.remove(mesh));remoteMeshes.clear();}catch(e){}
   try{Object.keys(keys||{}).forEach(k=>keys[k]=false);}catch(e){}
   try{touchMove={x:0,y:0};touchFire=false;touchSprint=false;lastMouseDown=false;climbing=false;unScope();}catch(e){}
   try{if(mobileLayoutEdit){saveMobileLayout();setMobileLayoutEdit(false);}}catch(e){}
@@ -2885,7 +2893,10 @@ socket.on('gameEnded', data => {
     }catch(err){console.warn('Voice signal error',err);}
   });
 
-  socket.on('disconnect', (reason) => {
+  const activeSocket=socket;
+  activeSocket.on('disconnect', (reason) => {
+    // Önceki bağlantının gecikmiş olayı yeni oda bağlantısını etkilemesin.
+    if(socket!==activeSocket)return;
     stopTalking();voicePeers.forEach(pc=>pc.close());voicePeers.clear();
     online = false;
     stopBombClock();
