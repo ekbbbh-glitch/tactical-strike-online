@@ -92,7 +92,7 @@ function finiteClamped(value, min, max, fallback = 0) {
 }
 
 function roomPlayers(room) {
-  return [...room.players.values()].map(player => ({ ...player }));
+  return [...room.players.values()].map(player => { const { deviceId, ...publicPlayer } = player; return publicPlayer; });
 }
 
 function createBombState() {
