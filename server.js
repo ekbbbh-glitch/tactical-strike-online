@@ -993,7 +993,7 @@ io.on('connection', socket => {
     player.rx = finiteClamped(state.rx, -1.5, 1.5, player.rx);
     player.name = cleanName(state.name || player.name);
 
-    player.weapon = ['Vandal','Phantom','Bulldog','Guardian','Operator','Marshal','Classic','Ghost','Frenzy','Şerif','Spectre','Stinger','Judge','Bucky','Ares','Odin','M416','AKM','SCAR-L','UMP45','Vector','Kar98k','M24','AWM','DP-28','S12K'].includes(state.weapon)
+    player.weapon = ['Vandal','Phantom','Bulldog','Guardian','Operator','Marshal','Classic','Ghost','Frenzy','Şerif','Spectre','Stinger','Judge','Bucky','Ares','Odin','M416','AKM','SCAR-L','UMP45','Vector','Kar98k','M24','AWM','DP-28','S12K','Knife'].includes(state.weapon)
       ? state.weapon
       : player.weapon;
 
@@ -1046,6 +1046,38 @@ io.on('connection', socket => {
         publishScore(room);
       }
     }
+  });
+
+  socket.on('knifeHit', (data = {}) => {
+    const room = rooms.get(socket.data.roomCode);
+    if (!room || !room.started || !data || typeof data !== 'object') return;
+    if (['bomb','swiftplay','spike'].includes(room.gameMode) && (!room.roundActive || room.roundOver)) return;
+    const attacker = room.players.get(socket.id), target = room.players.get(String(data.targetId || ''));
+    if (!attacker || !target || attacker.id === target.id || attacker.hp <= 0 || target.hp <= 0) return;
+    if (room.gameMode !== 'ffa' && attacker.team === target.team) return;
+    const dx = target.x - attacker.x, dz = target.z - attacker.z, distance = Math.hypot(dx,dz);
+    const facing = (-Math.sin(attacker.ry)*dx - Math.cos(attacker.ry)*dz) / Math.max(distance,.001);
+    if (distance > 3.8 || facing < .25) return;
+    const now = Date.now();if(now-(attacker.lastKnifeAt||0)<450)return;attacker.lastKnifeAt=now;
+    let damage=65;if(target.shieldUntil>now)damage=Math.ceil(damage*.5);
+    target.hp=Math.max(0,target.hp-damage);if(target.hp<=0)target.alive=false;
+    io.to(target.id).emit('playerDamaged',{damage,hp:target.hp,attacker:attacker.name});
+    if(target.hp<=0){
+      attacker.kills=(attacker.kills||0)+1;
+      if(room.gameMode==='deathmatch')room.score[attacker.team]+=1;
+      if(room.gameMode==='escalation')room.escalationLevels[attacker.team]=Math.min(12,room.escalationLevels[attacker.team]+1);
+      io.to(room.code).emit('playerEliminated',{playerId:target.id,killerId:attacker.id,killerName:attacker.name});
+      if(room.bomb.carrierId===target.id){resetBomb(room);io.to(room.code).emit('bombReset',{round:room.round,bomb:room.bomb});}
+      if(room.bomb.defuserId===target.id){if(room.defuseTimer)clearTimeout(room.defuseTimer);room.defuseTimer=null;room.bomb.defuserId=null;}
+      if(['deathmatch','ffa'].includes(room.gameMode)&&room.started){
+        if(room.gameMode==='ffa'&&attacker.kills>=40)finishScoreMatch(room,attacker.id,'kills');
+        else if(room.gameMode==='deathmatch'&&room.score[attacker.team]>=100)finishScoreMatch(room,attacker.team,'kills');
+      }
+      if(room.gameMode==='escalation'){const level=room.escalationLevels[attacker.team];io.to(room.code).emit('escalationUpdate',{team:attacker.team,level,playerId:attacker.id});if(level>=12)finishScoreMatch(room,attacker.team,'escalation');}
+      if(['deathmatch','ffa','domination','escalation'].includes(room.gameMode)&&room.started)scheduleRespawn(room,target);
+      publishScore(room);
+    }
+    io.to(room.code).emit('playersUpdate',roomPlayers(room));checkTeamElimination(room);
   });
 
   socket.on('playerHit', (data = {}) => {
