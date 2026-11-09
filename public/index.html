@@ -709,7 +709,7 @@ function renderSocialState(data){
  if(!socialFriendsCache.length)friends.append(socialText('small','Henüz arkadaşın yok.'));
  socialFriendsCache.forEach(friend=>{
   const card=document.createElement('div');card.className='friend-card';
-  const info=document.createElement('span');info.append(socialText('b',friend.name),socialText('small',friend.team?'Takımda • Oda '+friend.team.code:'Çevrim içi durumu alınamadı'));
+  const info=document.createElement('span');info.append(socialText('b',friend.name),socialText('small',friend.team?'Takımda • Oda '+friend.team.code:(friend.online?'ÇEVRİM İÇİ':'ÇEVRİM DIŞI')));
   const actions=document.createElement('span');actions.className='friend-actions';
   const chat=document.createElement('button');chat.type='button';chat.textContent='SOHBET';chat.addEventListener('click',()=>selectSocialFriend(friend));
   actions.append(chat);
