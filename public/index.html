@@ -124,7 +124,7 @@ body{overscroll-behavior:none}
 #mobileActions button{width:64px;height:64px;min-width:64px;padding:5px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
 #mobileActions button .sym{font-size:21px;line-height:1}
 #mobileActions button{touch-action:none;user-select:none;-webkit-user-select:none}
-#weaponTouch{background:#435d72!important}#cameraTouch{background:#596b9b!important}#screenTouch{background:#278b70!important}
+#weaponTouch{background:#435d72!important}#knifeTouch{background:#76502f!important}#cameraTouch{background:#596b9b!important}#screenTouch{background:#278b70!important}
 #layoutEditButton{width:100%;border-radius:8px;background:#2787a4;color:white}
 #settingsPanel .setting-note{font-size:11px;color:#b9cbd5;line-height:1.4}
 #lookPad{display:none;position:absolute;right:102px;top:32%;width:calc(52vw - 110px);height:42%;pointer-events:auto;touch-action:none;background:transparent}
@@ -419,7 +419,7 @@ body{overscroll-behavior:none}
    <button id="jumpTouch"><span class="sym">⬆</span>ZIPLA</button>
    <button id="voiceTouch"><span class="sym">🎙</span>KONUŞ</button>
    <button id="interactTouch"><span class="sym">E</span>KULLAN</button>
-   <button id="weaponTouch"><span class="sym">⇄</span>SİLAH</button><button id="cameraTouch"><span class="sym">◉</span>KAMERA</button><button id="screenTouch"><span class="sym">⛶</span>TAM EKRAN</button>
+   <button id="weaponTouch"><span class="sym">⇄</span>SİLAH DEĞİŞTİR</button><button id="knifeTouch"><span class="sym">🗡</span>BIÇAK</button><button id="cameraTouch"><span class="sym">◉</span>KAMERA</button><button id="screenTouch"><span class="sym">⛶</span>TAM EKRAN</button>
   </div>
  </div>
  <div id="chatPanel"><div id="chatLog" aria-live="polite"></div><form id="chatForm"><input id="chatInput" maxlength="120" placeholder="Mesaj yaz..." autocomplete="off"><button type="submit">GÖNDER</button></form></div>
@@ -643,7 +643,8 @@ const cross=document.getElementById('cross');
 
  let scene,camera,renderer,clock,player,weaponGroup;
  let mapObjects = [];
-let weaponName='Vandal',ammo=25,reserve=Infinity,hp=100;
+let weaponName='Vandal',lastGunName='Vandal',ammo=25,reserve=Infinity,hp=100;
+let knifeEquipped=false,knifeRig=null,knifeHandles=[],knifeAttackUntil=0,knifeAttackCooldown=0;
  let selectedGameMode = 'deathmatch';
  let myTeam = null;
  let bombMesh = null;
@@ -1629,11 +1630,27 @@ function showRoundResult(won,detail,final=false){
   if(!final){setTimeout(()=>{if(game)end.style.display='none';},2600);}
 }
 
+function buildKnifeModel(){
+ knifeRig=new THREE.Group();knifeHandles=[];
+ const steel=mat(0xcbd5dc,.22,.92),edge=mat(0xf1f5f7,.16,.96),dark=mat(0x171c22,.42,.55),grip=mat(0x9b6332,.38,.38),pin=mat(0xd8e0e5,.2,.9);
+ box(knifeRig,.38,-.34,-1.08,.105,.045,.68,steel);
+ box(knifeRig,.38,-.312,-1.08,.018,.008,.55,edge);
+ const tip=new THREE.Mesh(new THREE.ConeGeometry(.054,.22,4),steel);tip.rotation.x=Math.PI/2;tip.position.set(.38,-.34,-1.49);knifeRig.add(tip);
+ for(const side of [-1,1]){
+  const handle=new THREE.Group();handle.position.set(.38+side*.075,-.34,-.69);
+  box(handle,0,0,.27,.095,.075,.58,grip);box(handle,0,-.001,.27,.025,.078,.48,dark);
+  for(const z of [.04,.49]){const screw=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.018,12),pin);screw.rotation.z=Math.PI/2;screw.position.set(side*.052,0,z);handle.add(screw);}
+  knifeRig.add(handle);knifeHandles.push(handle);
+ }
+ box(knifeRig,.38,-.34,-.69,.28,.075,.075,dark);
+ weaponGroup.add(knifeRig);weaponGroup.position.set(0,0,0);
+}
 function buildWeapon(){
  if(weaponGroup)camera.remove(weaponGroup);
- reloadMag=null;reloadMagBase=null;
+ reloadMag=null;reloadMagBase=null;knifeRig=null;knifeHandles=[];
  weaponGroup=new THREE.Group();
  camera.add(weaponGroup);
+ if(knifeEquipped){buildKnifeModel();return;}
  const profile=specs[weaponName]||specs.Vandal;
  const kind=profile.kind;
  const pistol=kind==='pistol',sniper=kind==='sniper',shotgun=kind==='shotgun',lmg=kind==='lmg',smg=kind==='smg';
@@ -1766,13 +1783,21 @@ function buildWeaponSafely(){
  }
 }
 function updateAmmo(){
- const displayWeapon=weaponName==='Şerif'?'SHERIFF':weaponName.toUpperCase();
- ammoEl.innerHTML=`${ammo} / ∞<small>${displayWeapon}${reloading?' • RELOADING':''}</small>`;
+ const displayWeapon=knifeEquipped?'BUTTERFLY KNIFE':(weaponName==='Şerif'?'SHERIFF':weaponName.toUpperCase());
+ ammoEl.innerHTML=knifeEquipped?'READY<small>KELEBEK BIÇAK • SOL TIK</small>':`${ammo} / ∞<small>${displayWeapon}${reloading?' • RELOADING':''}</small>`;
 }
-
+function equipKnife(){
+ if(!game)return;
+ knifeEquipped=true;burstRemaining=0;reloading=false;scoped=false;scopeEl.style.display='none';cross.style.display='block';
+ if(camera){camera.fov=76;camera.updateProjectionMatrix();}
+ buildWeaponSafely();if(weaponGroup)weaponGroup.visible=!thirdPerson;updateAmmo();
+ msg.textContent='KELEBEK BIÇAK • YAKLAŞ VE SOL TIKLA';
+ setTimeout(()=>{if(msg.textContent.startsWith('KELEBEK BIÇAK'))msg.textContent='';},1600);
+}
+function equipGuns(){if(!knifeEquipped)return;knifeEquipped=false;setWeapon(lastGunName);}
 function setWeapon(n){
  if(!specs[n])n='Vandal';
- weaponName=n;
+ knifeEquipped=false;lastGunName=n;
  burstRemaining=0;
  ammo=specs[n].mag;
  reserve=Infinity;
@@ -2018,10 +2043,8 @@ function keydown(e){
 
  if(e.code==='KeyC'&&!e.repeat){toggleCameraView();return;}
  if(e.code==='KeyR')reload();
- if(/^Digit[1-9]$/.test(e.code)||e.code==='Digit0'){
-  const slot=e.code==='Digit0'?9:Number(e.code.slice(5))-1;
-  if(WEAPON_NAMES[slot])setWeapon(WEAPON_NAMES[slot]);
- }
+ if(e.code==='Digit1'&&!e.repeat){equipKnife();return;}
+ if(e.code==='Digit2'&&!e.repeat){equipGuns();return;}
  if(e.code==='BracketRight'&&!e.repeat)cycleWeapon(1);
  if(e.code==='BracketLeft'&&!e.repeat)cycleWeapon(-1);
 }
@@ -2045,7 +2068,7 @@ function mouseDown(e){
 
  if(e.button===0){
   lastMouseDown=true;
-  shoot();
+  if(knifeEquipped)attackKnife();else shoot();
  }
 
  if(e.button===2&&specs[weaponName]?.scope){
@@ -2099,7 +2122,25 @@ function reload(){
  },(specs[weaponName].reload||1.5)*1000);
 }
 
+function attackKnife(){
+ if(!game||!knifeEquipped||preRoundEndsAt||Date.now()<knifeAttackCooldown)return;
+ knifeAttackCooldown=Date.now()+520;knifeAttackUntil=performance.now()+260;playSfx('shot');
+ const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(0,0),camera);ray.far=3.35;
+ const botTargets=[];bots.filter(b=>b.userData.alive).forEach(b=>b.traverse(o=>{if(o.isMesh)botTargets.push(o);}));
+ const botHit=ray.intersectObjects(botTargets,false)[0],playerHit=ray.intersectObjects([...remoteMeshes.values()],true)[0];
+ if(playerHit&&(!botHit||playerHit.distance<botHit.distance)){
+  let targetId=null;for(const [id,mesh] of remoteMeshes){let node=playerHit.object;while(node&&node!==mesh)node=node.parent;if(node===mesh){targetId=id;break;}}
+  if(targetId&&online&&socket?.connected)socket.emit('knifeHit',{targetId});
+  return;
+ }
+ if(botHit){let target=botHit.object;while(target&&!target.userData?.alive)target=target.parent;
+  if(target?.userData?.alive){if(online&&socket?.connected)socket.emit('botHit',{botId:target.userData.id,damage:65});
+   else{target.userData.hp-=65;if(target.userData.hp<=0){target.userData.alive=false;target.visible=false;kills++;msg.textContent='HEDEF BIÇAKLA ELENDİ';updateHud();}}return;}
+ }
+ msg.textContent='BIÇAK İÇİN DÜŞMANA YAKLAŞ';setTimeout(()=>{if(msg.textContent.includes('BIÇAK'))msg.textContent='';},650);
+}
 function shoot(isBurstContinuation=false){
+ if(knifeEquipped){attackKnife();return;}
  if(!game||preRoundEndsAt||(!locked&&!touchFire)||reloading||shootCd>0)return;
 
  if(ammo<=0){
@@ -2481,7 +2522,12 @@ if (jumping) {
  weaponGroup.rotation.x=recoil*.8;
 weaponGroup.rotation.z =
   (f || s) ? Math.sin(moveBob * 0.5) * 0.025 : 0;
-
+ if(knifeEquipped&&knifeRig){
+  const t=performance.now();knifeRig.rotation.z=Math.sin(t/245)*.42;
+  knifeHandles.forEach((h,i)=>{h.rotation.z=Math.sin(t/210+i*Math.PI)*.62;});
+  if(t<knifeAttackUntil){const p=1-(knifeAttackUntil-t)/260;weaponGroup.position.z=-.28*Math.sin(p*Math.PI);knifeRig.rotation.x=-.85*Math.sin(p*Math.PI);}
+  else knifeRig.rotation.x=0;
+ }
 if (keys.ShiftLeft && (f || s)) {
   weaponGroup.rotation.x += 0.035;
 }
@@ -2490,7 +2536,7 @@ if (keys.ShiftLeft && (f || s)) {
   netSendTimer+=dt;
   if(netSendTimer>=.05){
    netSendTimer=0;
-   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:weaponName,character:selectedCharacter,shield:Date.now()<shieldUntil});
+   socket.emit('playerState',{x:player.position.x,y:player.position.y,z:player.position.z,ry:player.rotation.y,rx:camera.rotation.x,hp,name:playerName,weapon:knifeEquipped?'Knife':weaponName,character:selectedCharacter,shield:Date.now()<shieldUntil});
   }
  }
  updateRemotePlayers();
@@ -2532,7 +2578,7 @@ function collides(x,z){
 
 function toggleCameraView(){thirdPerson=!thirdPerson;if(weaponGroup)weaponGroup.visible=!thirdPerson;if(localAvatar)localAvatar.visible=thirdPerson;camera.position.set(0,thirdPerson?2.55:1.65,thirdPerson?5:0);camera.rotation.x=thirdPerson?-0.12:0;const b=document.getElementById('cameraTouch');if(b)b.innerHTML='<span class="sym">◉</span>'+(thirdPerson?'DIŞ':'İÇ');}
 function cycleWeapon(direction=1){
- const current=Math.max(0,WEAPON_NAMES.indexOf(weaponName));
+ const current=knifeEquipped?(direction>0?-1:0):Math.max(0,WEAPON_NAMES.indexOf(weaponName));
  const next=(current+direction+WEAPON_NAMES.length)%WEAPON_NAMES.length;
  setWeapon(WEAPON_NAMES[next]);
 }
@@ -2545,10 +2591,10 @@ function setupTouchControls(){
  pad.addEventListener('touchstart',e=>{active=true;move(e);e.preventDefault();},{passive:false});
  pad.addEventListener('touchmove',e=>{move(e);e.preventDefault();},{passive:false});
  pad.addEventListener('touchend',end);pad.addEventListener('touchcancel',end);
- const fire=document.getElementById('fireTouch'); fire.addEventListener('pointerdown',e=>{touchFire=true;lastMouseDown=true;if(!specs[weaponName].auto)shoot();e.preventDefault();}); fire.addEventListener('pointerup',()=>{touchFire=false;lastMouseDown=false;}); fire.addEventListener('pointercancel',()=>{touchFire=false;lastMouseDown=false;});
+ const fire=document.getElementById('fireTouch'); fire.addEventListener('pointerdown',e=>{touchFire=true;lastMouseDown=true;if(knifeEquipped)attackKnife();else if(!specs[weaponName].auto)shoot();e.preventDefault();}); fire.addEventListener('pointerup',()=>{touchFire=false;lastMouseDown=false;}); fire.addEventListener('pointercancel',()=>{touchFire=false;lastMouseDown=false;});
  const sprint=document.getElementById('sprintTouch'); sprint.addEventListener('pointerdown',e=>{touchSprint=true;e.preventDefault();}); sprint.addEventListener('pointerup',()=>touchSprint=false); sprint.addEventListener('pointercancel',()=>touchSprint=false);
  document.getElementById('interactTouch').addEventListener('click',()=>keydown({code:'KeyE'}));
-document.getElementById('weaponTouch').addEventListener('click',cycleWeapon);document.getElementById('cameraTouch').addEventListener('click',toggleCameraView);document.getElementById('screenTouch').addEventListener('click',async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen();}catch(e){msg.textContent='Tam ekran desteklenmiyor.';}});
+document.getElementById('weaponTouch').addEventListener('click',()=>{if(knifeEquipped)equipGuns();else cycleWeapon(1);});document.getElementById('knifeTouch').addEventListener('click',equipKnife);document.getElementById('cameraTouch').addEventListener('click',toggleCameraView);document.getElementById('screenTouch').addEventListener('click',async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen();}catch(e){msg.textContent='Tam ekran desteklenmiyor.';}});
 }
 
 function drawMinimap(){
