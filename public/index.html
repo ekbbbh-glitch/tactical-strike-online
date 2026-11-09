@@ -222,7 +222,7 @@ body{overscroll-behavior:none}
 #menu .panel>p:has(label[for="rankedMode"]){grid-row:10}
 #menu #rankPanel{grid-column:2;grid-row:11;margin:4px 0;padding:10px}
 #menu #start{grid-column:2;grid-row:12;width:100%;margin:4px 0;padding:13px}
-#menu #appInstallArea,#menu #installGuide,#menu .panel>.small:not(:first-of-type),#menu #adminOpen{display:none}
+#menu #appInstallArea,#menu #installGuide,#menu .panel>.small:not(:first-of-type){display:none}#menu #adminOpen{display:block;position:fixed;left:8px;bottom:8px;z-index:1001;margin:0;padding:6px 9px;font-size:9px}
 #menu select{width:100%;min-width:0;margin:4px 0;padding:9px 10px;font-size:12px}
 #menu .online-box label{margin:2px 0;font-size:10px}
 #menu .online-box input{padding:9px 10px;font-size:12px}
@@ -1176,7 +1176,7 @@ function init(){
  },{passive:false});
 
  window.addEventListener('keyup',e=>{
-  if(e.code==='KeyU')stopTalking();
+  if(e.code==='KeyV')stopTalking();
   const k=e.key.toLowerCase();
   const code=movementCodes[k]||(
    e.code==='ShiftRight'?'ShiftLeft':e.code
@@ -1948,7 +1948,7 @@ function useAbility(slot){
 }
 function keydown(e){
  keys[e.code]=true;
- if(e.code==='KeyU'){startTalking();return;}
+ if(e.code==='KeyV'){startTalking();return;}
  if(e.code==='KeyT'&&!e.repeat){document.getElementById('chatInput')?.focus();return;}
  if(e.code==='KeyQ'&&!e.repeat){useAbility('Q');return;}
  if(e.code==='KeyF'&&!e.repeat){useAbility('F');return;}
@@ -2624,7 +2624,7 @@ async function startTalking(){
   if(!voiceStream)voiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
   voiceStream.getAudioTracks().forEach(t=>t.enabled=voiceHeld);
   for(const id of remotePlayers.keys())await createVoiceOffer(id);
-  setOnlineStatus('MIKROFON AÇIK — KONUŞMAK İÇİN U TUŞUNU BASILI TUT.');
+  setOnlineStatus('MIKROFON AÇIK — KONUŞMAK İÇİN V TUŞUNU BASILI TUT.');
  }catch(err){voiceHeld=false;setOnlineStatus('MİKROFON İZNİ VERİLMEDİ VEYA DESTEKLENMİYOR.');}
 }
 function stopTalking(){voiceHeld=false;voiceStream?.getAudioTracks().forEach(t=>t.enabled=false);}
