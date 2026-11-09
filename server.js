@@ -598,20 +598,24 @@ app.post('/api/social/messages',requireSocial,async(req,res)=>{
  }catch(e){res.status(500).json({error:'Mesaj gönderilemedi.'});}
 });
 
-const adminSessions = new Map();
 const adminLoginAttempts = new Map();
-const ADMIN_SESSION_MS = 2 * 60 * 60 * 1000;
+const ADMIN_SESSION_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 function adminCookieToken(req) {
   const raw=String(req.headers.cookie||'');
-  const match=raw.match(/(?:^|;\s*)ragex_admin=([a-f0-9]{64})(?:;|$)/i);
+  const match=raw.match(/(?:^|;\s*)ragex_admin=([0-9]{13}\.[a-f0-9]{64})(?:;|$)/i);
   return match?match[1]:null;
 }
+function adminTokenSignature(expires) {
+  return crypto.createHmac('sha256',process.env.ADMIN_PASSWORD||'')
+    .update('ragex-admin-session:'+expires).digest('hex');
+}
 function requireAdmin(req,res,next) {
-  const token=adminCookieToken(req),expires=token?adminSessions.get(token):null;
-  if(!token||!expires||expires<Date.now()){
-    if(token)adminSessions.delete(token);
-    return res.status(401).json({error:'Admin girişi gerekli.'});
-  }
+  const token=adminCookieToken(req),parts=token?token.split('.'):[],expires=Number(parts[0]);
+  const expected=parts.length===2&&Number.isSafeInteger(expires)&&expires>Date.now()
+    ?adminTokenSignature(parts[0]):'';
+  const supplied=parts[1]||'';
+  const valid=!!expected&&supplied.length===expected.length&&crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(expected));
+  if(!valid)return res.status(401).json({error:'Admin girişi gerekli.'});
   next();
 }
 app.post('/api/admin/login',(req,res)=>{
@@ -626,13 +630,12 @@ app.post('/api/admin/login',(req,res)=>{
   const valid=expectedBuffer.length===suppliedBuffer.length&&crypto.timingSafeEqual(expectedBuffer,suppliedBuffer);
   if(!valid){entry.count++;adminLoginAttempts.set(ip,entry);return res.status(401).json({error:'Şifre hatalı.'});}
   adminLoginAttempts.delete(ip);
-  const token=crypto.randomBytes(32).toString('hex');
-  adminSessions.set(token,now+ADMIN_SESSION_MS);
-  res.setHeader('Set-Cookie',`ragex_admin=${token}; Max-Age=7200; Path=/api/admin; HttpOnly; Secure; SameSite=Strict`);
+  const expires=String(now+ADMIN_SESSION_MS);
+  const token=expires+'.'+adminTokenSignature(expires);
+  res.setHeader('Set-Cookie',`ragex_admin=${token}; Max-Age=315360000; Expires=${new Date(Number(expires)).toUTCString()}; Path=/api/admin; HttpOnly; Secure; SameSite=Strict`);
   res.json({ok:true});
 });
 app.post('/api/admin/logout',(req,res)=>{
-  const token=adminCookieToken(req);if(token)adminSessions.delete(token);
   res.setHeader('Set-Cookie','ragex_admin=; Max-Age=0; Path=/api/admin; HttpOnly; Secure; SameSite=Strict');
   res.json({ok:true});
 });
