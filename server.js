@@ -9,7 +9,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '16kb' }));
 const accountDb = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }) : null;
-const accountDbReady = accountDb ? accountDb.query(`CREATE TABLE IF NOT EXISTS device_accounts (device_id TEXT PRIMARY KEY, player_name VARCHAR(16), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()); CREATE TABLE IF NOT EXISTS ip_visit_logs (id BIGSERIAL PRIMARY KEY, device_id TEXT NOT NULL, ip_address TEXT NOT NULL, user_agent TEXT, visited_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`).then(() => true).catch(error => { console.error('Account database initialization failed:', error.message); return false; }) : Promise.resolve(false);
+const accountDbReady = accountDb ? accountDb.query(`CREATE TABLE IF NOT EXISTS device_accounts (device_id TEXT PRIMARY KEY, player_name VARCHAR(16), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()); CREATE TABLE IF NOT EXISTS ip_visit_logs (id BIGSERIAL PRIMARY KEY, device_id TEXT NOT NULL, ip_address TEXT NOT NULL, user_agent TEXT, visited_at TIMESTAMPTZ NOT NULL DEFAULT NOW()); CREATE TABLE IF NOT EXISTS friend_requests (id BIGSERIAL PRIMARY KEY, from_device_id TEXT NOT NULL REFERENCES device_accounts(device_id) ON DELETE CASCADE, to_device_id TEXT NOT NULL REFERENCES device_accounts(device_id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(from_device_id,to_device_id)); CREATE TABLE IF NOT EXISTS friendships (device_a TEXT NOT NULL REFERENCES device_accounts(device_id) ON DELETE CASCADE, device_b TEXT NOT NULL REFERENCES device_accounts(device_id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(device_a,device_b), CHECK(device_a < device_b)); CREATE TABLE IF NOT EXISTS social_messages (id BIGSERIAL PRIMARY KEY, sender_id TEXT NOT NULL REFERENCES device_accounts(device_id) ON DELETE CASCADE, recipient_id TEXT NOT NULL REFERENCES device_accounts(device_id) ON DELETE CASCADE, body VARCHAR(500) NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()); CREATE INDEX IF NOT EXISTS social_messages_pair_idx ON social_messages(sender_id,recipient_id,id);`).then(() => true).catch(error => { console.error('Account database initialization failed:', error.message); return false; }) : Promise.resolve(false);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' },
@@ -208,6 +208,7 @@ function join(sock, room, name, character, cb) {
 
   const player = {
     id: sock.id,
+    deviceId: sock.data.deviceId || null,
     name: cleanName(name),
     character: cleanCharacter(character),
     x: spawn.x,
@@ -500,6 +501,82 @@ app.post('/api/device/name', async (req, res) => {
 });
 
 
+
+function socialDevice(req){return readDeviceCookie(req);}
+async function requireSocial(req,res,next){
+ const id=socialDevice(req);
+ if(!id)return res.status(401).json({error:'Arkadaş sistemi için çerez izni ve kayıtlı oyuncu hesabı gerekli.'});
+ if(!accountDb||!(await accountDbReady))return res.status(503).json({error:'Arkadaş sistemi veritabanı şu anda kullanılamıyor.'});
+ try{const r=await accountDb.query('SELECT player_name FROM device_accounts WHERE device_id=$1',[id]);if(!r.rowCount)return res.status(401).json({error:'Önce oyuncu adını kaydet.'});req.socialDeviceId=id;req.socialPlayerName=r.rows[0].player_name;next();}
+ catch(e){res.status(500).json({error:'Hesap doğrulanamadı.'});}
+}
+function pairIds(a,b){return a<b?[a,b]:[b,a];}
+app.get('/api/social/state',requireSocial,async(req,res)=>{
+ try{
+  const id=req.socialDeviceId;
+  const [friends,incoming,outgoing]=await Promise.all([
+   accountDb.query(`SELECT a.device_id,a.player_name FROM friendships f JOIN device_accounts a ON a.device_id=CASE WHEN f.device_a=$1 THEN f.device_b ELSE f.device_a END WHERE f.device_a=$1 OR f.device_b=$1 ORDER BY a.player_name`,[id]),
+   accountDb.query('SELECT r.id,a.player_name FROM friend_requests r JOIN device_accounts a ON a.device_id=r.from_device_id WHERE r.to_device_id=$1 ORDER BY r.created_at DESC',[id]),
+   accountDb.query('SELECT a.player_name FROM friend_requests r JOIN device_accounts a ON a.device_id=r.to_device_id WHERE r.from_device_id=$1 ORDER BY r.created_at DESC',[id])
+  ]);
+  const friendList=friends.rows.map(f=>{
+   let team=null;
+   for(const room of rooms.values()){
+    const member=[...room.players.values()].find(p=>p.deviceId===f.device_id);
+    if(member&&!room.started){team={code:room.code,host:room.hostId===member.id};break;}
+   }
+   return {id:f.device_id,name:f.player_name,team};
+  });
+  res.json({ok:true,friends:friendList,incoming:incoming.rows,outgoing:outgoing.rows});
+ }catch(e){console.error('Social state failed:',e.message);res.status(500).json({error:'Arkadaş listesi alınamadı.'});}
+});
+app.post('/api/social/request',requireSocial,async(req,res)=>{
+ const name=cleanAccountName(req.body?.name);
+ if(name.length<2)return res.status(400).json({error:'Arkadaşın oyuncu adını yaz.'});
+ try{
+  const target=await accountDb.query('SELECT device_id,player_name FROM device_accounts WHERE lower(player_name)=lower($1) LIMIT 1',[name]);
+  if(!target.rowCount)return res.status(404).json({error:'Bu isimde kayıtlı oyuncu bulunamadı.'});
+  const to=target.rows[0].device_id,from=req.socialDeviceId;
+  if(to===from)return res.status(400).json({error:'Kendini arkadaş ekleyemezsin.'});
+  const [a,b]=pairIds(from,to);
+  const linked=await accountDb.query('SELECT 1 FROM friendships WHERE device_a=$1 AND device_b=$2',[a,b]);
+  if(linked.rowCount)return res.status(409).json({error:'Bu oyuncu zaten arkadaşın.'});
+  await accountDb.query('INSERT INTO friend_requests(from_device_id,to_device_id) VALUES($1,$2) ON CONFLICT(from_device_id,to_device_id) DO NOTHING',[from,to]);
+  res.json({ok:true,message:target.rows[0].player_name+' kişisine arkadaşlık isteği gönderildi.'});
+ }catch(e){console.error('Friend request failed:',e.message);res.status(500).json({error:'Arkadaşlık isteği gönderilemedi.'});}
+});
+app.post('/api/social/respond',requireSocial,async(req,res)=>{
+ const requestId=Number(req.body?.requestId),accept=req.body?.accept===true;
+ if(!Number.isSafeInteger(requestId)||requestId<1)return res.status(400).json({error:'İstek bulunamadı.'});
+ try{
+  const r=await accountDb.query('DELETE FROM friend_requests WHERE id=$1 AND to_device_id=$2 RETURNING from_device_id',[requestId,req.socialDeviceId]);
+  if(!r.rowCount)return res.status(404).json({error:'Arkadaşlık isteği artık mevcut değil.'});
+  if(accept){const [a,b]=pairIds(req.socialDeviceId,r.rows[0].from_device_id);await accountDb.query('INSERT INTO friendships(device_a,device_b) VALUES($1,$2) ON CONFLICT DO NOTHING',[a,b]);}
+  res.json({ok:true});
+ }catch(e){console.error('Friend response failed:',e.message);res.status(500).json({error:'İstek yanıtlanamadı.'});}
+});
+app.get('/api/social/messages',requireSocial,async(req,res)=>{
+ const friend=String(req.query.friend||'');
+ try{
+  const [a,b]=pairIds(req.socialDeviceId,friend);
+  const linked=await accountDb.query('SELECT 1 FROM friendships WHERE device_a=$1 AND device_b=$2',[a,b]);
+  if(!linked.rowCount)return res.status(403).json({error:'Bu oyuncu arkadaş listende değil.'});
+  const r=await accountDb.query(`SELECT id,sender_id,recipient_id,body,created_at FROM social_messages WHERE (sender_id=$1 AND recipient_id=$2) OR (sender_id=$2 AND recipient_id=$1) ORDER BY id DESC LIMIT 60`,[req.socialDeviceId,friend]);
+  res.json({ok:true,messages:r.rows.reverse()});
+ }catch(e){res.status(500).json({error:'Sohbet yüklenemedi.'});}
+});
+app.post('/api/social/messages',requireSocial,async(req,res)=>{
+ const friend=String(req.body?.friend||''),body=String(req.body?.text||'').replace(/[<>]/g,'').trim().slice(0,500);
+ if(!body)return res.status(400).json({error:'Mesaj boş olamaz.'});
+ try{
+  const [a,b]=pairIds(req.socialDeviceId,friend);
+  const linked=await accountDb.query('SELECT 1 FROM friendships WHERE device_a=$1 AND device_b=$2',[a,b]);
+  if(!linked.rowCount)return res.status(403).json({error:'Önce arkadaş olmalısınız.'});
+  const r=await accountDb.query('INSERT INTO social_messages(sender_id,recipient_id,body) VALUES($1,$2,$3) RETURNING id,sender_id,recipient_id,body,created_at',[req.socialDeviceId,friend,body]);
+  res.json({ok:true,message:r.rows[0]});
+ }catch(e){res.status(500).json({error:'Mesaj gönderilemedi.'});}
+});
+
 const adminSessions = new Map();
 const adminLoginAttempts = new Map();
 const ADMIN_SESSION_MS = 2 * 60 * 60 * 1000;
@@ -567,6 +644,15 @@ app.get('/health', (req, res) => {
 });
 
 io.on('connection', socket => {
+  const cookieHeader=String(socket.handshake.headers.cookie||'');
+  const deviceMatch=cookieHeader.match(/(?:^|;\\s*)ragex_device=([a-f0-9-]{36})(?:;|$)/i);
+  socket.data.deviceId=deviceMatch?deviceMatch[1]:null;
+  if(socket.data.deviceId)socket.join('user:'+socket.data.deviceId);
+  socket.on('social:voice-signal',async data=>{
+    const from=socket.data.deviceId,target=String(data?.targetDeviceId||''),signal=data?.signal;
+    if(!from||!target||target===from||!signal||typeof signal!=='object')return;
+    try{const [a,b]=pairIds(from,target);const ok=await accountDb.query('SELECT 1 FROM friendships WHERE device_a=$1 AND device_b=$2',[a,b]);if(ok.rowCount)io.to('user:'+target).emit('social:voice-signal',{fromDeviceId:from,signal});}catch(e){console.warn('Social voice signal rejected:',e.message);}
+  });
   if (socket.recovered) {
     const recoveredCode = socket.data.roomCode;
     const recoveredRoom = rooms.get(recoveredCode);
