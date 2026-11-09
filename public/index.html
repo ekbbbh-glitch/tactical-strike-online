@@ -842,7 +842,8 @@ async function registerDeviceVisit(){
    if(localName){
     const save=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name:localName})});
     const saved=await save.json();
-    if(save.ok)applySavedPlayerName(saved.name||localName);setTimeout(initSocial,0);}else applySavedPlayerName(localName);
+    if(save.ok){applySavedPlayerName(saved.name||localName);setTimeout(initSocial,0);}
+    else applySavedPlayerName(localName);
    }else setAccountStatus('Bu cihaz için henüz oyuncu adı seçilmedi.');
   }
  }catch(error){
@@ -850,7 +851,6 @@ async function registerDeviceVisit(){
   setAccountStatus((error.message||'Sunucu hesabına ulaşılamadı.')+' Yerel misafir hesabı kullanılabilir.');
  }
 }
-
 const adminPanel=document.getElementById('adminPanel');
 const adminStatus=document.getElementById('adminStatus');
 function showAdminPanel(){adminPanel.style.display='flex';document.getElementById('adminPassword').focus();}
@@ -927,7 +927,7 @@ document.getElementById('savePlayerName').addEventListener('click',async()=>{
   try{
    const response=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name})});
    const data=await response.json();if(!response.ok)throw new Error(data.error||'Oyuncu adı kaydedilemedi.');
-   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);setTimeout(initSocial,0);
+   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);setTimeout(initSocial,0);setTimeout(initSocial,0);
   }catch(error){setAccountStatus(error.message||'Kayıt başarısız.');}
  }else{localStorage.setItem('rageXPlayerName',name);applySavedPlayerName(name);setAccountStatus('Oyuncu adı bu tarayıcıya kaydedildi (misafir hesabı).');}
 });
