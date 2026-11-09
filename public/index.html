@@ -2257,17 +2257,21 @@ function findBotPath(bot,targetX,targetZ){
  const valid=(x,z)=>x>=0&&z>=0&&x<count&&z<count&&!collides(min+x*step,min+z*step);
  if(!valid(gx,gz)){let found=false;for(let r=1;r<6&&!found;r++)for(let dz=-r;dz<=r&&!found;dz++)for(let dx=-r;dx<=r&&!found;dx++){if(Math.abs(dx)!==r&&Math.abs(dz)!==r)continue;const x=gx+dx,z=gz+dz;if(valid(x,z)){gx=x;gz=z;found=true;}}if(!found)return [];}
  if(!valid(sx,sz)){let found=false;for(let r=1;r<6&&!found;r++)for(let dz=-r;dz<=r&&!found;dz++)for(let dx=-r;dx<=r&&!found;dx++){const x=sx+dx,z=sz+dz;if(valid(x,z)){sx=x;sz=z;found=true;}}if(!found)return [];}
- const start=key(sx,sz),goal=key(gx,gz),open=[start],came=new Map(),g=new Map([[start,0]]),closed=new Set();
+ const start=key(sx,sz),goal=key(gx,gz),open=[],came=new Map(),g=new Map([[start,0]]),closed=new Set();
  const heuristic=(x,z)=>Math.abs(x-gx)+Math.abs(z-gz);
+ const score=k=>{const p=fromKey(k);return (g.get(k)??Infinity)+heuristic(p.x,p.z);};
+ const push=k=>{let i=open.length;open.push(k);while(i>0){const parent=(i-1)>>1;if(score(open[parent])<=score(k))break;open[i]=open[parent];i=parent;}open[i]=k;};
+ const pop=()=>{const first=open[0],last=open.pop();if(open.length){let i=0;while(true){let child=i*2+1;if(child>=open.length)break;if(child+1<open.length&&score(open[child+1])<score(open[child]))child++;if(score(last)<=score(open[child]))break;open[i]=open[child];i=child;}open[i]=last;}return first;};
+ push(start);
  while(open.length){
-  open.sort((a,b)=>(g.get(a)+heuristic(fromKey(a).x,fromKey(a).z))-(g.get(b)+heuristic(fromKey(b).x,fromKey(b).z)));
-  const cur=open.shift();if(cur===goal){const path=[];let k=goal;while(k!==start){const p=fromKey(k);path.push({x:min+p.x*step,z:min+p.z*step});k=came.get(k);if(k===undefined)return [];}return path.reverse();}
-  if(closed.has(cur))continue;closed.add(cur);const p=fromKey(cur);
+  const cur=pop();if(closed.has(cur))continue;
+  if(cur===goal){const path=[];let k=goal;while(k!==start){const p=fromKey(k);path.push({x:min+p.x*step,z:min+p.z*step});k=came.get(k);if(k===undefined)return [];}return path.reverse();}
+  closed.add(cur);const p=fromKey(cur);
   for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
    const x=p.x+dx,z=p.z+dz;if(!valid(x,z))continue;
    if(dx&&dz&&(!valid(p.x+dx,p.z)||!valid(p.x,p.z+dz)))continue;
    const nk=key(x,z),cost=g.get(cur)+(dx&&dz?1.414:1);if(cost>=(g.get(nk)??Infinity))continue;
-   came.set(nk,cur);g.set(nk,cost);open.push(nk);
+   came.set(nk,cur);g.set(nk,cost);push(nk);
   }
  }
  return [];
@@ -2275,7 +2279,7 @@ function findBotPath(bot,targetX,targetZ){
 function moveBotTo(bot,x,z,dt,speed=2.2){
  const u=bot.userData;
  if(!u.path||u.pathTimer<=0||Math.hypot((u.pathTargetX??999)-x,(u.pathTargetZ??999)-z)>5){
-  u.path=findBotPath(bot,x,z);u.pathTimer=.9;u.pathTargetX=x;u.pathTargetZ=z;
+  u.path=findBotPath(bot,x,z);u.pathTimer=1.25;u.pathTargetX=x;u.pathTargetZ=z;
  }
  u.pathTimer-=dt;
  while(u.path?.length&&Math.hypot(u.path[0].x-bot.position.x,u.path[0].z-bot.position.z)<1.35)u.path.shift();
@@ -2285,6 +2289,9 @@ function moveBotTo(bot,x,z,dt,speed=2.2){
  bot.rotation.y=Math.atan2(-dx,-dz);
  return Math.hypot(x-bot.position.x,z-bot.position.z);
 }
+const botSightRaycaster=new THREE.Raycaster();
+const botSightOrigin=new THREE.Vector3();
+const botSightDirection=new THREE.Vector3();
 function updateBots(dt){
  const sites=getClientBombSites(),bombSpawn=getClientBombSpawn();
  bots.forEach(b=>{
@@ -2292,9 +2299,19 @@ function updateBots(dt){
   u.walk+=dt*7;
   if(b.userData.parts){const parts=b.userData.parts,swing=Math.sin(u.walk)*.5;parts.leftLeg.rotation.x=swing;parts.rightLeg.rotation.x=-swing;parts.leftArm.rotation.x=-swing*.6;parts.rightArm.rotation.x=swing*.6;}
   const dx=player.position.x-b.position.x,dz=player.position.z-b.position.z,dist=Math.hypot(dx,dz);
-  const origin=new THREE.Vector3(b.position.x,1.35,b.position.z);
-  const rayDir=new THREE.Vector3(dx,0,dz);
-  const canSee=dist<28&&rayDir.lengthSq()>0&&!new THREE.Raycaster(origin,rayDir.clone().normalize(),0,dist).intersectObjects(mapObjects,true).length;
+  // Bot görüş kontrolünü her kare yerine saniyede yaklaşık 5 kez yap.
+  u.sightTimer=(u.sightTimer||0)-dt;
+  if(u.sightTimer<=0){
+   u.sightTimer=.2;
+   if(dist<28&&dist>.001){
+    botSightOrigin.set(b.position.x,1.35,b.position.z);
+    botSightDirection.set(dx,0,dz).normalize();
+    botSightRaycaster.set(botSightOrigin,botSightDirection);
+    botSightRaycaster.near=0;botSightRaycaster.far=dist;
+    u.canSee=!botSightRaycaster.intersectObjects(mapObjects,true).length;
+   }else u.canSee=false;
+  }
+  const canSee=!!u.canSee;
   if(canSee){u.lastKnownPlayer={x:player.position.x,z:player.position.z};u.lastKnownUntil=performance.now()+3200;}
   // Attack bots carry the bomb, find a site and plant it; defenders navigate to the planted device and defuse.
   if(!online&&selectedGameMode==='bomb'&&myTeam==='defense'&&u.bombCarrier){
