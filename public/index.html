@@ -2839,23 +2839,22 @@ function updateRemotePlayers(){
   });
 
   socket.on('connect_error', error => {
+    roomRequestSent=false;
     hideLoading();setOnlineStatus('SUNUCUYA BAĞLANILAMADI: '+(error?.message||'BAĞLANTI HATASI'));
   });
+  let roomRequestSent = false;
   socket.on('connect', () => {
-    if(socket.recovered){
-      online=true;
-      hideLoading();
-      setOnlineStatus('CONNECTION RESTORED.');
-      msg.textContent='CONNECTION RESTORED';
-      setTimeout(()=>{if(msg.textContent==='CONNECTION RESTORED')msg.textContent='';},1800);
-      return;
-    }
+    // Kullanıcı CREATE/JOIN seçti; bağlantı kurtarılmış olsa bile isteği gönder.
+    // Aynı bağlantının tekrar connect olmasında ikinci oda açılmasını engelle.
+    if (roomRequestSent) return;
+    roomRequestSent = true;
     socket.timeout(10000).emit(
       action === 'create' ? 'createRoom' : 'joinRoom',
       { code, name, character: selectedCharacter },
       (timeoutError,res) => {
-        if(timeoutError){hideLoading();setOnlineStatus('SUNUCU ODA İSTEĞİNE ZAMANINDA YANIT VERMEDİ. TEKRAR DENE.');return;}
+        if(timeoutError){roomRequestSent=false;hideLoading();setOnlineStatus('SUNUCU ODA İSTEĞİNE ZAMANINDA YANIT VERMEDİ. TEKRAR DENE.');return;}
         if (!res || !res.ok) {
+          roomRequestSent=false;
           setOnlineStatus(res?.error || 'COULD NOT JOIN THE ROOM.');
           hideLoading();
           return;
