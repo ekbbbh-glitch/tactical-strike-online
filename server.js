@@ -527,7 +527,7 @@ app.get('/api/social/state',requireSocial,async(req,res)=>{
    }
    return {id:f.device_id,name:f.player_name,team};
   });
-  res.json({ok:true,friends:friendList,incoming:incoming.rows,outgoing:outgoing.rows});
+  res.json({ok:true,deviceId:id,friends:friendList,incoming:incoming.rows,outgoing:outgoing.rows});
  }catch(e){console.error('Social state failed:',e.message);res.status(500).json({error:'Arkadaş listesi alınamadı.'});}
 });
 app.post('/api/social/request',requireSocial,async(req,res)=>{
