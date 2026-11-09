@@ -1453,7 +1453,7 @@ function addWatchtower(x,z){
 }
 function addMapDetails(){
  climbPoints=[];watchtowerDecks=[];
- if(selectedMap==='bind')return;
+ if(selectedMap==='bind'||selectedMap==='ragetown')return;
  const stone=mat(0x77766e),sand=mat(0xb69a70),green=mat(0x425d45),metal=mat(0x3c4c55,.5,.65);
  const snow=mat(0xd9edf4),ice=mat(0x77b8d0,.3,.55),brick=mat(0x92765d),glass=mat(0x3e7083,.25,.6);
  addWatchtower(-12,74);addWatchtower(12,-74);
@@ -1913,7 +1913,7 @@ buildMap();
   const bindMap=selectedMap==='bind';
   const bombBotSpawns=selectedMap==='bind'?[[-48,-20],[-42,-12],[-54,-16],[-38,-24],[48,-20],[42,-12],[54,-16],[38,-24]]:[[-44,2],[-38,10],[-48,10],[-36,-4],[44,-2],[38,-10],[48,-10],[36,4]];
   const botAttackSpawns=bindMap?[[-12,82],[12,82],[-18,88],[18,88],[-6,72],[6,72],[-22,76],[22,76]]:[[-88,-88],[-78,-88],[-68,-88],[-88,-78],[-78,-78],[-68,-78],[-88,-68],[-78,-68]];
-  const regularBotSpawns=[[-25,-22],[25,-22],[-29,25],[28,25],[0,-32],[0,1],[-46,8],[46,-8]];
+  const regularBotSpawns=selectedMap==='ragetown'?[[-55,-18],[55,-18],[-28,0],[28,0],[-8,30],[8,-30],[-45,28],[45,28]]:[[-25,-22],[25,-22],[-29,25],[28,25],[0,-32],[0,1],[-46,8],[46,-8]];
   const chosenSpawns=selectedGameMode==='bomb'&&!online?(myTeam==='attack'?bombBotSpawns:botAttackSpawns):regularBotSpawns;
   chosenSpawns.forEach(p=>spawnBot(p[0],p[1],selectedGameMode==='bomb'&&!online?(myTeam==='attack'?'defense':'attack'):null));
   if(selectedGameMode==='bomb'&&!online){
@@ -2656,7 +2656,7 @@ function drawMinimap(){
   ctx.strokeStyle='#eafff2';ctx.lineWidth=2;ctx.stroke();
   ctx.fillStyle='#eafff2';ctx.font='bold 10px Arial';ctx.fillText('C',point.x+9,point.y-8);
  }
- if(['bomb','swiftplay','spike'].includes(selectedGameMode)||selectedMap==='bind')for(const site of getClientBombSites()){
+ if(['bomb','swiftplay','spike'].includes(selectedGameMode)||selectedMap==='bind'||selectedMap==='ragetown')for(const site of getClientBombSites()){
   const p=toMap(site.x,site.z);ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);ctx.fillStyle=site.name==='A'?'#ffd05a':'#5ad7e0';ctx.fillRect(-6,-6,12,12);ctx.restore();ctx.fillStyle='#fff2b0';ctx.font='bold 10px Arial';ctx.fillText(site.name+' SITE',p.x+8,p.y-7);
  }
  if(selectedMap==='bind'){
