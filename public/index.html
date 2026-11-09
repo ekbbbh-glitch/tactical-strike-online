@@ -381,7 +381,7 @@ body{overscroll-behavior:none}
  <div style="width:100%;max-width:550px;background:#172b3a;border:1px solid #688394;padding:30px;">
   <h1 style="font-size:32px;color:#ffc45c;">RAGE X</h1>
   <h2>WAITING FOR PLAYERS...</h2>
-  <p>ROOM CODE: <strong id="lobbyCode">------</strong></p>
+  <p>ROOM CODE: <strong id="lobbyCode">------</strong> <button id="shareRoomCode" type="button">KODU PAYLAŞ</button></p>
   <h3>PLAYER LIST</h3>
   <div id="lobbyPlayers">Loading players...</div>
   <hr>
@@ -389,7 +389,7 @@ body{overscroll-behavior:none}
   <button id="botsYes">BOTS ON</button>
   <button id="botsNo">BOTS OFF</button>
   <p id="botStatus">Bots: ON</p>
-  <button id="launchGame" style="background:#35b875;color:white;">START GAME</button>
+  <button id="launchGame" style="background:#35b875;color:white;">MAÇA GİR</button>
   <p id="lobbyStatus">WAITING FOR PLAYERS...</p>
  </div>
 </div>
@@ -814,6 +814,11 @@ async function setSocialVoice(pressed){
   }
  }catch(error){socialVoicePressed=false;status.textContent='Mikrofon izni verilemedi veya bağlantı kurulamadı.';console.warn(error);}
 }
+document.getElementById('shareRoomCode').addEventListener('click',async()=>{
+ const text='RAGE X takımına katıl! Oda kodu: '+roomCode;
+ try{if(navigator.share)await navigator.share({title:'RAGE X takım daveti',text,url:location.href});else{await navigator.clipboard.writeText(text);lobbyStatus.textContent='Oda kodu kopyalandı; arkadaşına gönder.';}}
+ catch(error){try{await navigator.clipboard.writeText(text);lobbyStatus.textContent='Oda kodu kopyalandı; arkadaşına gönder.';}catch(e){lobbyStatus.textContent=text;}}
+});
 document.getElementById('sendFriendRequest').addEventListener('click',requestFriend);
 document.getElementById('friendNameInput').addEventListener('keydown',e=>{if(e.key==='Enter')requestFriend();});
 document.getElementById('socialChatForm').addEventListener('submit',sendSocialMessage);
@@ -928,7 +933,7 @@ document.getElementById('savePlayerName').addEventListener('click',async()=>{
   try{
    const response=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name})});
    const data=await response.json();if(!response.ok)throw new Error(data.error||'Oyuncu adı kaydedilemedi.');
-   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);setTimeout(initSocial,0);setTimeout(initSocial,0);setTimeout(initSocial,0);
+   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);setTimeout(initSocial,0);
   }catch(error){setAccountStatus(error.message||'Kayıt başarısız.');}
  }else{localStorage.setItem('rageXPlayerName',name);applySavedPlayerName(name);setAccountStatus('Oyuncu adı bu tarayıcıya kaydedildi (misafir hesabı).');}
 });
