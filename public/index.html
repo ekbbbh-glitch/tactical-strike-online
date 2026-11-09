@@ -1882,6 +1882,7 @@ function spawnBot(x,z,team=null){
 }
 
  async function startGame(options = {}){
+ unScope();
  showLoading('loading');
  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
  if(!renderer || !player)init();
@@ -3191,14 +3192,30 @@ socket.on('roundStarting', data => {
   if(matchMedia('(pointer:fine)').matches && renderer?.domElement?.requestPointerLock && !locked) renderer.domElement.requestPointerLock();
   stopBombClock();
   if (bombPrepInterval) clearInterval(bombPrepInterval);
-  let seconds = data.prepareSeconds || 5;
+  let seconds = Math.max(1, Number(data.prepareSeconds) || 5);
   const status = document.getElementById('bombStatus');
   const roundLimit=data.totalRounds||12;
+  const countdown=document.getElementById('roundCountdown');
+  const countdownTitle=document.getElementById('roundCountdownTitle');
+  const countdownNumber=document.getElementById('roundCountdownNumber');
+  const spawnInfo=document.getElementById('roundSpawnInfo');
+  if(countdown){
+    countdown.style.display='block';
+    countdownTitle.textContent='RAUND BAŞLIYOR';
+    countdownNumber.textContent=String(seconds);
+    spawnInfo.textContent='MAVİ: SALDIRI • KIRMIZI: SAVUNMA';
+  }
   status.textContent='ROUND '+data.round+'/'+roundLimit+' - PREPARE! '+seconds;
   bombPrepInterval=setInterval(()=>{
     seconds--;
-    if(seconds>0)status.textContent='ROUND '+data.round+'/'+roundLimit+' - PREPARE! '+seconds;
-    else { clearInterval(bombPrepInterval); bombPrepInterval = null; }
+    if(seconds>0){
+      if(countdownNumber)countdownNumber.textContent=String(seconds);
+      status.textContent='ROUND '+data.round+'/'+roundLimit+' - PREPARE! '+seconds;
+    }else{
+      clearInterval(bombPrepInterval);
+      bombPrepInterval = null;
+      if(countdown)countdown.style.display='none';
+    }
   }, 1000);
 });
 
@@ -3207,7 +3224,8 @@ socket.on('roundStarted', data => {
     clearInterval(bombPrepInterval);
     bombPrepInterval = null;
   }
-
+  const countdown=document.getElementById('roundCountdown');
+  if(countdown)countdown.style.display='none';
   document.getElementById('bombStatus').textContent =
     'ROUND ' + data.round + '/' + (data.totalRounds || 12) + ' STARTED!';
 });
