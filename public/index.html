@@ -2672,7 +2672,7 @@ function updateRemotePlayers(){
  function connectRoom(action) {
   const url = window.location.origin.replace(/\/$/, '');
   const name = (document.getElementById('playerName').value.trim() || '').slice(0, 16);
-  if(!deviceAccountSaved){setOnlineStatus('ÖNCE OYUNCU ADINI KAYDET.');return;}
+  if(!name){setOnlineStatus('ÖNCE OYUNCU ADINI GİR.');return;}
   const code = document.getElementById('roomCode').value.trim().toUpperCase();
 
   if (!url) {
@@ -2705,6 +2705,9 @@ function updateRemotePlayers(){
     randomizationFactor: 0.25
   });
 
+  socket.on('connect_error', error => {
+    hideLoading();setOnlineStatus('SUNUCUYA BAĞLANILAMADI: '+(error?.message||'BAĞLANTI HATASI'));
+  });
   socket.on('connect', () => {
     if(socket.recovered){
       online=true;
@@ -2714,10 +2717,11 @@ function updateRemotePlayers(){
       setTimeout(()=>{if(msg.textContent==='CONNECTION RESTORED')msg.textContent='';},1800);
       return;
     }
-    socket.emit(
+    socket.timeout(10000).emit(
       action === 'create' ? 'createRoom' : 'joinRoom',
       { code, name, character: selectedCharacter },
-      res => {
+      (timeoutError,res) => {
+        if(timeoutError){hideLoading();setOnlineStatus('SUNUCU ODA İSTEĞİNE ZAMANINDA YANIT VERMEDİ. TEKRAR DENE.');return;}
         if (!res || !res.ok) {
           setOnlineStatus(res?.error || 'COULD NOT JOIN THE ROOM.');
           hideLoading();
