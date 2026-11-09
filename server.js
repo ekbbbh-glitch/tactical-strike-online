@@ -641,8 +641,11 @@ app.get('/api/admin/accounts',requireAdmin,async(req,res)=>{
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/health', (req, res) => {
-  res.json({ ok: true, rooms: rooms.size });
+app.get('/health', async (req, res) => {
+  res.json({ ok: true, rooms: rooms.size, build: 'social-room-fix-2026-11-09' });
+});
+app.get('/api/social/status', async (req, res) => {
+  res.json({ ok: true, api: 'social-v1', databaseConfigured: !!accountDb, databaseReady: await accountDbReady });
 });
 
 io.on('connection', socket => {
