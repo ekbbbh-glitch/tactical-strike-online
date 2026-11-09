@@ -318,6 +318,7 @@ body{overscroll-behavior:none}
     <option value="city">City</option>
     <option value="icebox">Icebox</option>
     <option value="bind">Bind</option>
+    <option value="ragetown">Rage Town</option>
   </select>
 </p>
   <p><label for="characterSelect">CHOOSE YOUR AGENT</label><br>
@@ -1380,12 +1381,35 @@ function buildDesertMap() {
  
 
 
+
+const RAGETOWN_WALLS=[[-72,-58,22,2,7],[-82,-48,2,20,7],[-62,-48,2,20,7],[-72,-38,22,2,7],[72,-58,22,2,7],[62,-48,2,20,7],[82,-48,2,20,7],[72,-38,22,2,7],[-72,58,22,2,7],[-82,48,2,20,7],[-62,48,2,20,7],[-72,38,22,2,7],[72,58,22,2,7],[62,48,2,20,7],[82,48,2,20,7],[72,38,22,2,7],[-30,-62,2,24,6],[-42,-50,22,2,6],[-18,-50,18,2,6],[30,-62,2,24,6],[42,-50,22,2,6],[18,-50,18,2,6],[-30,62,2,24,6],[-42,50,22,2,6],[-18,50,18,2,6],[30,62,2,24,6],[42,50,22,2,6],[18,50,18,2,6],[-56,-18,2,16,4],[-36,-18,2,16,4],[-46,-29,18,2,4],[56,-18,2,16,4],[36,-18,2,16,4],[46,-29,18,2,4],[-15,0,2,18,4],[15,0,2,18,4],[0,-18,18,2,4],[0,18,18,2,4]];
+function buildRageTownMap(){
+ const blue=mat(0x347fb5,.78,.08),trim=mat(0x245c86,.62,.12),orange=mat(0xd96f2c,.86,.08),orange2=mat(0xf18a43,.78,.08),stone=mat(0xc5b99f,.92,.02),road=mat(0x77766e,.95,.02),wood=mat(0x79502f,.88,.04),crate=mat(0x987044,.86,.04),glass=mat(0x263e50,.35,.3);
+ box(scene,0,-.38,0,200,.76,200,road);
+ for(const [x,z,w,d] of [[0,0,46,40],[-46,-18,27,25],[46,-18,27,25]])box(scene,x,.025,z,w,.05,d,stone);
+ for(const x of [-99,99])box(scene,x,3,0,2,6,200,blue);for(const z of [-99,99])box(scene,0,3,z,200,6,2,blue);
+ for(const [x,z] of [[-72,-48],[72,-48],[-72,48],[72,48],[-30,-62],[30,-62],[-30,62],[30,62]]){
+  const w=18,d=16;box(scene,x-w/2,3,z,.7,6,d,blue);box(scene,x+w/2,3,z,.7,6,d,blue);box(scene,x,3,z-d/2,w,6,.7,blue);box(scene,x-5,3,z+d/2,w-10,6,.7,blue);box(scene,x+6,3,z+d/2,w-12,6,.7,blue);
+  box(scene,x,1.9,z+d/2+.42,2.5,3.8,.12,wood);
+  for(const wx of [-5,5]){box(scene,x+wx,4,z+d/2+.43,2.6,1.8,.12,glass);box(scene,x+wx,4.95,z+d/2+.5,2.9,.18,.22,trim);}
+  const r1=box(scene,x-w/4,7.05,z,w/2+.7,.38,d+1,orange);r1.rotation.z=-.36;const r2=box(scene,x+w/4,7.05,z,w/2+.7,.38,d+1,orange);r2.rotation.z=.36;box(scene,x,8.1,z,.45,.5,d+.8,orange2);
+  for(let i=-3;i<=3;i++)box(scene,x+i*2.1,7.28,z,.09,.08,d,orange2);
+ }
+ for(const [x,z,w,d,y] of RAGETOWN_WALLS)box(scene,x,y/2,z,w,y,d,blue);
+ for(const [x,z,label] of [[-46,-18,'A'],[46,-18,'B']]){const p=box(scene,x,.075,z,22,.08,20,label==='A'?mat(0xc64c3d):mat(0x3c9eaa));p.material.transparent=true;p.material.opacity=.28;box(scene,x,2.5,z-9,5,4,.45,orange);}
+ for(const [x,z] of [[-55,-5],[-36,-6],[55,-5],[36,-6],[-12,28],[12,-28],[-25,8],[25,8]]){box(scene,x,.85,z,2.2,1.7,2.2,crate);box(scene,x,1.72,z,2.35,.16,2.35,wood);}
+ for(const [x,z] of [[-8,-5],[8,5],[-58,-34],[58,34],[-58,34],[58,-34]])cylinder(scene,x,.8,z,.65,.65,1.6,wood);
+ for(const [x,z,c] of [[0,85,0x2b9fdb],[0,-85,0xd34e48]]){const p=box(scene,x,.06,z,22,.08,12,mat(c));p.material.transparent=true;p.material.opacity=.22;}
+}
+
 function buildMap() {
   mapObjects.forEach(obj => scene.remove(obj));
   mapObjects = [];
   const before = new Set(scene.children);
-  if (selectedMap === 'desert') {
-    buildDesertMap();
+  if (selectedMap === 'ragetown') {
+     buildRageTownMap();
+   } else if (selectedMap === 'desert') {
+     buildDesertMap();
   } else if (selectedMap === 'icebox') {
     buildIceboxMap();
   } else if (selectedMap === 'bind') {
@@ -1544,8 +1568,8 @@ function buildBindMap(){
  for(const [x,z] of [[-94,18],[94,-18],[-8,94],[8,-94]]){cylinder(scene,x,3,z,.18,.22,6,dark);box(scene,x,6.1,z,1.3,.25,1.3,yellow);}
  for(const [x,z,color] of [[-46,-18,0xe7b747],[46,-18,0x55c6d0]]){const ring=new THREE.Mesh(new THREE.RingGeometry(3.8,4.2,32),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(x,.12,z);scene.add(ring);}
 }
-function getClientBombSpawn(){return selectedMap==='bind'?{x:0,z:78}:{x:-78,z:-78};}
-function getClientBombSites(){return selectedMap==='bind'?[{name:'A',x:-46,z:-18},{name:'B',x:46,z:-18}]:[{name:'A',x:-42,z:4},{name:'B',x:42,z:-4}];}
+function getClientBombSpawn(){return selectedMap==='bind'?{x:0,z:78}:selectedMap==='ragetown'?{x:0,z:82}:{x:-78,z:-78};}
+function getClientBombSites(){return (selectedMap==='bind'||selectedMap==='ragetown')?[{name:'A',x:-46,z:-18},{name:'B',x:46,z:-18}]:[{name:'A',x:-42,z:4},{name:'B',x:42,z:-4}];}
 
 function createBombMesh() {
   if (!scene || bombMesh) return;
@@ -1844,10 +1868,10 @@ function spawnBot(x,z,team=null){
 selectedMap = mapSelect.value;
 selectedGameMode = gameModeSelect.value;
 if(!online&&selectedGameMode==='bomb'){
- const bindMap=selectedMap==='bind';
+ const bindMap=selectedMap==='bind',townMap=selectedMap==='ragetown';
  let sideCount=0;try{sideCount=Number(localStorage.getItem('rageXBotBombSide')||0)||0;localStorage.setItem('rageXBotBombSide',String(sideCount+1));}catch(e){}
  myTeam=sideCount%2===0?'attack':'defense';
- mySpawn=myTeam==='attack'?(bindMap?{x:0,z:72}:{x:-78,z:-73}):(bindMap?{x:0,z:-82}:{x:78,z:73});
+ mySpawn=myTeam==='attack'?(bindMap?{x:0,z:72}:townMap?{x:0,z:82}:{x:-78,z:-73}):(bindMap?{x:0,z:-82}:townMap?{x:0,z:-82}:{x:78,z:73});
 }
 buildMap();
   createBombMesh();
@@ -2564,8 +2588,12 @@ function collides(x,z){
     common.push([-62,0,18,26],[-30,-48,22,12],[0,-55,26,14],[48,-42,22,14],[65,0,14,30],[35,48,28,14],[0,58,20,12],[-48,48,24,14],[-70,-48,14,20],[-25,15,14,24],[22,8,14,24],[-10,-22,10,5],[12,25,10,5],[-55,20,10,5],[55,-18,10,5],[0,0,10,5]);
   } else if(selectedMap==='bind'){
     common.push(...BIND_WALLS.map(([bx,bz,w,d])=>[bx,bz,w,d]));common.push([-90,72,9,9],[-92,-70,9,9],[92,70,9,9],[92,-70,9,9]);
-  } else if(selectedMap==='snow'){
-    for(const [bx,bz] of [[-55,-42],[55,-42],[-55,42],[55,42],[-20,0],[20,0]]) common.push([bx,bz,16,16]);
+  } else if(selectedMap==='ragetown'){
+     common.push(...RAGETOWN_WALLS.map(([bx,bz,w,d])=>[bx,bz,w,d]));
+     for(const [bx,bz] of [[-72,-48],[72,-48],[-72,48],[72,48],[-30,-62],[30,-62],[-30,62],[30,62]])common.push([bx,bz,18,16]);
+     for(const [bx,bz] of [[-55,-5],[-36,-6],[55,-5],[36,-6],[-12,28],[12,-28],[-25,8],[25,8]])common.push([bx,bz,2.35,2.35]);
+   } else if(selectedMap==='snow'){
+     for(const [bx,bz] of [[-55,-42],[55,-42],[-55,42],[55,42],[-20,0],[20,0]]) common.push([bx,bz,16,16]);
     for(const [bx,bz] of [[-35,-15],[35,15],[-35,15],[35,-15]]) common.push([bx,bz,12,5]);
   } else if(selectedMap==='factory'){
     common.push([-55,-40,26,22],[55,40,26,22],[-28,-35,12,5],[28,35,12,5],[-28,35,12,5],[28,-35,12,5],[0,-50,12,5],[0,50,12,5]);
