@@ -1021,6 +1021,33 @@ const mats={
  })
 };
 
+// Release GPU resources when maps or weapons are rebuilt, preventing memory growth.
+function disposeObject3D(root){
+ if(!root)return;
+ const shared=new Set(Object.values(mats)),geometries=new Set(),materials=new Set();
+ root.traverse(node=>{
+  if(node.geometry)geometries.add(node.geometry);
+  const list=Array.isArray(node.material)?node.material:[node.material];
+  list.forEach(material=>{if(material&&!shared.has(material))materials.add(material);});
+ });
+ geometries.forEach(geometry=>geometry.dispose());
+ materials.forEach(material=>material.dispose());
+}
+function disposeObject3DList(objects){
+ const shared=new Set(Object.values(mats)),geometries=new Set(),materials=new Set();
+ objects.forEach(root=>{
+  if(!root)return;
+  scene.remove(root);
+  root.traverse(node=>{
+   if(node.geometry)geometries.add(node.geometry);
+   const list=Array.isArray(node.material)?node.material:[node.material];
+   list.forEach(material=>{if(material&&!shared.has(material))materials.add(material);});
+  });
+ });
+ geometries.forEach(geometry=>geometry.dispose());
+ materials.forEach(material=>material.dispose());
+}
+
 function box(parent,x,y,z,sx,sy,sz,material){
  let m=new THREE.Mesh(
   new THREE.BoxGeometry(sx,sy,sz),
@@ -1119,12 +1146,13 @@ function init(){
  camera.position.set(0,1.7,16);
 
  renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+ const lowPowerDevice=matchMedia('(pointer:coarse)').matches;
  renderer.setSize(innerWidth,innerHeight);
- renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+ renderer.setPixelRatio(Math.min(devicePixelRatio,lowPowerDevice?1:1.5));
  renderer.outputColorSpace=THREE.SRGBColorSpace;
  renderer.toneMapping=THREE.ACESFilmicToneMapping;
  renderer.toneMappingExposure=1.12;
- renderer.shadowMap.enabled=!matchMedia('(pointer:coarse)').matches;
+ renderer.shadowMap.enabled=!lowPowerDevice;
  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
  document.body.appendChild(renderer.domElement);
 
@@ -1133,7 +1161,7 @@ function init(){
  const sun=new THREE.DirectionalLight(0xffedcf,2.4);
  sun.position.set(-20,35,18);
  sun.castShadow=true;
- sun.shadow.mapSize.set(matchMedia('(pointer:coarse)').matches?512:1024,matchMedia('(pointer:coarse)').matches?512:1024);
+ sun.shadow.mapSize.set(lowPowerDevice?256:768,lowPowerDevice?256:768);
  scene.add(sun);
 
  buildMap();
@@ -1403,7 +1431,8 @@ function buildRageTownMap(){
 }
 
 function buildMap() {
-  mapObjects.forEach(obj => scene.remove(obj));
+  // Dispose map GPU resources before rebuilding; repeated matches otherwise leak memory.
+  disposeObject3DList(mapObjects);
   mapObjects = [];
   const before = new Set(scene.children);
   if (selectedMap === 'ragetown') {
@@ -1670,7 +1699,7 @@ function buildKnifeModel(){
  weaponGroup.add(knifeRig);weaponGroup.position.set(0,0,0);
 }
 function buildWeapon(){
- if(weaponGroup)camera.remove(weaponGroup);
+ if(weaponGroup){camera.remove(weaponGroup);disposeObject3D(weaponGroup);}
  reloadMag=null;reloadMagBase=null;knifeRig=null;knifeHandles=[];
  weaponGroup=new THREE.Group();
  camera.add(weaponGroup);
@@ -1790,7 +1819,7 @@ function buildWeaponSafely(){
  catch(error){
   console.error('Weapon model failed; using safe fallback:',error);
   try{
-   if(weaponGroup&&camera)camera.remove(weaponGroup);
+   if(weaponGroup&&camera){camera.remove(weaponGroup);disposeObject3D(weaponGroup);}
    weaponGroup=new THREE.Group();camera.add(weaponGroup);
    const p=specs[weaponName]||specs.Vandal;
    const body=mat(p.color||0x35424a,.48,.45),dark=mats.black||mat(0x151b20,.6,.3);
@@ -2675,13 +2704,17 @@ function drawMinimap(){
  ctx.restore();
 }
 
+let minimapAccumulator=0;
 function animate(){
  requestAnimationFrame(animate);
 
  let dt=clock?Math.min(clock.getDelta(),.05):0;
 
  update(dt);
- drawMinimap();
+ if(game){
+  minimapAccumulator+=dt;
+  if(minimapAccumulator>=.1){minimapAccumulator=0;drawMinimap();}
+ }else minimapAccumulator=0;
 
  if(renderer){
   renderer.render(scene,camera);
@@ -3327,7 +3360,7 @@ document.getElementById('layoutEditButton').addEventListener('click',()=>{if(mob
 document.getElementById('mobileButtonSize').addEventListener('input',e=>mobileButtons.forEach(b=>{b.style.width=e.target.value+'px';b.style.height=e.target.value+'px';b.style.minWidth=e.target.value+'px';}));
 mobileButtons.forEach(b=>{let d=null,m=false;b.addEventListener('pointerdown',e=>{if(!mobileLayoutEdit)return;d={x:e.clientX,y:e.clientY,baseX:parseFloat(b.dataset.moveX)||0,baseY:parseFloat(b.dataset.moveY)||0};m=false;b.setPointerCapture(e.pointerId);e.preventDefault();});b.addEventListener('pointermove',e=>{if(!d)return;const x=e.clientX-d.x,y=e.clientY-d.y;if(Math.hypot(x,y)>3)m=true;if(m){const mx=Math.max(-innerWidth*.8,Math.min(innerWidth*.8,d.baseX+x)),my=Math.max(-innerHeight*.8,Math.min(innerHeight*.8,d.baseY+y));b.dataset.moveX=mx+'px';b.dataset.moveY=my+'px';b.style.transform='translate('+b.dataset.moveX+','+b.dataset.moveY+')';b.dataset.customPosition='1';}});b.addEventListener('pointerup',()=>{if(d&&m)saveMobileLayout();d=null;});b.addEventListener('pointercancel',()=>d=null);b.addEventListener('click',e=>{if(mobileLayoutEdit){e.preventDefault();e.stopImmediatePropagation();}});});
 loadMobileLayout();
-document.getElementById('renderQuality').addEventListener('change',e=>{renderQuality=e.target.value;if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio,renderQuality==='high'?2:renderQuality==='low'?1:1.65));renderer.setSize(innerWidth,innerHeight);}});
+document.getElementById('renderQuality').addEventListener('change',e=>{renderQuality=e.target.value;if(renderer){const coarse=matchMedia('(pointer:coarse)').matches;const cap=renderQuality==='high'?(coarse?1.25:1.75):renderQuality==='low'?1:(coarse?1:1.35);renderer.setPixelRatio(Math.min(devicePixelRatio,cap));renderer.setSize(innerWidth,innerHeight);}});
 function scopeWeapon(){if(!specs[weaponName]?.scope)return;scoped=true;scopeEl.style.display='block';cross.style.display='none';camera.fov=Math.max(18,76/(specs[weaponName].zoom||1.5));camera.updateProjectionMatrix();}
 const scopeTouchButton=document.getElementById('scopeTouch');
 scopeTouchButton.addEventListener('click',e=>{e.preventDefault();if(mobileLayoutEdit)return;if(scoped)unScope();else scopeWeapon();});
