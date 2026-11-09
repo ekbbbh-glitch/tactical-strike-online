@@ -780,6 +780,7 @@ async function handleSocialSignal(data){
  const pc=getSocialPeer(data.fromDeviceId),signal=data.signal;
  try{
   if(signal.description){
+   if(signal.description.type==='offer'&&pc.signalingState!=='stable')await pc.setLocalDescription({type:'rollback'});
    await pc.setRemoteDescription(signal.description);
    if(signal.description.type==='offer'){const answer=await pc.createAnswer();await pc.setLocalDescription(answer);emitSocialSignal(data.fromDeviceId,{description:pc.localDescription});}
   }else if(signal.candidate){await pc.addIceCandidate(signal.candidate);}
@@ -807,8 +808,8 @@ async function setSocialVoice(pressed){
   socialVoiceStream.getAudioTracks().forEach(t=>t.enabled=true);
   button.textContent='🎙 KONUŞUYORSUN';status.textContent='Mikrofon açık • Bırakınca kapanır';
   for(const friend of socialFriendsCache){
-   if(socialDeviceId&&socialDeviceId<friend.id){
-    const pc=getSocialPeer(friend.id),offer=await pc.createOffer();await pc.setLocalDescription(offer);emitSocialSignal(friend.id,{description:pc.localDescription});
+   {
+    const pc=getSocialPeer(friend.id);if(pc.signalingState==='stable'){const offer=await pc.createOffer();await pc.setLocalDescription(offer);emitSocialSignal(friend.id,{description:pc.localDescription});}
    }
   }
  }catch(error){socialVoicePressed=false;status.textContent='Mikrofon izni verilemedi veya bağlantı kurulamadı.';console.warn(error);}
@@ -927,7 +928,7 @@ document.getElementById('savePlayerName').addEventListener('click',async()=>{
   try{
    const response=await fetch('/api/device/name',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name})});
    const data=await response.json();if(!response.ok)throw new Error(data.error||'Oyuncu adı kaydedilemedi.');
-   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);setTimeout(initSocial,0);setTimeout(initSocial,0);
+   applySavedPlayerName(data.name||name);localStorage.setItem('rageXPlayerName',data.name||name);setTimeout(initSocial,0);setTimeout(initSocial,0);setTimeout(initSocial,0);
   }catch(error){setAccountStatus(error.message||'Kayıt başarısız.');}
  }else{localStorage.setItem('rageXPlayerName',name);applySavedPlayerName(name);setAccountStatus('Oyuncu adı bu tarayıcıya kaydedildi (misafir hesabı).');}
 });
