@@ -536,7 +536,7 @@ app.post('/api/social/request',requireSocial,async(req,res)=>{
  if(name.length<2)return res.status(400).json({error:'Arkadaşın oyuncu adını yaz.'});
  try{
   const target=await accountDb.query('SELECT device_id,player_name FROM device_accounts WHERE lower(player_name)=lower($1) LIMIT 2',[name]);
-  if(!target.rowCount)return res.status(404).json({error:'Bu isimde kayıtlı oyuncu bulunamadı.'});
+  if(!target.rowCount)return res.status(400).json({error:'Bu isimde kayıtlı oyuncu bulunamadı. Arkadaşının önce çerez iznini kabul edip oyuncu adını kaydetmesi gerekiyor.'});
   if(target.rowCount>1)return res.status(409).json({error:'Bu oyuncu adı birden fazla hesapta var. Arkadaşının farklı bir oyuncu adı seçmesi gerekiyor.'});
   const to=target.rows[0].device_id,from=req.socialDeviceId;
   if(to===from)return res.status(400).json({error:'Kendini arkadaş ekleyemezsin.'});
