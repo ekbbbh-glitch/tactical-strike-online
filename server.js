@@ -645,7 +645,7 @@ app.get('/health', (req, res) => {
 
 io.on('connection', socket => {
   const cookieHeader=String(socket.handshake.headers.cookie||'');
-  const deviceMatch=cookieHeader.match(/(?:^|;\\s*)ragex_device=([a-f0-9-]{36})(?:;|$)/i);
+  const deviceMatch=cookieHeader.match(/(?:^|;\s*)ragex_device=([a-f0-9-]{36})(?:;|$)/i);
   socket.data.deviceId=deviceMatch?deviceMatch[1]:null;
   if(socket.data.deviceId)socket.join('user:'+socket.data.deviceId);
   socket.on('social:voice-signal',async data=>{
