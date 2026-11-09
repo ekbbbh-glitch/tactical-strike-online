@@ -740,6 +740,7 @@ async function refreshSocialState(){
  catch(error){socialStatus(error.message);}
 }
 async function requestFriend(){
+ if(!deviceAccountReady||!deviceAccountSaved){socialStatus('Arkadaş sistemi için çerez iznini kabul et ve oyuncu adını sunucuya kaydet.');return;}
  const name=document.getElementById('friendNameInput').value.trim();if(!name){socialStatus('Arkadaşının oyuncu adını yaz.');return;}
  try{const data=await socialFetch('/api/social/request',{method:'POST',body:JSON.stringify({name})});socialStatus(data.message||'İstek gönderildi.');document.getElementById('friendNameInput').value='';await refreshSocialState();}
  catch(error){socialStatus(error.message);}
