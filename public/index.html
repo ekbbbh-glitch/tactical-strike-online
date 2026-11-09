@@ -407,7 +407,7 @@ body{overscroll-behavior:none}
  <div id="scope"></div>
  <div id="health">♥ <span id="hp">100</span> HP</div>
  <div id="ammo">25 / 75<small>VANDAL</small></div>
- <div id="hint">WASD • MOUSE • LMB FIRE • R RELOAD</div>
+ <div id="hint">WASD • MOUSE • 1 BIÇAK • 2 SİLAHLAR • TEKERLEK: SİLAH DEĞİŞTİR</div>
  <div id="message"></div>
  <canvas id="miniMap" width="220" height="220" aria-label="Minimap"></canvas>
  <div id="mobileControls">
@@ -2450,7 +2450,7 @@ if (jumping) {
   }
 }
  if(burstRemaining>0&&shootCd<=0){burstRemaining--;shoot(true);}
- else if((lastMouseDown||touchFire)&&specs[weaponName].auto)shoot();
+ else if((lastMouseDown||touchFire)&&!knifeEquipped&&specs[weaponName].auto)shoot();
 
  let f=0,s=0;
  if(climbing){let climbDir=(keys.KeyW?1:0)-(keys.KeyS?1:0);if(Math.abs(touchMove.y)>.15)climbDir=-Math.sign(touchMove.y);const ladder=climbPoints.find(p=>Math.abs(player.position.x-p.x)<1&&Math.abs(player.position.z-p.z)<1);const top=ladder?.top||5.85;player.position.y=Math.max(0,Math.min(top,player.position.y+climbDir*3.4*dt));if(player.position.y>=top){player.position.y=top;player.position.z=ladder.deckZ;climbing=false;playSfx('land');msg.textContent='KULEYE ÇIKTIN';}if(player.position.y<=0&&climbDir<0){climbing=false;playSfx('land');}}
@@ -2526,7 +2526,7 @@ weaponGroup.rotation.z =
   const t=performance.now();knifeRig.rotation.z=Math.sin(t/245)*.42;
   knifeHandles.forEach((h,i)=>{h.rotation.z=Math.sin(t/210+i*Math.PI)*.62;});
   if(t<knifeAttackUntil){const p=1-(knifeAttackUntil-t)/260;weaponGroup.position.z=-.28*Math.sin(p*Math.PI);knifeRig.rotation.x=-.85*Math.sin(p*Math.PI);}
-  else knifeRig.rotation.x=0;
+  else{weaponGroup.position.z=0;knifeRig.rotation.x=0;}
  }
 if (keys.ShiftLeft && (f || s)) {
   weaponGroup.rotation.x += 0.035;
